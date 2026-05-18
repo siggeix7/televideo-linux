@@ -1,0 +1,59 @@
+{% load static %}
+<!doctype html>
+<html lang="{{ ui.html_lang }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ ui.super_title }}</title>
+    <link rel="stylesheet" href="{% static 'news/styles.css' %}">
+    <script defer src="{% static 'news/superenalotto.js' %}"></script>
+</head>
+<body data-api-url="{% url 'news:superenalotto_api' %}" data-initial-language="{{ language }}" data-refresh-seconds="{{ refresh_seconds }}">
+    <div class="page-shell">
+        <header class="hero hero--compact">
+            <div class="hero__copy">
+                <p class="eyebrow">Rai Televideo pagina 696</p>
+                <h1 data-ui="super_title">{{ ui.super_title }}</h1>
+                <p class="lede" data-ui="super_lede">{{ ui.super_lede }}</p>
+            </div>
+            <div class="seal" aria-hidden="true">6</div>
+        </header>
+
+        <nav class="site-nav" aria-label="Navigazione principale">
+            <a href="{% url 'news:home' %}" class="site-nav__link" data-ui="news_link">{{ ui.news_link }}</a>
+            <a href="{% url 'news:superenalotto' %}" class="site-nav__link is-active" data-ui="super_link">{{ ui.super_link }}</a>
+        </nav>
+
+        <nav class="toolbar" aria-label="{{ ui.language_nav_label }}">
+            {% for code, label in languages.items %}
+                <button class="language-button" type="button" data-language="{{ code }}">{{ label }}</button>
+            {% endfor %}
+        </nav>
+
+        <section class="lottery-layout">
+            <article class="lottery-card">
+                <label class="status-label" for="draw-date" data-ui="select_date">{{ ui.select_date }}</label>
+                <select id="draw-date" class="draw-select"></select>
+                <h2 id="draw-heading"></h2>
+                <p class="news-card__meta" id="draw-date-text"></p>
+                <div class="number-row" id="winning-numbers"></div>
+                <dl class="lottery-stats">
+                    <div><dt data-ui="jolly_label">{{ ui.jolly_label }}</dt><dd id="jolly-number">-</dd></div>
+                    <div><dt data-ui="superstar_label">{{ ui.superstar_label }}</dt><dd id="superstar-number">-</dd></div>
+                    <div><dt data-ui="jackpot_label">{{ ui.jackpot_label }}</dt><dd id="jackpot">-</dd></div>
+                    <div><dt data-ui="prize_pool_label">{{ ui.prize_pool_label }}</dt><dd id="prize-pool">-</dd></div>
+                </dl>
+            </article>
+
+            <article class="trend-card">
+                <h2 data-ui="trend_label">{{ ui.trend_label }}</h2>
+                <div id="trend-chart" class="trend-chart"></div>
+            </article>
+        </section>
+
+        <div id="empty-state" class="empty-state" hidden>
+            <h2 data-ui="no_draws">{{ ui.no_draws }}</h2>
+        </div>
+    </div>
+</body>
+</html>

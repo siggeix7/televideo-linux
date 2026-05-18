@@ -1,0 +1,18 @@
+services:
+  televideo:
+    image: televideo-linux:latest
+    container_name: televideo-web
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      SQLITE_PATH: /data/chronica.sqlite3
+      NEWS_REFRESH_SECONDS: "${NEWS_REFRESH_SECONDS:-60}"
+      NEWS_FETCH_LIMIT: "${NEWS_FETCH_LIMIT:-12}"
+      CATEGORY_FETCH_LIMIT: "${CATEGORY_FETCH_LIMIT:-2}"
+      TRANSLATION_TIMEOUT: "${TRANSLATION_TIMEOUT:-8}"
+      TRANSLATION_RETRIES: "${TRANSLATION_RETRIES:-1}"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-*}"
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:-televideo-compose-change-me}"
+    volumes:
+      - /opt/televideo-docker:/data

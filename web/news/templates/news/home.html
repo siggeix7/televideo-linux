@@ -1,10 +1,10 @@
 {% load static %}
 <!doctype html>
-<html lang="it">
+<html lang="{{ ui.html_lang }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Chronica Televidei</title>
+    <title>{{ ui.title }}</title>
     <link rel="stylesheet" href="{% static 'news/styles.css' %}">
     <script defer src="{% static 'news/app.js' %}"></script>
 </head>
@@ -12,47 +12,58 @@
     <div class="page-shell">
         <header class="hero">
             <div class="hero__copy">
-                <p class="eyebrow">Rai Televideo RSS 101</p>
-                <h1>Chronica Televidei</h1>
-                <p class="lede">Notizie reali, raccolte in tempo quasi reale e vergate come una cronaca da monastero digitale.</p>
+                <p class="eyebrow" data-ui="eyebrow">{{ ui.eyebrow }}</p>
+                <h1 data-ui="title">{{ ui.title }}</h1>
+                <p class="lede" data-ui="lede">{{ ui.lede }}</p>
             </div>
             <div class="seal" aria-hidden="true">CT</div>
         </header>
 
-        <nav class="toolbar" aria-label="Lingua delle notizie">
+        <nav class="site-nav" aria-label="Navigazione principale">
+            <a href="{% url 'news:home' %}" class="site-nav__link is-active" data-ui="news_link">{{ ui.news_link }}</a>
+            <a href="{% url 'news:superenalotto' %}" class="site-nav__link" data-ui="super_link">{{ ui.super_link }}</a>
+        </nav>
+
+        <nav class="toolbar" aria-label="{{ ui.language_nav_label }}">
             {% for code, label in languages.items %}
                 <button class="language-button" type="button" data-language="{{ code }}">{{ label }}</button>
             {% endfor %}
         </nav>
 
+        <section class="category-panel" aria-label="{{ ui.categories_title }}">
+            <h2 data-ui="categories_title">{{ ui.categories_title }}</h2>
+            <div id="category-list" class="category-list"></div>
+        </section>
+
         <section class="status-panel" aria-live="polite">
             <div>
-                <span class="status-label">Stato della cronaca</span>
-                <strong id="status-text">Carico le ultime notizie...</strong>
+                <span class="status-label" data-ui="status_label">{{ ui.status_label }}</span>
+                <strong id="status-text" data-ui="loading">{{ ui.loading }}</strong>
             </div>
             <div>
-                <span class="status-label">Ultima lettura</span>
-                <strong id="last-refresh">in attesa</strong>
+                <span class="status-label" data-ui="last_reading">{{ ui.last_reading }}</span>
+                <strong id="last-refresh" data-ui="waiting">{{ ui.waiting }}</strong>
             </div>
         </section>
 
         <main>
             <section id="news-grid" class="news-grid" aria-live="polite"></section>
             <div id="empty-state" class="empty-state" hidden>
-                <h2>Le pergamene sono ancora vuote</h2>
-                <p>Il feed Rai non ha risposto oppure il job di aggiornamento non ha ancora popolato il database.</p>
+                <h2 data-ui="empty_title">{{ ui.empty_title }}</h2>
+                <p data-ui="empty_message">{{ ui.empty_message }}</p>
             </div>
         </main>
     </div>
 
     <template id="news-card-template">
         <article class="news-card">
-            <div class="news-card__ribbon">Novella</div>
+            <div class="news-card__ribbon"></div>
             <h2></h2>
             <p class="news-card__meta"></p>
+            <p class="news-card__category"></p>
             <p class="news-card__source"></p>
             <p class="news-card__summary"></p>
-            <a class="news-card__link" target="_blank" rel="noopener">Leggi fonte Rai</a>
+            <a class="news-card__link" target="_blank" rel="noopener"></a>
         </article>
     </template>
 </body>

@@ -16,15 +16,17 @@ class Command(BaseCommand):
         parser.add_argument("--loop", action="store_true", help="fetch forever")
         parser.add_argument("--interval", type=int, default=settings.NEWS_REFRESH_SECONDS, help="seconds between fetches")
         parser.add_argument("--limit", type=int, default=settings.NEWS_FETCH_LIMIT, help="maximum feed items to store")
+        parser.add_argument("--category-limit", type=int, default=settings.CATEGORY_FETCH_LIMIT, help="maximum items to store for each Televideo category")
 
     def handle(self, *args, **options):
         loop = options["loop"]
         interval = max(options["interval"], 10)
         limit = options["limit"]
+        category_limit = options["category_limit"]
 
         while True:
-            saved = update_news(limit)
-            self.stdout.write(self.style.SUCCESS(f"stored {saved} Televideo news items"))
+            saved = update_news(limit, category_limit)
+            self.stdout.write(self.style.SUCCESS(f"stored {saved} Televideo records"))
             if options["once"] or not loop:
                 return
             time.sleep(interval)

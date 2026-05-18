@@ -45,7 +45,11 @@ body::before {
 .hero,
 .status-panel,
 .news-card,
+.lottery-card,
+.trend-card,
 .empty-state,
+.site-nav,
+.category-panel,
 .toolbar {
     border: 1px solid rgba(80, 47, 24, 0.55);
     box-shadow: 0 18px 60px var(--shadow), inset 0 0 0 1px rgba(255, 255, 255, 0.25);
@@ -64,6 +68,10 @@ body::before {
     border-radius: 34px 34px 12px 12px;
     position: relative;
     overflow: hidden;
+}
+
+.hero--compact {
+    min-height: 220px;
 }
 
 .hero::after {
@@ -118,7 +126,9 @@ h1 {
     box-shadow: inset 0 0 28px rgba(255, 226, 150, 0.16), 0 18px 38px rgba(54, 11, 10, 0.35);
 }
 
-.toolbar {
+.site-nav,
+.toolbar,
+.category-panel {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
@@ -127,6 +137,12 @@ h1 {
     border-radius: 18px;
 }
 
+.site-nav {
+    justify-content: center;
+}
+
+.site-nav__link,
+.category-button,
 .language-button {
     border: 1px solid rgba(111, 29, 27, 0.36);
     border-radius: 999px;
@@ -135,14 +151,44 @@ h1 {
     font: 700 0.95rem Georgia, "Times New Roman", serif;
     background: rgba(255, 248, 224, 0.72);
     cursor: pointer;
+    text-decoration: none;
     transition: transform 160ms ease, background 160ms ease, color 160ms ease;
 }
 
+.site-nav__link:hover,
+.site-nav__link.is-active,
+.category-button:hover,
+.category-button.is-active,
 .language-button:hover,
 .language-button.is-active {
     transform: translateY(-1px);
     color: #fff7d7;
     background: var(--wine);
+}
+
+.category-panel {
+    align-items: center;
+    margin-top: 0;
+}
+
+.category-panel h2 {
+    margin: 0 8px 0 6px;
+    color: var(--wine);
+    font-size: 1rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.category-list {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.category-button {
+    padding: 8px 13px;
+    font-size: 0.86rem;
 }
 
 .status-panel {
@@ -200,10 +246,108 @@ h1 {
 }
 
 .news-card__meta,
+.news-card__category,
 .news-card__source {
     margin: 0 0 8px;
     color: var(--muted);
     font-size: 0.9rem;
+}
+
+.lottery-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 18px;
+}
+
+.lottery-card,
+.trend-card {
+    padding: 26px;
+    border-radius: 18px 18px 10px 10px;
+}
+
+.draw-select {
+    width: 100%;
+    margin: 8px 0 18px;
+    border: 1px solid rgba(111, 29, 27, 0.36);
+    border-radius: 12px;
+    padding: 12px;
+    color: var(--ink);
+    font: 700 1rem Georgia, "Times New Roman", serif;
+    background: rgba(255, 248, 224, 0.78);
+}
+
+.number-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.number-chip {
+    display: grid;
+    place-items: center;
+    width: 54px;
+    aspect-ratio: 1;
+    border-radius: 999px;
+    color: #fff7d7;
+    font-size: 1.35rem;
+    font-weight: 900;
+    background: radial-gradient(circle at 32% 28%, #c24a3b, var(--wine));
+    box-shadow: inset 0 0 16px rgba(255, 226, 150, 0.18), 0 8px 18px rgba(54, 11, 10, 0.22);
+}
+
+.lottery-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 0;
+}
+
+.lottery-stats div {
+    padding: 14px;
+    border: 1px dashed rgba(111, 29, 27, 0.28);
+    border-radius: 12px;
+}
+
+.lottery-stats dt {
+    color: var(--muted);
+    font-size: 0.84rem;
+}
+
+.lottery-stats dd {
+    margin: 4px 0 0;
+    font-size: 1.12rem;
+    font-weight: 900;
+}
+
+.trend-chart {
+    display: grid;
+    gap: 12px;
+}
+
+.trend-row {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 12px;
+    align-items: center;
+    color: var(--muted);
+    font-size: 0.88rem;
+}
+
+.trend-bars {
+    display: grid;
+    gap: 4px;
+}
+
+.trend-bar {
+    display: block;
+    height: 10px;
+    border-radius: 999px;
+    background: var(--wine);
+}
+
+.trend-bar--pool {
+    background: var(--gold);
 }
 
 .news-card__summary {
@@ -237,7 +381,12 @@ h1 {
     }
 
     .status-panel,
+    .lottery-layout,
     .news-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .trend-row {
         grid-template-columns: 1fr;
     }
 }

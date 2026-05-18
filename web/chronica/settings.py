@@ -83,5 +83,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 NEWS_REFRESH_SECONDS = int(os.environ.get("NEWS_REFRESH_SECONDS", "60"))
 NEWS_FETCH_LIMIT = int(os.environ.get("NEWS_FETCH_LIMIT", "12"))
+CATEGORY_FETCH_LIMIT = int(os.environ.get("CATEGORY_FETCH_LIMIT", "2"))
 TRANSLATION_TIMEOUT = float(os.environ.get("TRANSLATION_TIMEOUT", "8"))
 TRANSLATION_RETRIES = int(os.environ.get("TRANSLATION_RETRIES", "1"))
