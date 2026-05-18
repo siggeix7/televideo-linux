@@ -13,6 +13,7 @@ import sys
 import tempfile
 import textwrap
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -31,6 +32,8 @@ USER_AGENT = "televideo-linux/1.0"
 DEFAULT_TIMEOUT = 10.0
 DEFAULT_RETRIES = 1
 DEFAULT_NEWS_LIMIT = 10
+SUMMARY_SENTENCES = 2
+SUMMARY_MAX_CHARS = 320
 
 REGIONS = {
     "abruzzo": "Abruzzo",
@@ -64,6 +67,154 @@ REGIONS = {
     "valle-daosta": "Aosta",
     "veneto": "Veneto",
 }
+
+LATIN_TITLE_OVERRIDES = {
+    "il 25 maggio prima enciclica leone xiv": "Die XXV Maii prima Encyclica Leonis XIV",
+}
+
+LATIN_WORDS = {
+    "a": "ad",
+    "abbiamo": "nos",
+    "accessibilita": "accessibilitas",
+    "aeroporto": "aeroportus",
+    "al": "ad",
+    "alla": "ad",
+    "alle": "ad",
+    "allo": "ad",
+    "ambiente": "ambitus",
+    "appelli": "appellationes",
+    "appello": "appellatio",
+    "arresti": "comprehensiones",
+    "arrestato": "comprehensus",
+    "arrestati": "comprehensi",
+    "basket": "pila canistralis",
+    "bocce": "sphaerae",
+    "borsa": "bursa",
+    "braccianti": "operarii agrarii",
+    "brucio": "uro",
+    "calcio": "pediludium",
+    "campania": "Campania",
+    "cantiere": "aedificium operarium",
+    "caporalato": "servitus laboris",
+    "carabinieri": "Carabinarii",
+    "cc": "Carabinarii",
+    "cina": "Sinae",
+    "cinema": "cinematographum",
+    "colle": "Quirinalis",
+    "con": "cum",
+    "corpi": "corpora",
+    "corpo": "corpus",
+    "censure": "censurae",
+    "cultura": "cultura",
+    "culture": "culturae",
+    "dai": "a",
+    "dal": "ex",
+    "dall": "ex",
+    "de": "de",
+    "dei": "de",
+    "del": "de",
+    "della": "de",
+    "delle": "de",
+    "di": "de",
+    "disponibili": "paratae",
+    "donne": "mulieres",
+    "economia": "oeconomia",
+    "el": "El",
+    "enciclica": "Encyclica",
+    "errore": "error",
+    "e": "et",
+    "farmacie": "pharmaciae",
+    "flotilla": "classis parva",
+    "focus": "cura",
+    "football": "pediludium",
+    "fondi": "pecuniae",
+    "garantire": "praestare",
+    "gesu": "Iesum",
+    "grazie": "gratiae",
+    "gli": "",
+    "hantavirus": "Hantavirus",
+    "hockey": "hockey",
+    "i": "",
+    "il": "",
+    "in": "in",
+    "individuati": "reperta",
+    "iran": "Irania",
+    "italia": "Italiam",
+    "koudri": "Koudri",
+    "la": "",
+    "le": "",
+    "legale": "Advocatus",
+    "leone": "Leo",
+    "lo": "",
+    "mail": "epistulae electronicae",
+    "maggio": "Maii",
+    "maldive": "Maldivae",
+    "mattarella": "Mattarella",
+    "mediavideo": "Mediavideo",
+    "minimizzare": "minuere",
+    "modena": "Mutina",
+    "morte": "mortuae",
+    "morti": "mortui",
+    "morto": "mortuus",
+    "napoli": "Neapolis",
+    "nel": "in",
+    "nella": "in",
+    "no": "nullae",
+    "odio": "odium",
+    "papa": "Papa",
+    "pace": "pax",
+    "pallamano": "pila manualis",
+    "pallanuoto": "pila aquatica",
+    "per": "pro",
+    "perizia": "aestimatio",
+    "piantedosi": "Piantedosi",
+    "politica": "politica",
+    "prima": "prima",
+    "proposta": "propositum",
+    "psichiatrica": "psychiatrica",
+    "regione": "regio",
+    "ricettario": "liber receptarum",
+    "risposto": "responsum",
+    "rugby": "rugby",
+    "salvini": "Salvini",
+    "sciopero": "cessatio laboris",
+    "sicurezza": "securitatem",
+    "societa": "societas",
+    "sport": "ludi",
+    "strade": "viae",
+    "sub": "urinatores",
+    "su": "super",
+    "tajani": "Tajani",
+    "teatri": "theatra",
+    "tennis": "tennis",
+    "trovate": "repertae",
+    "trovati": "reperti",
+    "tutti": "omnes",
+    "ue": "Unio Europaea",
+    "ultimora": "novissima hora",
+    "un": "quidam",
+    "una": "quaedam",
+    "uomo": "vir",
+    "usa": "Civitates Foederatae",
+    "viabilita": "viarum status",
+    "volley": "pila volatica",
+}
+
+ARCHAIC_REPLACEMENTS = (
+    (r"\boggi\b", "in questo di'"),
+    (r"\bieri\b", "nel di' passato"),
+    (r"\bha detto\b", "ha proferito"),
+    (r"\bha chiesto\b", "ha domandato"),
+    (r"\bgoverno\b", "reggimento"),
+    (r"\bministro\b", "messere ministro"),
+    (r"\bpresidente\b", "signore presidente"),
+    (r"\bpersone\b", "genti"),
+    (r"\bpolizia\b", "guardie"),
+    (r"\bcarabinieri\b", "militi"),
+    (r"\bindagine\b", "inchiesta"),
+    (r"\bnotizia\b", "novella"),
+    (r"\bnotizie\b", "novelle"),
+)
 
 
 def normalize_region(value: str | None) -> str:
@@ -179,6 +330,12 @@ def strip_html(value: str) -> str:
 
 def compact_text(value: str) -> str:
     return re.sub(r"\s+", " ", strip_html(value)).strip()
+
+
+def normalize_lookup(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value.casefold())
+    normalized = "".join(char for char in normalized if not unicodedata.combining(char))
+    return re.sub(r"[^a-z0-9]+", " ", normalized).strip()
 
 
 def extract_page(html_text: str) -> tuple[str, str]:
@@ -311,6 +468,113 @@ def format_news(limit: int, full: bool, search: str | None, show_url: bool, time
     return "\n".join(lines).rstrip()
 
 
+def roman_number(number: int) -> str:
+    values = (
+        (1000, "M"),
+        (900, "CM"),
+        (500, "D"),
+        (400, "CD"),
+        (100, "C"),
+        (90, "XC"),
+        (50, "L"),
+        (40, "XL"),
+        (10, "X"),
+        (9, "IX"),
+        (5, "V"),
+        (4, "IV"),
+        (1, "I"),
+    )
+    result = []
+    for value, numeral in values:
+        while number >= value:
+            result.append(numeral)
+            number -= value
+    return "".join(result)
+
+
+def latinize_title(title: str) -> str:
+    normalized_title = normalize_lookup(title)
+    if normalized_title in LATIN_TITLE_OVERRIDES:
+        return LATIN_TITLE_OVERRIDES[normalized_title]
+
+    tokens = re.findall(r"[\w']+|[^\w\s]", title, flags=re.UNICODE)
+    translated = []
+    for token in tokens:
+        if re.fullmatch(r"[^\w\s]", token, flags=re.UNICODE):
+            translated.append(token)
+            continue
+        if token.isdigit() or re.fullmatch(r"[IVXLCDM]+", token):
+            translated.append(token)
+            continue
+
+        lookup = normalize_lookup(token)
+        latin = LATIN_WORDS.get(lookup)
+        if latin is None:
+            latin = token if token[:1].isupper() else token
+        if latin:
+            translated.append(latin)
+
+    return join_title_tokens(translated) or "Nuntium sine titulo"
+
+
+def join_title_tokens(tokens: list[str]) -> str:
+    output = []
+    for token in tokens:
+        if token in {",", ".", ":", ";", "!", "?"} and output:
+            output[-1] += token
+        else:
+            output.append(token)
+    return " ".join(output)
+
+
+def summarize_description(description: str) -> str:
+    text = re.sub(r"^\d{1,2}\.\d{2}\s+", "", description).strip()
+    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", text) if part.strip()]
+    summary = " ".join(sentences[:SUMMARY_SENTENCES]) or text
+    if len(summary) > SUMMARY_MAX_CHARS:
+        summary = summary[:SUMMARY_MAX_CHARS].rsplit(" ", 1)[0].rstrip(" ,.;:") + "..."
+    return summary
+
+
+def medievalize_summary(summary: str) -> str:
+    text = summary
+    for pattern, replacement in ARCHAIC_REPLACEMENTS:
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+    ending = "" if text.endswith((".", "!", "?", "...")) else "."
+    return f"Udite, udite, o genti del borgo: {text}{ending} Cosi' narrano gli scribi del Televideo."
+
+
+def format_medieval_summary(limit: int, search: str | None, show_url: bool, timeout: float, retries: int) -> str:
+    source, url = fetch_text(build_rss_urls(), timeout, retries)
+    items = parse_news_items(source)
+    if search:
+        needle = search.casefold()
+        items = [item for item in items if needle in (item["title"] + " " + item["description"]).casefold()]
+
+    items = items[:limit]
+    lines = ["Chronica Televidei", "Compendium novellarum more medioevali"]
+    if search:
+        lines.append(f"Quaestio: {search}")
+    if show_url:
+        lines.append(url)
+    lines.append("")
+
+    if not items:
+        lines.append("Nulla novella inventa est.")
+        return "\n".join(lines)
+
+    for index, item in enumerate(items, start=1):
+        latin_title = latinize_title(item["title"])
+        summary = medievalize_summary(summarize_description(item["description"]))
+        lines.append(f"Capitulum {roman_number(index)} - {latin_title}")
+        if item["pub_date"]:
+            lines.append(f"Data: {item['pub_date']}")
+        lines.extend(textwrap.wrap(summary, width=78))
+        lines.append("")
+
+    return "\n".join(lines).rstrip()
+
+
 def emit(output: str, output_path: str | None) -> int:
     print(output)
     if output_path:
@@ -340,6 +604,8 @@ def print_image_page(page: str, region: str, show_url: bool, timeout: float, ret
 
 
 def format_selected_output(args: argparse.Namespace, region: str) -> str:
+    if args.medieval_summary is not None:
+        return format_medieval_summary(args.medieval_summary, args.search, args.url, args.timeout, args.retries)
     if args.news is not None:
         return format_news(args.news, args.full, args.search, args.url, args.timeout, args.retries)
     if args.capture:
@@ -377,7 +643,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Consulta Rai Televideo dal terminale.",
         epilog=(
             "Esempi: televideo 100 | televideo 101 -s 1 | televideo 300 -r Lazio | "
-            "televideo --news 5 --full | televideo --search Tajani | televideo 100 --image"
+            "televideo --news 5 --full | televideo --medievale 5 | televideo 100 --image"
         ),
     )
     parser.add_argument("page", nargs="?", type=validate_page, default="100", help="pagina Televideo, default 100")
@@ -386,6 +652,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--image", action="store_true", help="mostra la pagina grafica con chafa, se installato")
     parser.add_argument("--capture", action="store_true", help="cattura tutte le sottopagine disponibili della pagina")
     parser.add_argument("--news", nargs="?", const=DEFAULT_NEWS_LIMIT, type=positive_int, help="mostra le ultime N notizie RSS, default 10")
+    parser.add_argument(
+        "--medieval-summary",
+        "--medievale",
+        nargs="?",
+        const=DEFAULT_NEWS_LIMIT,
+        type=positive_int,
+        dest="medieval_summary",
+        help="riassume le ultime N notizie in stile medievale con titoli in latino, default 10",
+    )
     parser.add_argument("--full", action="store_true", help="con --news, mostra anche il testo completo delle notizie")
     parser.add_argument("--search", help="cerca nel feed Ultim'Ora; se usato da solo implica --news 20")
     parser.add_argument("--watch", type=positive_float, help="aggiorna l'output ogni N secondi")
@@ -408,12 +683,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     region = normalize_region(args.region)
 
-    if args.search and args.news is None:
+    if args.search and args.news is None and args.medieval_summary is None:
         args.news = 20
 
-    selected_modes = sum(1 for selected in (args.image, args.capture, args.news is not None) if selected)
+    selected_modes = sum(1 for selected in (args.image, args.capture, args.news is not None, args.medieval_summary is not None) if selected)
     if selected_modes > 1:
-        parser.error("usa solo una modalita tra --image, --capture e --news")
+        parser.error("usa solo una modalita tra --image, --capture, --news e --medieval-summary")
     if args.image and (args.output or args.watch):
         parser.error("--image non supporta --output o --watch")
     if args.count and not args.watch:

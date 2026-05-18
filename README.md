@@ -16,6 +16,7 @@ gennaio 2022, quindi non esiste un servizio live ufficiale da interrogare.
 - Visualizzazione grafica delle pagine PNG con `chafa`.
 - Feed Ultim'Ora via RSS con titoli o testo completo.
 - Ricerca testuale nel feed Ultim'Ora.
+- Riassunto medievale delle notizie con titoli latinizzati.
 - Cattura delle sottopagine disponibili per una pagina.
 - Refresh automatico stile televideo con `--watch`.
 - Salvataggio output testuale con `-o` / `--output`.
@@ -126,6 +127,14 @@ Ricerca nelle Ultim'Ora:
 ./televideo --search energia --news 20 --full
 ```
 
+Riassunto medievale con titoli in latino:
+
+```sh
+./televideo --medieval-summary
+./televideo --medieval-summary 5
+./televideo --medievale 3 --search Papa
+```
+
 Cattura sottopagine:
 
 ```sh
@@ -163,6 +172,8 @@ page                  pagina Televideo, default 100
 --image               mostra la pagina grafica con chafa, se installato
 --capture             cattura tutte le sottopagine disponibili della pagina
 --news [N]            mostra le ultime N notizie RSS, default 10
+--medieval-summary [N]
+--medievale [N]       riassume le ultime N notizie in stile medievale con titoli in latino
 --full                con --news, mostra anche il testo completo delle notizie
 --search TEXT         cerca nel feed Ultim'Ora; da solo implica --news 20
 --watch SECONDS       aggiorna l'output ogni N secondi
@@ -173,8 +184,12 @@ page                  pagina Televideo, default 100
 --retries N           ritentativi dopo il primo giro, default 1
 ```
 
-`--image`, `--capture` e `--news` sono modalita alternative: usane una sola per
-volta.
+`--image`, `--capture`, `--news` e `--medieval-summary` sono modalita
+alternative: usane una sola per volta.
+
+La traduzione latina dei titoli usa un dizionario locale ed euristiche semplici:
+non richiede servizi esterni e conserva i nomi propri quando non sono traducibili
+in modo affidabile.
 
 ## Regioni Supportate
 
@@ -279,6 +294,8 @@ python3 -m py_compile televideo
 ./televideo --news 3
 ./televideo --news 2 --full
 ./televideo --search Tajani
+./televideo --medieval-summary 3
+./televideo --medievale 2 --search Papa
 ./televideo 102 --capture
 ./mediavideo
 ```
