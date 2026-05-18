@@ -1,195 +1,157 @@
 # televideo-linux
 
-Notizie reali e aggiornate da Rai Televideo, lette dal terminale e trasformate
-in una piccola cronaca medievale in latino medievaleggiante.
+Sito web e CLI per leggere notizie reali da Rai Televideo e presentarle come
+una cronaca medievale aggiornata in automatico.
 
-Il comando principale e' ora semplicemente:
+Il flusso principale e' la web app Django: un job interno scarica le Ultim'Ora
+Rai, salva tutto in SQLite e la pagina si aggiorna da sola mostrando le nuove
+notizie. Le lingue disponibili nella UI sono latino, italiano e inglese.
+
+## Funzioni Principali
+
+- Web app Django con stile medievale curato e responsive.
+- Notizie reali dal feed pubblico Rai Televideo RSS 101.
+- Database SQLite interno per conservare le notizie gia' scaricate.
+- Job di aggiornamento automatico eseguibile in loop.
+- API JSON usata dalla pagina per aggiornarsi senza refresh manuale.
+- Selettore lingua: `Latino`, `Italiano`, `English`.
+- Container Docker con Gunicorn, job di fetch e volume dati `/data`.
+- Makefile per build, run, test e salvataggio immagine in `/tmp`.
+- GitHub Action per build, push su GHCR e release del container.
+- CLI `./televideo` ancora disponibile per uso terminale.
+
+## Avvio Con Docker
+
+Build dell'immagine e salvataggio automatico in `/tmp`:
+
+```sh
+make
+```
+
+Il target default esegue `make save` e produce:
+
+```text
+/tmp/televideo-linux-latest.tar
+```
+
+Avvio locale del sito:
+
+```sh
+make run
+```
+
+Poi apri:
+
+```text
+http://localhost:8000
+```
+
+Caricare l'immagine salvata in `/tmp` su un'altra macchina:
+
+```sh
+docker load -i /tmp/televideo-linux-latest.tar
+docker run --rm -p 8000:8000 -v televideo-data:/data televideo-linux:latest
+```
+
+## Target Makefile
+
+```text
+make build       builda l'immagine Docker
+make save        builda e salva /tmp/televideo-linux-latest.tar
+make run         avvia il sito su http://localhost:8000
+make shell       apre una shell Django nel container
+make test        esegue check Python/Django locali
+make clean       rimuove l'archivio immagine da /tmp
+```
+
+Variabili utili:
+
+```sh
+make save IMAGE=chronica TAG=v1 TMP_IMAGE=/tmp/chronica-v1.tar
+make run PORT=8080
+```
+
+## Avvio Locale Senza Docker
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+python web/manage.py migrate
+python web/manage.py fetch_televideo --once --limit 5
+python web/manage.py runserver
+```
+
+Job di aggiornamento continuo:
+
+```sh
+python web/manage.py fetch_televideo --loop --interval 60 --limit 20
+```
+
+## Configurazione Runtime
+
+Variabili d'ambiente principali:
+
+```text
+PORT                  porta HTTP del container, default 8000
+SQLITE_PATH           path database, default /data/chronica.sqlite3 nel container
+NEWS_REFRESH_SECONDS  frequenza aggiornamento notizie, default 60
+NEWS_FETCH_LIMIT      quante notizie conservare a ogni giro, default 12
+TRANSLATION_TIMEOUT   timeout traduttori online, default 8
+TRANSLATION_RETRIES   retry traduttori/feed, default 1
+DJANGO_ALLOWED_HOSTS  host consentiti, default *
+DJANGO_SECRET_KEY     secret key Django per ambienti pubblici
+```
+
+Il container avvia automaticamente:
+
+1. Migrazioni Django.
+2. Primo fetch delle notizie.
+3. Worker in background per aggiornare SQLite.
+4. Gunicorn per servire la web app.
+
+## Lingue E Traduzioni
+
+La pagina permette di cambiare lingua senza ricaricare:
+
+```text
+Latino    resa medievale latina
+Italiano  testo originale Televideo con cornice cronachistica
+English   traduzione inglese con cornice cronachistica
+```
+
+Le traduzioni usano endpoint gratuiti senza API key:
+
+1. Google Translate endpoint non ufficiale.
+2. MyMemory.
+3. Fallback al testo originale se i servizi non rispondono.
+
+## CLI Terminale
+
+La CLI resta disponibile:
 
 ```sh
 ./televideo
-```
-
-Senza argomenti il programma scarica il feed live Ultim'Ora di Rai Televideo,
-prende le notizie piu' recenti e le presenta come `Chronica Televidei`, con
-titoli tradotti in latino, data originale della fonte e testo riassunto in stile
-da cronaca.
-
-## Cosa Fa
-
-- Legge notizie reali dal feed RSS pubblico Rai Televideo pagina 101.
-- Mostra di default una cronaca medievale delle ultime notizie live.
-- Traduce titoli e sintesi in latino tramite servizi online gratuiti.
-- Mantiene un fallback locale se la traduzione online non risponde.
-- Permette ricerca nel feed Ultim'Ora con `--search`.
-- Permette aggiornamento continuo con `--watch`.
-- Salva la cronaca in file di testo con `-o` / `--output`.
-- Mantiene accesso secondario alle pagine classiche Rai Televideo.
-
-## Requisiti
-
-- Python 3.
-- Nessuna dipendenza `pip`.
-- Connessione Internet per leggere le notizie live Rai.
-- `chafa` solo se vuoi visualizzare le pagine grafiche con `--image`.
-
-## Installazione
-
-Uso locale:
-
-```sh
-chmod +x televideo
-./televideo
-```
-
-Installazione come comando di sistema:
-
-```sh
-sudo install -m 755 televideo /usr/local/bin/televideo
-televideo
-```
-
-## Uso Principale
-
-Cronaca medievale live, default 5 notizie:
-
-```sh
-./televideo
-./televideo --medievale
-./televideo --medieval-summary
-```
-
-Numero di notizie:
-
-```sh
-./televideo --medievale 8
-./televideo --medieval-summary 3
-```
-
-Ricerca nelle Ultim'Ora, sempre in stile cronaca medievale se non specifichi
-`--news`:
-
-```sh
+./televideo --medievale 5
 ./televideo --search Papa
-./televideo --search energia --medievale 10
-```
-
-Aggiornamento automatico:
-
-```sh
-./televideo --watch 60
-./televideo --medievale 5 --watch 30 --count 3
-```
-
-Salvataggio in file:
-
-```sh
-./televideo -o chronica.txt
-./televideo --medievale 10 --search governo -o governo.txt
-```
-
-Mostrare anche URL sorgente RSS e link delle singole notizie:
-
-```sh
-./televideo --url
-```
-
-## Traduzione Latina
-
-Il default e' `--latin-translator auto`:
-
-```sh
-./televideo --latin-translator auto
-```
-
-Ordine usato in modalita `auto`:
-
-1. Google Translate endpoint gratuito non ufficiale, `it -> la`.
-2. MyMemory, `it|la`.
-3. Fallback locale offline.
-
-Puoi forzare un traduttore:
-
-```sh
-./televideo --latin-translator google
-./televideo --latin-translator mymemory
-./televideo --latin-translator local
-```
-
-Nota: non esiste qui un servizio gratuito affidabile che dichiari esplicitamente
-"latino medievale". Lo script traduce in latino e applica poi una resa da
-cronaca medievale, con formule come `Chronica`, `Capitulum`, `In chronicis
-scriptum est` e grafia semplificata.
-
-## Output Originale Delle Notizie
-
-Se vuoi leggere il feed Rai senza resa medievale:
-
-```sh
-./televideo --news
-./televideo --news 5
 ./televideo --news 3 --full
-./televideo --news 20 --search Tajani
-```
-
-## Pagine Televideo Classiche
-
-La consultazione delle pagine resta disponibile, ma non e' piu' il flusso
-principale. Passa un numero pagina per usare la modalita classica:
-
-```sh
 ./televideo 100
-./televideo 101 -s 1
-./televideo 300 -r Lazio
 ./televideo 102 --capture
 ```
 
-Pagina grafica con `chafa` se installato:
-
-```sh
-./televideo 100 --image
-./televideo 100 --image --url
-```
-
-Se `chafa` non e' disponibile, `--image` stampa l'URL PNG ufficiale Rai.
-
-## Opzioni CLI
-
-```text
-page                  pagina Televideo classica da consultare, es. 100
---medieval-summary [N]
---medievale [N]       cronaca medievale live delle ultime N notizie, default 5
---latin-translator    auto, google, mymemory o local, default auto
---news [N]            ultime N notizie RSS in formato originale, default 10
---full                con --news mostra anche il testo completo
---search TEXT         filtra le Ultim'Ora; da solo usa la cronaca medievale
---watch SECONDS       aggiorna l'output ogni N secondi
---count N             numero di aggiornamenti da fare con --watch
--o, --output FILE     salva l'output testuale in un file
---url                 stampa URL sorgente RSS o pagina Rai
--s, --subpage         sottopagina Televideo classica, es. 1
--r, --region          regione Rai, es. Lazio, Lombardia, Emilia-Romagna
---image               mostra la pagina grafica con chafa, se installato
---capture             cattura sottopagine disponibili della pagina
---timeout SECONDS     timeout per host in secondi, default 10
---retries N           ritentativi dopo il primo giro, default 1
-```
-
-`--image`, `--capture`, `--news` e `--medieval-summary` sono modalita
-alternative: usane una sola per volta.
+Senza argomenti mostra la cronaca medievale live nel terminale. Passando un
+numero pagina, per esempio `100`, consulta invece la pagina Televideo classica.
 
 ## Fonte Dati
 
-Le notizie arrivano dal feed pubblico Ultim'Ora Rai Televideo:
+Feed principale:
 
 ```text
 https://www.televideo.rai.it/televideo/pub/rss101.xml
 https://www.servizitelevideo.rai.it/televideo/pub/rss101.xml
 ```
 
-Il programma prova entrambi gli host Rai e usa `--timeout` / `--retries` per
-gestire momenti in cui un endpoint risponde lentamente.
-
-Endpoint secondari usati per le pagine classiche:
+Endpoint secondari usati dalla CLI per le pagine classiche:
 
 ```text
 https://www.televideo.rai.it/televideo/pub/solotesto.jsp?pagina=100
@@ -197,42 +159,56 @@ https://www.televideo.rai.it/televideo/pub/catturaSottopagine.jsp?pagina=102&reg
 https://www.televideo.rai.it/televideo/pub/tt4web/Nazionale/16_9_page-100.png
 ```
 
-## Regioni Supportate
+## GitHub Action E Release Container
 
-Puoi passare il nome della regione con `-r` / `--region` per le pagine
-classiche regionali.
-
-Esempi accettati:
+Workflow inclusa:
 
 ```text
-Abruzzo, Alto-Adige, Basilicata, Calabria, Campania, Emilia-Romagna,
-Friuli Venezia Giulia, Lazio, Liguria, Lombardia, Marche, Molise,
-Piemonte, Puglia, Sardegna, Sicilia, Toscana, Trentino, Umbria,
-Valle d'Aosta, Veneto
+.github/workflows/container-release.yml
 ```
 
-Sono accettate anche varianti pratiche come `emilia`, `emilia-romagna`,
-`friuli` e `valle-aosta`.
+La workflow gira su runner self-hosted Linux:
+
+```yaml
+runs-on: [self-hosted, linux]
+```
+
+Quando fai push di un tag `v*`, la workflow:
+
+1. Builda l'immagine Docker.
+2. La tagga come `ghcr.io/<owner>/<repo>:<tag>` e `latest`.
+3. Fa push su GitHub Container Registry.
+4. Salva anche un archivio in `/tmp` sul runner.
+5. Carica l'archivio come artifact.
+6. Crea una GitHub Release con l'archivio allegato.
+
+Esempio release:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Per usare il container LXC come runner devi registrarlo dalle impostazioni del
+repository GitHub: `Settings -> Actions -> Runners -> New self-hosted runner`.
+Serve il token generato da GitHub in quella pagina. Il runner deve avere Docker
+installato e l'utente del runner deve poter eseguire `docker build` e
+`docker push`.
 
 ## Architettura
 
-File principali:
-
 ```text
-televideo    CLI Python principale
-README.md    documentazione del progetto
-LICENSE      licenza MIT
+televideo                         CLI Python
+web/manage.py                     entrypoint Django
+web/chronica/                     progetto Django
+web/news/                         app notizie, API, job e template
+web/news/services.py              fetch RSS, traduzioni, persistenza SQLite
+web/news/templates/news/home.html pagina web
+web/news/static/news/             CSS e JavaScript
+Dockerfile                        immagine applicativa
+docker/entrypoint.sh              migrazioni, worker e Gunicorn
+Makefile                          build/run/test/save
 ```
-
-Scelte tecniche:
-
-- `argparse` per l'interfaccia CLI.
-- `urllib.request` per HTTP/HTTPS senza dipendenze esterne.
-- `xml.etree.ElementTree` per leggere il feed RSS Rai.
-- Fallback tra host Rai ufficiali e mirror `servizitelevideo`.
-- Traduzione online opzionale senza chiavi API.
-- Regex mirate per estrarre il blocco `<pre>` dalle pagine solo testo Rai.
-- `tempfile` e `subprocess` per passare i PNG temporanei a `chafa`.
 
 ## Verifica
 
@@ -240,23 +216,22 @@ Comandi usati per testare il progetto:
 
 ```sh
 python3 -m py_compile televideo
-./televideo
-./televideo --help
-./televideo --medievale 2 --latin-translator google
-./televideo --search Papa --latin-translator local
-./televideo --news 2
-./televideo --news 1 --full
-./televideo 100
-./televideo 102 --capture
-./televideo --medievale 1 --watch 1 --count 1 --latin-translator local
+python web/manage.py check
+python web/manage.py makemigrations --check --dry-run
+python web/manage.py migrate --noinput
+python web/manage.py fetch_televideo --once --limit 3
+python web/manage.py collectstatic --noinput
+make test
+make save
+docker run --rm -p 8000:8000 -v televideo-data:/data televideo-linux:latest
 ```
 
 ## Limiti Noti
 
-- Il progetto dipende dagli endpoint pubblici Rai, che non sono API garantite.
-- Gli endpoint gratuiti di traduzione possono cambiare, limitare o degradare la qualita'.
-- `local` e' un fallback offline utile, ma non produce una traduzione latina completa.
-- `--watch` e' pensato per output testuale, non per `--image`.
+- Gli endpoint Rai sono pubblici ma non API garantite.
+- Gli endpoint gratuiti di traduzione possono cambiare o limitare il traffico.
+- Il latino e' una resa automatica medievaleggiante, non una traduzione filologica.
+- La release automatica richiede un runner self-hosted gia' registrato su GitHub.
 
 ## Licenza
 

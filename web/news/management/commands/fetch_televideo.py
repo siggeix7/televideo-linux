@@ -1,0 +1,30 @@
+from __future__ import annotations
+
+import time
+
+from django.conf import settings
+from django.core.management.base import BaseCommand
+
+from news.services import update_news
+
+
+class Command(BaseCommand):
+    help = "Fetches live Rai Televideo news and stores translations in SQLite."
+
+    def add_arguments(self, parser):
+        parser.add_argument("--once", action="store_true", help="fetch once and exit")
+        parser.add_argument("--loop", action="store_true", help="fetch forever")
+        parser.add_argument("--interval", type=int, default=settings.NEWS_REFRESH_SECONDS, help="seconds between fetches")
+        parser.add_argument("--limit", type=int, default=settings.NEWS_FETCH_LIMIT, help="maximum feed items to store")
+
+    def handle(self, *args, **options):
+        loop = options["loop"]
+        interval = max(options["interval"], 10)
+        limit = options["limit"]
+
+        while True:
+            saved = update_news(limit)
+            self.stdout.write(self.style.SUCCESS(f"stored {saved} Televideo news items"))
+            if options["once"] or not loop:
+                return
+            time.sleep(interval)

@@ -1,0 +1,59 @@
+{% load static %}
+<!doctype html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chronica Televidei</title>
+    <link rel="stylesheet" href="{% static 'news/styles.css' %}">
+    <script defer src="{% static 'news/app.js' %}"></script>
+</head>
+<body data-api-url="{% url 'news:news_api' %}" data-initial-language="{{ language }}" data-refresh-seconds="{{ refresh_seconds }}">
+    <div class="page-shell">
+        <header class="hero">
+            <div class="hero__copy">
+                <p class="eyebrow">Rai Televideo RSS 101</p>
+                <h1>Chronica Televidei</h1>
+                <p class="lede">Notizie reali, raccolte in tempo quasi reale e vergate come una cronaca da monastero digitale.</p>
+            </div>
+            <div class="seal" aria-hidden="true">CT</div>
+        </header>
+
+        <nav class="toolbar" aria-label="Lingua delle notizie">
+            {% for code, label in languages.items %}
+                <button class="language-button" type="button" data-language="{{ code }}">{{ label }}</button>
+            {% endfor %}
+        </nav>
+
+        <section class="status-panel" aria-live="polite">
+            <div>
+                <span class="status-label">Stato della cronaca</span>
+                <strong id="status-text">Carico le ultime notizie...</strong>
+            </div>
+            <div>
+                <span class="status-label">Ultima lettura</span>
+                <strong id="last-refresh">in attesa</strong>
+            </div>
+        </section>
+
+        <main>
+            <section id="news-grid" class="news-grid" aria-live="polite"></section>
+            <div id="empty-state" class="empty-state" hidden>
+                <h2>Le pergamene sono ancora vuote</h2>
+                <p>Il feed Rai non ha risposto oppure il job di aggiornamento non ha ancora popolato il database.</p>
+            </div>
+        </main>
+    </div>
+
+    <template id="news-card-template">
+        <article class="news-card">
+            <div class="news-card__ribbon">Novella</div>
+            <h2></h2>
+            <p class="news-card__meta"></p>
+            <p class="news-card__source"></p>
+            <p class="news-card__summary"></p>
+            <a class="news-card__link" target="_blank" rel="noopener">Leggi fonte Rai</a>
+        </article>
+    </template>
+</body>
+</html>
