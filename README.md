@@ -28,6 +28,7 @@ Setup consigliato su server:
 
 ```sh
 mkdir -p /opt/televideo-docker
+chown -R 1000:1000 /opt/televideo-docker
 docker compose -f /opt/televideo-docker/docker-compose.yml up -d
 ```
 
@@ -59,10 +60,47 @@ services:
       TRANSLATION_TIMEOUT: "${TRANSLATION_TIMEOUT:-8}"
       TRANSLATION_RETRIES: "${TRANSLATION_RETRIES:-1}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-*}"
+      DJANGO_CSRF_TRUSTED_ORIGINS: "${DJANGO_CSRF_TRUSTED_ORIGINS:-}"
+      DJANGO_USE_X_FORWARDED_HOST: "${DJANGO_USE_X_FORWARDED_HOST:-true}"
+      DJANGO_SECURE_PROXY_SSL_HEADER: "${DJANGO_SECURE_PROXY_SSL_HEADER:-true}"
+      DJANGO_SECURE_SSL_REDIRECT: "${DJANGO_SECURE_SSL_REDIRECT:-false}"
+      DJANGO_COOKIE_SECURE: "${DJANGO_COOKIE_SECURE:-false}"
       DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:-televideo-compose-change-me}"
     volumes:
       - /opt/televideo-docker:/data
 ```
+
+Per produzione dietro Nginx Proxy Manager, crea `/opt/televideo-docker/.env`:
+
+```env
+PORT=8000
+DJANGO_ALLOWED_HOSTS=televideo.example.com,localhost,127.0.0.1
+DJANGO_CSRF_TRUSTED_ORIGINS=https://televideo.example.com
+DJANGO_SECRET_KEY=cambia-questa-stringa-lunga-e-casuale
+DJANGO_USE_X_FORWARDED_HOST=true
+DJANGO_SECURE_PROXY_SSL_HEADER=true
+DJANGO_SECURE_SSL_REDIRECT=false
+DJANGO_COOKIE_SECURE=true
+NEWS_REFRESH_SECONDS=60
+NEWS_FETCH_LIMIT=12
+CATEGORY_FETCH_LIMIT=2
+```
+
+In Nginx Proxy Manager configura un Proxy Host verso:
+
+```text
+Forward Hostname / IP: IP_DEL_SERVER_DOCKER
+Forward Port: 8000
+Scheme: http
+Websockets Support: non necessario
+Block Common Exploits: attivo
+SSL: Request a new SSL Certificate
+Force SSL: attivo
+HTTP/2 Support: attivo
+```
+
+Il container espone solo HTTP. HTTPS e certificato restano responsabilita' del
+reverse proxy.
 
 Per aggiornare l'immagine senza perdere dati:
 
@@ -183,6 +221,11 @@ CATEGORY_FETCH_LIMIT  quante notizie importare per ogni categoria Televideo, def
 TRANSLATION_TIMEOUT   timeout traduttori online, default 8
 TRANSLATION_RETRIES   retry traduttori/feed, default 1
 DJANGO_ALLOWED_HOSTS  host consentiti, default *
+DJANGO_CSRF_TRUSTED_ORIGINS origini HTTPS fidate per admin/form, es. https://dominio
+DJANGO_USE_X_FORWARDED_HOST legge X-Forwarded-Host dal proxy, default true
+DJANGO_SECURE_PROXY_SSL_HEADER considera HTTPS se X-Forwarded-Proto=https, default true
+DJANGO_SECURE_SSL_REDIRECT redirect HTTPS lato Django, default false per NPM
+DJANGO_COOKIE_SECURE cookie solo HTTPS, consigliato true dietro NPM pubblico
 DJANGO_SECRET_KEY     secret key Django per ambienti pubblici
 ```
 
@@ -198,6 +241,14 @@ Il database non viene cancellato dall'entrypoint. Se `/data/chronica.sqlite3`
 esiste gia', Django applica solo le migrazioni mancanti; se non esiste, viene
 creato da zero.
 
+Endpoint healthcheck:
+
+```text
+http://localhost:8000/healthz/
+```
+
+Il Dockerfile include un `HEALTHCHECK` che interroga questo endpoint.
+
 ## Categorie Televideo
 
 La pagina principale replica le categorie indicate dalla pagina 104 di Rai
@@ -212,6 +263,10 @@ Ultim'Ora, Politica, Economia, Dall'Italia, Dal Mondo, Culture, Focus
 
 Puoi filtrare le notizie dalla barra categorie nella pagina web. Il selettore
 lingua cambia anche nomi delle categorie e testi dell'interfaccia.
+
+Le categorie che Televideo pubblica vuote o senza pagine figlie vengono nascoste
+dall'interfaccia; se una categoria salvata nel browser non ha piu' notizie, il
+sito torna automaticamente a `Tutte`.
 
 ## SuperEnalotto
 

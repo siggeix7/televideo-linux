@@ -363,8 +363,13 @@ def parse_article_content(content: str, fallback_title: str) -> tuple[str, str] 
     lines = [line for line in content.splitlines() if line.strip()]
     if not lines:
         return None
-    title = compact_text(lines[0]).strip(" -") or fallback_title
-    body = unwrap_televideo_lines(lines[1:]) or title
+    title_line = lines[0].strip()
+    body_start = 1
+    while title_line.endswith("-") and body_start < len(lines):
+        title_line = title_line[:-1] + lines[body_start].strip()
+        body_start += 1
+    title = compact_text(title_line).strip(" -") or fallback_title
+    body = unwrap_televideo_lines(lines[body_start:]) or title
     return title, body
 
 

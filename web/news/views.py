@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from django.conf import settings
 from django.db.models import Count
+from django.db import connection
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.utils import timezone
@@ -186,7 +187,8 @@ def superenalotto(request):
 
 def serialized_categories(language: str) -> list[dict[str, object]]:
     categories = []
-    for category in Category.objects.filter(active=True).annotate(news_count=Count("items")).order_by("sort_order", "name_it"):
+    queryset = Category.objects.filter(active=True).annotate(news_count=Count("items")).filter(news_count__gt=0)
+    for category in queryset.order_by("sort_order", "name_it"):
         categories.append(
             {
                 "code": category.code,
@@ -210,7 +212,11 @@ def news_api(request):
 
     queryset = NewsItem.objects.select_related("category").all()
     if category_code != "all":
-        queryset = queryset.filter(category__code=category_code)
+        filtered = queryset.filter(category__code=category_code)
+        if filtered.exists():
+            queryset = filtered
+        else:
+            category_code = "all"
 
     items = []
     for item in queryset[:limit]:
@@ -243,6 +249,13 @@ def news_api(request):
             "items": items,
         }
     )
+
+
+def healthcheck(request):
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT 1")
+        cursor.fetchone()
+    return JsonResponse({"status": "ok", "time": timezone.localtime().isoformat()})
 
 
 def decimal_payload(value):

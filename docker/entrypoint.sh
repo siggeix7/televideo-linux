@@ -18,7 +18,6 @@ fi
 
 python web/manage.py showmigrations --plan >/dev/null
 python web/manage.py migrate --noinput
-python web/manage.py fetch_televideo --once --limit "${NEWS_FETCH_LIMIT:-12}" --category-limit "${CATEGORY_FETCH_LIMIT:-2}" || true
 python web/manage.py fetch_televideo --loop --interval "${NEWS_REFRESH_SECONDS:-60}" --limit "${NEWS_FETCH_LIMIT:-12}" --category-limit "${CATEGORY_FETCH_LIMIT:-2}" &
 
 exec gunicorn chronica.wsgi:application \
