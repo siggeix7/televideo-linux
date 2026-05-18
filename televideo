@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import json
 import os
 import re
 import shutil
@@ -32,8 +33,11 @@ USER_AGENT = "televideo-linux/1.0"
 DEFAULT_TIMEOUT = 10.0
 DEFAULT_RETRIES = 1
 DEFAULT_NEWS_LIMIT = 10
+DEFAULT_MEDIEVAL_LIMIT = 5
 SUMMARY_SENTENCES = 2
 SUMMARY_MAX_CHARS = 320
+MYMEMORY_URL = "https://api.mymemory.translated.net/get"
+GOOGLE_TRANSLATE_URL = "https://translate.googleapis.com/translate_a/single"
 
 REGIONS = {
     "abruzzo": "Abruzzo",
@@ -150,7 +154,6 @@ LATIN_WORDS = {
     "maggio": "Maii",
     "maldive": "Maldivae",
     "mattarella": "Mattarella",
-    "mediavideo": "Mediavideo",
     "minimizzare": "minuere",
     "modena": "Mutina",
     "morte": "mortuae",
@@ -322,6 +325,17 @@ def fetch_text(urls: list[str], timeout: float, retries: int) -> tuple[str, str]
     return data.decode("utf-8", errors="replace"), url
 
 
+def fetch_json(url: str, timeout: float, retries: int) -> dict:
+    source, _ = fetch_text([url], timeout, retries)
+    try:
+        payload = json.loads(source)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("risposta JSON del traduttore non riconosciuta") from exc
+    if not isinstance(payload, dict):
+        raise RuntimeError("risposta JSON del traduttore inattesa")
+    return payload
+
+
 def strip_html(value: str) -> str:
     value = re.sub(r"<br\s*/?>", "\n", value, flags=re.IGNORECASE)
     value = re.sub(r"<[^>]+>", "", value)
@@ -468,6 +482,114 @@ def format_news(limit: int, full: bool, search: str | None, show_url: bool, time
     return "\n".join(lines).rstrip()
 
 
+def mymemory_translate_to_latin(text: str, timeout: float, retries: int) -> str:
+    query = {
+        "q": text,
+        "langpair": "it|la",
+    }
+    email = os.environ.get("TELEVIDEO_MYMEMORY_EMAIL")
+    if email:
+        query["de"] = email
+    url = MYMEMORY_URL + "?" + urllib.parse.urlencode(query)
+    payload = fetch_json(url, timeout, retries)
+
+    response = payload.get("responseData")
+    if not isinstance(response, dict):
+        raise RuntimeError("traduttore MyMemory senza responseData")
+
+    translated = compact_text(str(response.get("translatedText") or ""))
+    status = payload.get("responseStatus")
+    if status and int(status) >= 400:
+        detail = payload.get("responseDetails") or "errore sconosciuto"
+        raise RuntimeError(f"traduttore MyMemory: {detail}")
+    if not translated:
+        raise RuntimeError("traduttore MyMemory senza testo tradotto")
+    return translated
+
+
+def google_translate_to_latin(text: str, timeout: float, retries: int) -> str:
+    query = {
+        "client": "gtx",
+        "sl": "it",
+        "tl": "la",
+        "dt": "t",
+        "q": text,
+    }
+    url = GOOGLE_TRANSLATE_URL + "?" + urllib.parse.urlencode(query)
+    source, _ = fetch_text([url], timeout, retries)
+    try:
+        payload = json.loads(source)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("risposta JSON di Google Translate non riconosciuta") from exc
+
+    if not isinstance(payload, list) or not payload or not isinstance(payload[0], list):
+        raise RuntimeError("risposta Google Translate inattesa")
+
+    parts = []
+    for segment in payload[0]:
+        if isinstance(segment, list) and segment and isinstance(segment[0], str):
+            parts.append(segment[0])
+    translated = compact_text("".join(parts))
+    if not translated:
+        raise RuntimeError("Google Translate senza testo tradotto")
+    return translated
+
+
+def medieval_latin_style(text: str) -> str:
+    text = compact_text(text)
+    substitutions = (
+        (r"\bPapa\b", "dominus Papa"),
+        (r"\bPontifex\b", "summus Pontifex"),
+        (r"\bminister\b", "dominus minister"),
+        (r"\bItalia\b", "regnum Italiae"),
+        (r"\bCivitat(?:es|ibus) Foederat(?:ae|is)\b", "terrae Americanae"),
+        (r"\bhodie\b", "hoc die"),
+        (r"\bnuntiat\b", "in chronicis nuntiat"),
+    )
+    for pattern, replacement in substitutions:
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
+
+    # Grafia frequente nei testi medioevali: ae/oe spesso semplificati in e.
+    text = re.sub("ae", "e", text, flags=re.IGNORECASE)
+    text = re.sub("oe", "e", text, flags=re.IGNORECASE)
+    return text
+
+
+def translate_latin_or_fallback(text: str, translator: str, timeout: float, retries: int, cache: dict[str, str], allow_local: bool = True) -> str:
+    key = f"{translator}\0{text}"
+    if key in cache:
+        return cache[key]
+
+    providers = [translator]
+    if translator == "auto":
+        providers = ["google", "mymemory"]
+        if allow_local:
+            providers.append("local")
+
+    errors = []
+    translated = ""
+    for provider in providers:
+        try:
+            if provider == "google":
+                translated = google_translate_to_latin(text, timeout, retries)
+            elif provider == "mymemory":
+                translated = mymemory_translate_to_latin(text, timeout, retries)
+            elif provider == "local" and allow_local:
+                translated = latinize_title(text)
+            else:
+                raise RuntimeError(f"traduttore latino non supportato: {provider}")
+            break
+        except RuntimeError as exc:
+            errors.append(str(exc))
+
+    if not translated:
+        raise RuntimeError("traduzione latina non disponibile: " + "; ".join(errors))
+
+    translated = medieval_latin_style(translated)
+    cache[key] = translated
+    return translated
+
+
 def roman_number(number: int) -> str:
     values = (
         (1000, "M"),
@@ -544,7 +666,30 @@ def medievalize_summary(summary: str) -> str:
     return f"Udite, udite, o genti del borgo: {text}{ending} Cosi' narrano gli scribi del Televideo."
 
 
-def format_medieval_summary(limit: int, search: str | None, show_url: bool, timeout: float, retries: int) -> str:
+def medieval_latin_summary(summary: str, translator: str, timeout: float, retries: int, cache: dict[str, str]) -> str:
+    if translator == "local":
+        return medievalize_summary(summary)
+    try:
+        latin = translate_latin_or_fallback(summary, translator, timeout, retries, cache, allow_local=False)
+    except RuntimeError:
+        return medievalize_summary(summary)
+    if latin.count('"') % 2:
+        latin += '"'
+    ending = "" if re.search(r"(\.\.\.|[.!?])[\"'»”)]*$", latin) else "."
+    return f"In chronicis scriptum est: {latin}{ending} Haec rettulerunt cursores Televidei."
+
+
+def translator_label(translator: str) -> str:
+    if translator == "auto":
+        return "Google Translate gratuito non ufficiale; subsidia: MyMemory/localis"
+    if translator == "google":
+        return "Google Translate gratuito non ufficiale"
+    if translator == "mymemory":
+        return "MyMemory it|la"
+    return "localis, sine rete"
+
+
+def format_medieval_summary(limit: int, search: str | None, show_url: bool, timeout: float, retries: int, translator: str) -> str:
     source, url = fetch_text(build_rss_urls(), timeout, retries)
     items = parse_news_items(source)
     if search:
@@ -553,6 +698,7 @@ def format_medieval_summary(limit: int, search: str | None, show_url: bool, time
 
     items = items[:limit]
     lines = ["Chronica Televidei", "Compendium novellarum more medioevali"]
+    lines.append(f"Interpres: {translator_label(translator)}, cum colore chronicae mediaevalis")
     if search:
         lines.append(f"Quaestio: {search}")
     if show_url:
@@ -563,9 +709,11 @@ def format_medieval_summary(limit: int, search: str | None, show_url: bool, time
         lines.append("Nulla novella inventa est.")
         return "\n".join(lines)
 
+    translation_cache: dict[str, str] = {}
     for index, item in enumerate(items, start=1):
-        latin_title = latinize_title(item["title"])
-        summary = medievalize_summary(summarize_description(item["description"]))
+        italian_summary = summarize_description(item["description"])
+        latin_title = translate_latin_or_fallback(item["title"], translator, timeout, retries, translation_cache)
+        summary = medieval_latin_summary(italian_summary, translator, timeout, retries, translation_cache)
         lines.append(f"Capitulum {roman_number(index)} - {latin_title}")
         if item["pub_date"]:
             lines.append(f"Data: {item['pub_date']}")
@@ -605,7 +753,7 @@ def print_image_page(page: str, region: str, show_url: bool, timeout: float, ret
 
 def format_selected_output(args: argparse.Namespace, region: str) -> str:
     if args.medieval_summary is not None:
-        return format_medieval_summary(args.medieval_summary, args.search, args.url, args.timeout, args.retries)
+        return format_medieval_summary(args.medieval_summary, args.search, args.url, args.timeout, args.retries, args.latin_translator)
     if args.news is not None:
         return format_news(args.news, args.full, args.search, args.url, args.timeout, args.retries)
     if args.capture:
@@ -630,14 +778,6 @@ def watch_output(args: argparse.Namespace, region: str) -> int:
     return 0
 
 
-def print_mediavideo_notice() -> int:
-    print("Mediavideo non e' consultabile come servizio live.")
-    print("Il teletext Mediaset e' stato dismesso a gennaio 2022, quindi non esiste")
-    print("un endpoint pubblico aggiornato da interrogare dal terminale.")
-    print("Se hai un archivio o un URL alternativo, questo script puo' essere esteso.")
-    return 1
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Consulta Rai Televideo dal terminale.",
@@ -656,10 +796,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--medieval-summary",
         "--medievale",
         nargs="?",
-        const=DEFAULT_NEWS_LIMIT,
+        const=DEFAULT_MEDIEVAL_LIMIT,
         type=positive_int,
         dest="medieval_summary",
-        help="riassume le ultime N notizie in stile medievale con titoli in latino, default 10",
+        help="traduce e riassume le ultime N notizie in latino medievaleggiante, default 5",
+    )
+    parser.add_argument(
+        "--latin-translator",
+        choices=("auto", "google", "mymemory", "local"),
+        default="auto",
+        help="traduttore per --medieval-summary: auto, google, mymemory o local, default auto",
     )
     parser.add_argument("--full", action="store_true", help="con --news, mostra anche il testo completo delle notizie")
     parser.add_argument("--search", help="cerca nel feed Ultim'Ora; se usato da solo implica --news 20")
@@ -674,10 +820,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
-    program = os.path.basename(sys.argv[0]).lower()
-
-    if program.startswith("mediavideo") or (argv and argv[0].lower() in {"mediavideo", "media"}):
-        return print_mediavideo_notice()
 
     parser = build_parser()
     args = parser.parse_args(argv)

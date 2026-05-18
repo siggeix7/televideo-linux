@@ -16,7 +16,7 @@ gennaio 2022, quindi non esiste un servizio live ufficiale da interrogare.
 - Visualizzazione grafica delle pagine PNG con `chafa`.
 - Feed Ultim'Ora via RSS con titoli o testo completo.
 - Ricerca testuale nel feed Ultim'Ora.
-- Riassunto medievale delle notizie con titoli latinizzati.
+- Riassunto in latino medievaleggiante delle notizie con traduzione online.
 - Cattura delle sottopagine disponibili per una pagina.
 - Refresh automatico stile televideo con `--watch`.
 - Salvataggio output testuale con `-o` / `--output`.
@@ -39,22 +39,20 @@ Opzionale:
 Dal repository:
 
 ```sh
-chmod +x televideo mediavideo
+chmod +x televideo
 ./televideo 100
 ```
 
-Installazione come comandi di sistema:
+Installazione come comando di sistema:
 
 ```sh
 sudo install -m 755 televideo /usr/local/bin/televideo
-sudo install -m 755 mediavideo /usr/local/bin/mediavideo
 ```
 
 Dopo l'installazione puoi usare:
 
 ```sh
 televideo 100
-mediavideo
 ```
 
 ## Installare Chafa
@@ -133,6 +131,8 @@ Riassunto medievale con titoli in latino:
 ./televideo --medieval-summary
 ./televideo --medieval-summary 5
 ./televideo --medievale 3 --search Papa
+./televideo --medievale 3 --latin-translator google
+./televideo --medievale 3 --latin-translator local
 ```
 
 Cattura sottopagine:
@@ -173,7 +173,8 @@ page                  pagina Televideo, default 100
 --capture             cattura tutte le sottopagine disponibili della pagina
 --news [N]            mostra le ultime N notizie RSS, default 10
 --medieval-summary [N]
---medievale [N]       riassume le ultime N notizie in stile medievale con titoli in latino
+--medievale [N]       traduce e riassume le ultime N notizie in latino medievaleggiante
+--latin-translator    traduttore per --medieval-summary: auto, google, mymemory o local
 --full                con --news, mostra anche il testo completo delle notizie
 --search TEXT         cerca nel feed Ultim'Ora; da solo implica --news 20
 --watch SECONDS       aggiorna l'output ogni N secondi
@@ -187,9 +188,16 @@ page                  pagina Televideo, default 100
 `--image`, `--capture`, `--news` e `--medieval-summary` sono modalita
 alternative: usane una sola per volta.
 
-La traduzione latina dei titoli usa un dizionario locale ed euristiche semplici:
-non richiede servizi esterni e conserva i nomi propri quando non sono traducibili
-in modo affidabile.
+Per il latino medievaleggiante, il default e' `--latin-translator auto`: prova
+prima l'endpoint gratuito non ufficiale di Google Translate (`it -> la`), poi
+MyMemory (`it|la`) e infine il fallback locale. Google tende a produrre un
+latino piu' leggibile; MyMemory e' un servizio pubblico gratuito ma puo' dare
+risultati instabili; `local` non usa rete e resta solo una resa di ripiego.
+
+Non esiste qui un servizio gratuito affidabile che dichiari esplicitamente
+"latino medievale". Lo script traduce in latino e poi applica una resa da
+cronaca medievale, con formule come `Chronica`, `Capitulum` e `In chronicis
+scriptum est`.
 
 ## Regioni Supportate
 
@@ -207,20 +215,6 @@ Valle d'Aosta, Veneto
 Sono accettate anche alcune varianti pratiche, per esempio `emilia`,
 `emilia-romagna`, `friuli` e `valle-aosta`.
 
-## Mediavideo
-
-```sh
-./mediavideo
-./televideo mediavideo
-```
-
-Il comando non prova a scaricare dati finti o archivi non ufficiali. Spiega che
-Mediavideo non e' piu' disponibile live perche' il servizio teletext Mediaset e'
-stato spento nel 2022.
-
-Se in futuro esistesse un archivio pubblico o un endpoint affidabile, lo script
-puo' essere esteso senza cambiare l'interfaccia principale.
-
 ## Come E' Stato Creato Il Progetto
 
 Il progetto e' stato creato direttamente dentro un container Linux, partendo da
@@ -230,9 +224,8 @@ Le fasi principali sono state:
 
 1. Analisi degli endpoint pubblici Rai.
 2. Implementazione di una CLI Python senza dipendenze esterne.
-3. Aggiunta del comando `mediavideo` come wrapper esplicativo.
-4. Verifica reale dei comandi nel terminale.
-5. Inizializzazione del repository Git e push su GitHub.
+3. Verifica reale dei comandi nel terminale.
+4. Inizializzazione del repository Git e push su GitHub.
 
 Endpoint Rai individuati e usati:
 
@@ -268,7 +261,6 @@ File principali:
 
 ```text
 televideo    CLI Python principale
-mediavideo   wrapper shell che richiama televideo mediavideo
 README.md    documentazione del progetto
 LICENSE      licenza MIT
 ```
@@ -296,8 +288,8 @@ python3 -m py_compile televideo
 ./televideo --search Tajani
 ./televideo --medieval-summary 3
 ./televideo --medievale 2 --search Papa
+./televideo --medievale 1 --latin-translator google
 ./televideo 102 --capture
-./mediavideo
 ```
 
 ## Limiti Noti
@@ -305,7 +297,6 @@ python3 -m py_compile televideo
 - Il progetto dipende dagli endpoint pubblici Rai, che non sono API stabili.
 - La qualita' di `--image` dipende dal terminale e da `chafa`.
 - `--watch` e' pensato per output testuale, non per `--image`.
-- Mediavideo non e' consultabile live perche' il servizio e' stato dismesso.
 
 ## Licenza
 
