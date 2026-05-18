@@ -1,0 +1,247 @@
+#!/usr/bin/env python3
+"""Consulta Rai Televideo dal terminale."""
+
+from __future__ import annotations
+
+import argparse
+import html
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
+
+
+BASE_URLS = (
+    "https://www.televideo.rai.it/televideo/pub/",
+    "https://www.servizitelevideo.rai.it/televideo/pub/",
+)
+TEXT_PATH = "solotesto.jsp"
+IMAGE_PATH = "tt4web/{region}/16_9_page-{page}.png"
+USER_AGENT = "televideo-linux/1.0"
+DEFAULT_TIMEOUT = 10.0
+DEFAULT_RETRIES = 1
+
+REGIONS = {
+    "abruzzo": "Abruzzo",
+    "altoadige": "Altoadige",
+    "alto-adige": "Altoadige",
+    "alto adige": "Altoadige",
+    "basilicata": "Basilicata",
+    "calabria": "Calabria",
+    "campania": "Campania",
+    "emilia": "Emilia",
+    "emilia-romagna": "Emilia",
+    "emilia romagna": "Emilia",
+    "friuli": "Friuli",
+    "friuli-venezia-giulia": "Friuli",
+    "friuli venezia giulia": "Friuli",
+    "lazio": "Lazio",
+    "liguria": "Liguria",
+    "lombardia": "Lombardia",
+    "marche": "Marche",
+    "molise": "Molise",
+    "piemonte": "Piemonte",
+    "puglia": "Puglia",
+    "sardegna": "Sardegna",
+    "sicilia": "Sicilia",
+    "toscana": "Toscana",
+    "trentino": "Trentino",
+    "umbria": "Umbria",
+    "aosta": "Aosta",
+    "valle-aosta": "Aosta",
+    "valle d'aosta": "Aosta",
+    "valle-daosta": "Aosta",
+    "veneto": "Veneto",
+}
+
+
+def normalize_region(value: str | None) -> str:
+    if not value:
+        return ""
+    key = value.strip().lower().replace("_", "-")
+    return REGIONS.get(key, value.strip())
+
+
+def validate_page(value: str) -> str:
+    if not re.fullmatch(r"\d{1,3}", value):
+        raise argparse.ArgumentTypeError("la pagina deve essere numerica, es. 100")
+    return value.zfill(3)
+
+
+def validate_subpage(value: str) -> str:
+    if not re.fullmatch(r"\d{1,2}", value):
+        raise argparse.ArgumentTypeError("la sottopagina deve essere numerica, es. 1")
+    return value.zfill(2)
+
+
+def positive_float(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("deve essere un numero") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("deve essere maggiore di zero")
+    return parsed
+
+
+def non_negative_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("deve essere un intero") from exc
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("deve essere zero o maggiore")
+    return parsed
+
+
+def build_text_urls(page: str, subpage: str | None, region: str) -> list[str]:
+    query = {"pagina": page}
+    if subpage:
+        query["sottopagina"] = subpage
+    if region:
+        query["regione"] = region
+    path = TEXT_PATH + "?" + urllib.parse.urlencode(query)
+    return [base_url + path for base_url in BASE_URLS]
+
+
+def build_image_urls(page: str, region: str) -> list[str]:
+    image_region = region or "Nazionale"
+    path = IMAGE_PATH.format(region=urllib.parse.quote(image_region), page=page)
+    return [base_url + path for base_url in BASE_URLS]
+
+
+def request_bytes(url: str, timeout: float) -> bytes:
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return response.read()
+    except urllib.error.HTTPError as exc:
+        raise RuntimeError(f"HTTP {exc.code} da {url}") from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(f"impossibile raggiungere {url}: {exc.reason}") from exc
+    except TimeoutError as exc:
+        raise RuntimeError(f"timeout durante il collegamento a {url}") from exc
+
+
+def fetch_bytes(urls: list[str], timeout: float, retries: int) -> tuple[bytes, str]:
+    errors = []
+    for _ in range(retries + 1):
+        for url in urls:
+            try:
+                return request_bytes(url, timeout), url
+            except RuntimeError as exc:
+                errors.append(str(exc))
+    last_error = errors[-1] if errors else "nessun URL configurato"
+    raise RuntimeError(f"nessuna risposta valida dagli host Rai. Ultimo errore: {last_error}")
+
+
+def fetch_text(urls: list[str], timeout: float, retries: int) -> tuple[str, str]:
+    data, url = fetch_bytes(urls, timeout, retries)
+    return data.decode("utf-8", errors="replace"), url
+
+
+def extract_page(html_text: str) -> tuple[str, str]:
+    header_match = re.search(r"Pagina\s+(\d{1,3})\s+-\s+sottopagina\s+([0-9A-Za-z]+)", html_text)
+    pre_match = re.search(r"<pre\b[^>]*>(.*?)</pre>", html_text, flags=re.IGNORECASE | re.DOTALL)
+    if not header_match or not pre_match:
+        raise RuntimeError("formato della pagina Rai non riconosciuto")
+
+    header = f"Pagina {header_match.group(1).zfill(3)} - sottopagina {header_match.group(2)}"
+    pre_html = re.sub(r"<[^>]+>", "", pre_match.group(1))
+    content = html.unescape(pre_html).replace("\r\n", "\n").replace("\r", "\n")
+    lines = [line.rstrip() for line in content.splitlines()]
+
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+
+    return header, "\n".join(lines)
+
+
+def print_text_page(page: str, subpage: str | None, region: str, show_url: bool, timeout: float, retries: int) -> int:
+    source, url = fetch_text(build_text_urls(page, subpage, region), timeout, retries)
+    header, content = extract_page(source)
+
+    if region:
+        print(f"Rai Televideo regionale: {region}")
+    else:
+        print("Rai Televideo nazionale")
+    print(header)
+    if show_url:
+        print(url)
+    print()
+    print(content or "Pagina vuota o non disponibile.")
+    return 0
+
+
+def print_image_page(page: str, region: str, show_url: bool, timeout: float, retries: int) -> int:
+    urls = build_image_urls(page, region)
+
+    renderer = shutil.which("chafa")
+    if not renderer:
+        print("Renderer immagini non trovato. Installa 'chafa' oppure apri questo URL:")
+        print(urls[0])
+        return 0
+
+    suffix = f"-televideo-{page}.png"
+    with tempfile.NamedTemporaryFile(suffix=suffix) as tmp:
+        data, url = fetch_bytes(urls, timeout, retries)
+        if show_url:
+            print(url, flush=True)
+        tmp.write(data)
+        tmp.flush()
+        subprocess.run([renderer, tmp.name], check=False)
+    return 0
+
+
+def print_mediavideo_notice() -> int:
+    print("Mediavideo non e' consultabile come servizio live.")
+    print("Il teletext Mediaset e' stato dismesso a gennaio 2022, quindi non esiste")
+    print("un endpoint pubblico aggiornato da interrogare dal terminale.")
+    print("Se hai un archivio o un URL alternativo, questo script puo' essere esteso.")
+    return 1
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Consulta Rai Televideo dal terminale.",
+        epilog="Esempi: televideo 100 | televideo 101 -s 1 | televideo 300 -r Lazio | televideo 100 --image",
+    )
+    parser.add_argument("page", nargs="?", type=validate_page, default="100", help="pagina Televideo, default 100")
+    parser.add_argument("-s", "--subpage", type=validate_subpage, help="sottopagina, es. 1")
+    parser.add_argument("-r", "--region", help="regione Rai, es. Lazio, Lombardia, Emilia-Romagna")
+    parser.add_argument("--image", action="store_true", help="mostra la pagina grafica con chafa, se installato")
+    parser.add_argument("--url", action="store_true", help="stampa anche l'URL sorgente")
+    parser.add_argument("--timeout", type=positive_float, default=DEFAULT_TIMEOUT, help="timeout per host in secondi, default 10")
+    parser.add_argument("--retries", type=non_negative_int, default=DEFAULT_RETRIES, help="ritentativi dopo il primo giro, default 1")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    program = os.path.basename(sys.argv[0]).lower()
+
+    if program.startswith("mediavideo") or (argv and argv[0].lower() in {"mediavideo", "media"}):
+        return print_mediavideo_notice()
+
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    region = normalize_region(args.region)
+
+    try:
+        if args.image:
+            return print_image_page(args.page, region, args.url, args.timeout, args.retries)
+        return print_text_page(args.page, args.subpage, region, args.url, args.timeout, args.retries)
+    except RuntimeError as exc:
+        print(f"Errore: {exc}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
