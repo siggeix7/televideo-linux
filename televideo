@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Consulta Rai Televideo dal terminale."""
+"""Notizie live da Rai Televideo in stile cronaca medievale."""
 
 from __future__ import annotations
 
@@ -34,6 +34,7 @@ DEFAULT_TIMEOUT = 10.0
 DEFAULT_RETRIES = 1
 DEFAULT_NEWS_LIMIT = 10
 DEFAULT_MEDIEVAL_LIMIT = 5
+DEFAULT_PAGE = "100"
 SUMMARY_SENTENCES = 2
 SUMMARY_MAX_CHARS = 320
 MYMEMORY_URL = "https://api.mymemory.translated.net/get"
@@ -428,26 +429,36 @@ def format_capture_page(page: str, region: str, show_url: bool, timeout: float, 
     return "\n".join(lines)
 
 
-def parse_news_items(rss_text: str) -> list[dict[str, str]]:
+def parse_news_feed(rss_text: str) -> tuple[list[dict[str, str]], dict[str, str]]:
     try:
         root = ET.fromstring(rss_text)
     except ET.ParseError as exc:
         raise RuntimeError("formato RSS Rai non riconosciuto") from exc
 
+    channel = root.find("./channel")
+    if channel is None:
+        raise RuntimeError("canale RSS Rai non riconosciuto")
+
+    metadata = {
+        "title": compact_text(channel.findtext("title") or ""),
+        "description": compact_text(channel.findtext("description") or ""),
+        "pub_date": compact_text(channel.findtext("pubDate") or ""),
+        "last_build_date": compact_text(channel.findtext("lastBuildDate") or ""),
+    }
     items = []
-    for item in root.findall("./channel/item"):
+    for item in channel.findall("item"):
         title = compact_text(item.findtext("title") or "")
         description = compact_text(item.findtext("description") or "")
         pub_date = compact_text(item.findtext("pubDate") or "")
         link = compact_text(item.findtext("link") or "")
         if title:
             items.append({"title": title, "description": description, "pub_date": pub_date, "link": link})
-    return items
+    return items, metadata
 
 
 def format_news(limit: int, full: bool, search: str | None, show_url: bool, timeout: float, retries: int) -> str:
     source, url = fetch_text(build_rss_urls(), timeout, retries)
-    items = parse_news_items(source)
+    items, metadata = parse_news_feed(source)
     if search:
         needle = search.casefold()
         items = [item for item in items if needle in (item["title"] + " " + item["description"]).casefold()]
@@ -458,6 +469,8 @@ def format_news(limit: int, full: bool, search: str | None, show_url: bool, time
         heading += f" - ricerca: {search}"
 
     lines = [heading]
+    if metadata.get("pub_date") or metadata.get("last_build_date"):
+        lines.append("Aggiornamento Rai: " + (metadata.get("pub_date") or metadata.get("last_build_date") or ""))
     if show_url:
         lines.append(url)
     lines.append("")
@@ -565,6 +578,8 @@ def translate_latin_or_fallback(text: str, translator: str, timeout: float, retr
         providers = ["google", "mymemory"]
         if allow_local:
             providers.append("local")
+    elif allow_local and translator in {"google", "mymemory"}:
+        providers.append("local")
 
     errors = []
     translated = ""
@@ -639,6 +654,20 @@ def latinize_title(title: str) -> str:
     return join_title_tokens(translated) or "Nuntium sine titulo"
 
 
+def preserve_title_lead(source_title: str, latin_title: str) -> str:
+    if ":" not in source_title or ":" not in latin_title:
+        return latin_title
+    source_lead = source_title.split(":", 1)[0].strip()
+    if not re.fullmatch(r"[A-Z][\w'.-]{1,24}", source_lead, flags=re.UNICODE):
+        return latin_title
+    return source_lead + ":" + latin_title.split(":", 1)[1]
+
+
+def translate_latin_title(title: str, translator: str, timeout: float, retries: int, cache: dict[str, str]) -> str:
+    latin_title = translate_latin_or_fallback(title, translator, timeout, retries, cache)
+    return preserve_title_lead(title, latin_title)
+
+
 def join_title_tokens(tokens: list[str]) -> str:
     output = []
     for token in tokens:
@@ -651,11 +680,17 @@ def join_title_tokens(tokens: list[str]) -> str:
 
 def summarize_description(description: str) -> str:
     text = re.sub(r"^\d{1,2}\.\d{2}\s+", "", description).strip()
-    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", text) if part.strip()]
-    summary = " ".join(sentences[:SUMMARY_SENTENCES]) or text
-    if len(summary) > SUMMARY_MAX_CHARS:
-        summary = summary[:SUMMARY_MAX_CHARS].rsplit(" ", 1)[0].rstrip(" ,.;:") + "..."
-    return summary
+    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+|(?<=[.!?])(?=[A-Z])", text) if part.strip()]
+    selected = []
+    for sentence in sentences[:SUMMARY_SENTENCES]:
+        candidate = " ".join(selected + [sentence])
+        if len(candidate) <= SUMMARY_MAX_CHARS:
+            selected.append(sentence)
+            continue
+        if not selected:
+            selected.append(sentence[:SUMMARY_MAX_CHARS].rsplit(" ", 1)[0].rstrip(" ,.;:") + "...")
+        break
+    return " ".join(selected) or text
 
 
 def medievalize_summary(summary: str) -> str:
@@ -689,15 +724,28 @@ def translator_label(translator: str) -> str:
     return "localis, sine rete"
 
 
+def current_timestamp() -> str:
+    return time.strftime("%Y-%m-%d %H:%M:%S %Z", time.localtime()).strip()
+
+
 def format_medieval_summary(limit: int, search: str | None, show_url: bool, timeout: float, retries: int, translator: str) -> str:
     source, url = fetch_text(build_rss_urls(), timeout, retries)
-    items = parse_news_items(source)
+    items, metadata = parse_news_feed(source)
     if search:
         needle = search.casefold()
         items = [item for item in items if needle in (item["title"] + " " + item["description"]).casefold()]
 
     items = items[:limit]
-    lines = ["Chronica Televidei", "Compendium novellarum more medioevali"]
+    feed_title = metadata.get("title") or "Rai Televideo Ultim'Ora"
+    feed_update = metadata.get("pub_date") or metadata.get("last_build_date")
+    lines = [
+        "Chronica Televidei",
+        "Notitiae verae ac recentissimae ex Rai Televideo",
+        f"Fons: {feed_title} RSS 101",
+        f"Captum: {current_timestamp()}",
+    ]
+    if feed_update:
+        lines.append(f"Ultima renovatio fontis: {feed_update}")
     lines.append(f"Interpres: {translator_label(translator)}, cum colore chronicae mediaevalis")
     if search:
         lines.append(f"Quaestio: {search}")
@@ -712,11 +760,14 @@ def format_medieval_summary(limit: int, search: str | None, show_url: bool, time
     translation_cache: dict[str, str] = {}
     for index, item in enumerate(items, start=1):
         italian_summary = summarize_description(item["description"])
-        latin_title = translate_latin_or_fallback(item["title"], translator, timeout, retries, translation_cache)
+        latin_title = translate_latin_title(item["title"], translator, timeout, retries, translation_cache)
         summary = medieval_latin_summary(italian_summary, translator, timeout, retries, translation_cache)
         lines.append(f"Capitulum {roman_number(index)} - {latin_title}")
+        lines.append(f"Titulus fontis: {item['title']}")
         if item["pub_date"]:
-            lines.append(f"Data: {item['pub_date']}")
+            lines.append(f"Tempus fontis: {item['pub_date']}")
+        if show_url and item["link"]:
+            lines.append(f"Vinculum: {item['link']}")
         lines.extend(textwrap.wrap(summary, width=78))
         lines.append("")
 
@@ -780,18 +831,18 @@ def watch_output(args: argparse.Namespace, region: str) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Consulta Rai Televideo dal terminale.",
+        description="Legge le Ultim'Ora Rai Televideo e le rende come cronaca medievale.",
         epilog=(
-            "Esempi: televideo 100 | televideo 101 -s 1 | televideo 300 -r Lazio | "
-            "televideo --news 5 --full | televideo --medievale 5 | televideo 100 --image"
+            "Esempi: televideo | televideo --search Papa | televideo --medievale 8 | "
+            "televideo --news 5 --full | televideo 100 | televideo 100 --image"
         ),
     )
-    parser.add_argument("page", nargs="?", type=validate_page, default="100", help="pagina Televideo, default 100")
+    parser.add_argument("page", nargs="?", type=validate_page, help="pagina Televideo da consultare, es. 100")
     parser.add_argument("-s", "--subpage", type=validate_subpage, help="sottopagina, es. 1")
     parser.add_argument("-r", "--region", help="regione Rai, es. Lazio, Lombardia, Emilia-Romagna")
     parser.add_argument("--image", action="store_true", help="mostra la pagina grafica con chafa, se installato")
     parser.add_argument("--capture", action="store_true", help="cattura tutte le sottopagine disponibili della pagina")
-    parser.add_argument("--news", nargs="?", const=DEFAULT_NEWS_LIMIT, type=positive_int, help="mostra le ultime N notizie RSS, default 10")
+    parser.add_argument("--news", nargs="?", const=DEFAULT_NEWS_LIMIT, type=positive_int, help="mostra le ultime N notizie RSS in formato originale, default 10")
     parser.add_argument(
         "--medieval-summary",
         "--medievale",
@@ -799,7 +850,7 @@ def build_parser() -> argparse.ArgumentParser:
         const=DEFAULT_MEDIEVAL_LIMIT,
         type=positive_int,
         dest="medieval_summary",
-        help="traduce e riassume le ultime N notizie in latino medievaleggiante, default 5",
+        help="traduce e riassume le ultime N notizie live in latino medievaleggiante, default 5",
     )
     parser.add_argument(
         "--latin-translator",
@@ -808,7 +859,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="traduttore per --medieval-summary: auto, google, mymemory o local, default auto",
     )
     parser.add_argument("--full", action="store_true", help="con --news, mostra anche il testo completo delle notizie")
-    parser.add_argument("--search", help="cerca nel feed Ultim'Ora; se usato da solo implica --news 20")
+    parser.add_argument("--search", help="cerca nel feed Ultim'Ora; se usato da solo filtra la cronaca medievale")
     parser.add_argument("--watch", type=positive_float, help="aggiorna l'output ogni N secondi")
     parser.add_argument("--count", type=positive_int, help="numero di aggiornamenti da fare con --watch")
     parser.add_argument("-o", "--output", help="salva l'output testuale in un file")
@@ -824,9 +875,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     region = normalize_region(args.region)
+    explicit_page = args.page is not None
 
     if args.search and args.news is None and args.medieval_summary is None:
-        args.news = 20
+        args.medieval_summary = DEFAULT_MEDIEVAL_LIMIT
+    if not explicit_page and args.news is None and args.medieval_summary is None and not args.image and not args.capture:
+        args.medieval_summary = DEFAULT_MEDIEVAL_LIMIT
+    if args.page is None:
+        args.page = DEFAULT_PAGE
 
     selected_modes = sum(1 for selected in (args.image, args.capture, args.news is not None, args.medieval_summary is not None) if selected)
     if selected_modes > 1:

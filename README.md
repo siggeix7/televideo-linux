@@ -1,186 +1,175 @@
 # televideo-linux
 
-CLI minimale per consultare Rai Televideo dal terminale Linux.
+Notizie reali e aggiornate da Rai Televideo, lette dal terminale e trasformate
+in una piccola cronaca medievale in latino medievaleggiante.
 
-Il progetto nasce per avere un comando rapido, senza browser, per leggere le
-pagine testuali di Televideo, visualizzare la pagina grafica originale quando
-serve, consultare le ultime notizie RSS e salvare l'output in file di testo.
+Il comando principale e' ora semplicemente:
 
-Mediavideo e' gestito separatamente: il teletext Mediaset e' stato dismesso a
-gennaio 2022, quindi non esiste un servizio live ufficiale da interrogare.
+```sh
+./televideo
+```
 
-## Funzioni
+Senza argomenti il programma scarica il feed live Ultim'Ora di Rai Televideo,
+prende le notizie piu' recenti e le presenta come `Chronica Televidei`, con
+titoli tradotti in latino, data originale della fonte e testo riassunto in stile
+da cronaca.
 
-- Consultazione pagine Rai Televideo in solo testo.
-- Consultazione pagine regionali Rai, per esempio Lazio o Lombardia.
-- Visualizzazione grafica delle pagine PNG con `chafa`.
-- Feed Ultim'Ora via RSS con titoli o testo completo.
-- Ricerca testuale nel feed Ultim'Ora.
-- Riassunto in latino medievaleggiante delle notizie con traduzione online.
-- Cattura delle sottopagine disponibili per una pagina.
-- Refresh automatico stile televideo con `--watch`.
-- Salvataggio output testuale con `-o` / `--output`.
-- Timeout e retry configurabili.
-- Fallback automatico tra `televideo.rai.it` e `servizitelevideo.rai.it`.
+## Cosa Fa
+
+- Legge notizie reali dal feed RSS pubblico Rai Televideo pagina 101.
+- Mostra di default una cronaca medievale delle ultime notizie live.
+- Traduce titoli e sintesi in latino tramite servizi online gratuiti.
+- Mantiene un fallback locale se la traduzione online non risponde.
+- Permette ricerca nel feed Ultim'Ora con `--search`.
+- Permette aggiornamento continuo con `--watch`.
+- Salva la cronaca in file di testo con `-o` / `--output`.
+- Mantiene accesso secondario alle pagine classiche Rai Televideo.
 
 ## Requisiti
 
-Obbligatorio:
-
 - Python 3.
-- Solo standard library Python, nessun pacchetto `pip` richiesto.
+- Nessuna dipendenza `pip`.
+- Connessione Internet per leggere le notizie live Rai.
+- `chafa` solo se vuoi visualizzare le pagine grafiche con `--image`.
 
-Opzionale:
+## Installazione
 
-- `chafa`, usato solo per `--image`.
-
-## Installazione Locale
-
-Dal repository:
+Uso locale:
 
 ```sh
 chmod +x televideo
-./televideo 100
+./televideo
 ```
 
 Installazione come comando di sistema:
 
 ```sh
 sudo install -m 755 televideo /usr/local/bin/televideo
+televideo
 ```
 
-Dopo l'installazione puoi usare:
+## Uso Principale
 
-```sh
-televideo 100
-```
-
-## Installare Chafa
-
-`chafa` serve solo per vedere le pagine grafiche originali nel terminale.
-
-Debian/Ubuntu:
-
-```sh
-sudo apt install chafa
-```
-
-Rocky/RHEL compatibili:
-
-```sh
-sudo dnf install -y epel-release
-sudo dnf install -y chafa
-```
-
-Uso:
-
-```sh
-./televideo 100 --image
-```
-
-Se `chafa` non e' installato, `--image` stampa l'URL PNG della pagina.
-
-## Uso Rapido
-
-Pagina indice nazionale:
+Cronaca medievale live, default 5 notizie:
 
 ```sh
 ./televideo
+./televideo --medievale
+./televideo --medieval-summary
+```
+
+Numero di notizie:
+
+```sh
+./televideo --medievale 8
+./televideo --medieval-summary 3
+```
+
+Ricerca nelle Ultim'Ora, sempre in stile cronaca medievale se non specifichi
+`--news`:
+
+```sh
+./televideo --search Papa
+./televideo --search energia --medievale 10
+```
+
+Aggiornamento automatico:
+
+```sh
+./televideo --watch 60
+./televideo --medievale 5 --watch 30 --count 3
+```
+
+Salvataggio in file:
+
+```sh
+./televideo -o chronica.txt
+./televideo --medievale 10 --search governo -o governo.txt
+```
+
+Mostrare anche URL sorgente RSS e link delle singole notizie:
+
+```sh
+./televideo --url
+```
+
+## Traduzione Latina
+
+Il default e' `--latin-translator auto`:
+
+```sh
+./televideo --latin-translator auto
+```
+
+Ordine usato in modalita `auto`:
+
+1. Google Translate endpoint gratuito non ufficiale, `it -> la`.
+2. MyMemory, `it|la`.
+3. Fallback locale offline.
+
+Puoi forzare un traduttore:
+
+```sh
+./televideo --latin-translator google
+./televideo --latin-translator mymemory
+./televideo --latin-translator local
+```
+
+Nota: non esiste qui un servizio gratuito affidabile che dichiari esplicitamente
+"latino medievale". Lo script traduce in latino e applica poi una resa da
+cronaca medievale, con formule come `Chronica`, `Capitulum`, `In chronicis
+scriptum est` e grafia semplificata.
+
+## Output Originale Delle Notizie
+
+Se vuoi leggere il feed Rai senza resa medievale:
+
+```sh
+./televideo --news
+./televideo --news 5
+./televideo --news 3 --full
+./televideo --news 20 --search Tajani
+```
+
+## Pagine Televideo Classiche
+
+La consultazione delle pagine resta disponibile, ma non e' piu' il flusso
+principale. Passa un numero pagina per usare la modalita classica:
+
+```sh
 ./televideo 100
-```
-
-Pagina e sottopagina:
-
-```sh
-./televideo 101
 ./televideo 101 -s 1
-```
-
-Pagina regionale:
-
-```sh
 ./televideo 300 -r Lazio
-./televideo 401 -r Lombardia
+./televideo 102 --capture
 ```
 
-Pagina grafica:
+Pagina grafica con `chafa` se installato:
 
 ```sh
 ./televideo 100 --image
 ./televideo 100 --image --url
 ```
 
-Ultime notizie RSS:
-
-```sh
-./televideo --news
-./televideo --news 5
-./televideo --news 3 --full
-```
-
-Ricerca nelle Ultim'Ora:
-
-```sh
-./televideo --search Tajani
-./televideo --search energia --news 20 --full
-```
-
-Riassunto medievale con titoli in latino:
-
-```sh
-./televideo --medieval-summary
-./televideo --medieval-summary 5
-./televideo --medievale 3 --search Papa
-./televideo --medievale 3 --latin-translator google
-./televideo --medievale 3 --latin-translator local
-```
-
-Cattura sottopagine:
-
-```sh
-./televideo 102 --capture
-./televideo 300 -r Lazio --capture
-```
-
-Refresh automatico:
-
-```sh
-./televideo 101 --watch 30
-./televideo --news 5 --watch 60
-./televideo 101 --watch 10 --count 3
-```
-
-Salvataggio output:
-
-```sh
-./televideo 101 -o pagina-101.txt
-./televideo --news 10 --full -o ultimora.txt
-```
-
-Timeout e retry:
-
-```sh
-./televideo 101 --timeout 20 --retries 2
-```
+Se `chafa` non e' disponibile, `--image` stampa l'URL PNG ufficiale Rai.
 
 ## Opzioni CLI
 
 ```text
-page                  pagina Televideo, default 100
--s, --subpage         sottopagina, es. 1
--r, --region          regione Rai, es. Lazio, Lombardia, Emilia-Romagna
---image               mostra la pagina grafica con chafa, se installato
---capture             cattura tutte le sottopagine disponibili della pagina
---news [N]            mostra le ultime N notizie RSS, default 10
+page                  pagina Televideo classica da consultare, es. 100
 --medieval-summary [N]
---medievale [N]       traduce e riassume le ultime N notizie in latino medievaleggiante
---latin-translator    traduttore per --medieval-summary: auto, google, mymemory o local
---full                con --news, mostra anche il testo completo delle notizie
---search TEXT         cerca nel feed Ultim'Ora; da solo implica --news 20
+--medievale [N]       cronaca medievale live delle ultime N notizie, default 5
+--latin-translator    auto, google, mymemory o local, default auto
+--news [N]            ultime N notizie RSS in formato originale, default 10
+--full                con --news mostra anche il testo completo
+--search TEXT         filtra le Ultim'Ora; da solo usa la cronaca medievale
 --watch SECONDS       aggiorna l'output ogni N secondi
 --count N             numero di aggiornamenti da fare con --watch
 -o, --output FILE     salva l'output testuale in un file
---url                 stampa anche l'URL sorgente usato
+--url                 stampa URL sorgente RSS o pagina Rai
+-s, --subpage         sottopagina Televideo classica, es. 1
+-r, --region          regione Rai, es. Lazio, Lombardia, Emilia-Romagna
+--image               mostra la pagina grafica con chafa, se installato
+--capture             cattura sottopagine disponibili della pagina
 --timeout SECONDS     timeout per host in secondi, default 10
 --retries N           ritentativi dopo il primo giro, default 1
 ```
@@ -188,20 +177,30 @@ page                  pagina Televideo, default 100
 `--image`, `--capture`, `--news` e `--medieval-summary` sono modalita
 alternative: usane una sola per volta.
 
-Per il latino medievaleggiante, il default e' `--latin-translator auto`: prova
-prima l'endpoint gratuito non ufficiale di Google Translate (`it -> la`), poi
-MyMemory (`it|la`) e infine il fallback locale. Google tende a produrre un
-latino piu' leggibile; MyMemory e' un servizio pubblico gratuito ma puo' dare
-risultati instabili; `local` non usa rete e resta solo una resa di ripiego.
+## Fonte Dati
 
-Non esiste qui un servizio gratuito affidabile che dichiari esplicitamente
-"latino medievale". Lo script traduce in latino e poi applica una resa da
-cronaca medievale, con formule come `Chronica`, `Capitulum` e `In chronicis
-scriptum est`.
+Le notizie arrivano dal feed pubblico Ultim'Ora Rai Televideo:
+
+```text
+https://www.televideo.rai.it/televideo/pub/rss101.xml
+https://www.servizitelevideo.rai.it/televideo/pub/rss101.xml
+```
+
+Il programma prova entrambi gli host Rai e usa `--timeout` / `--retries` per
+gestire momenti in cui un endpoint risponde lentamente.
+
+Endpoint secondari usati per le pagine classiche:
+
+```text
+https://www.televideo.rai.it/televideo/pub/solotesto.jsp?pagina=100
+https://www.televideo.rai.it/televideo/pub/catturaSottopagine.jsp?pagina=102&regione=
+https://www.televideo.rai.it/televideo/pub/tt4web/Nazionale/16_9_page-100.png
+```
 
 ## Regioni Supportate
 
-Puoi passare il nome della regione con `-r` / `--region`.
+Puoi passare il nome della regione con `-r` / `--region` per le pagine
+classiche regionali.
 
 Esempi accettati:
 
@@ -212,48 +211,8 @@ Piemonte, Puglia, Sardegna, Sicilia, Toscana, Trentino, Umbria,
 Valle d'Aosta, Veneto
 ```
 
-Sono accettate anche alcune varianti pratiche, per esempio `emilia`,
-`emilia-romagna`, `friuli` e `valle-aosta`.
-
-## Come E' Stato Creato Il Progetto
-
-Il progetto e' stato creato direttamente dentro un container Linux, partendo da
-una directory vuota.
-
-Le fasi principali sono state:
-
-1. Analisi degli endpoint pubblici Rai.
-2. Implementazione di una CLI Python senza dipendenze esterne.
-3. Verifica reale dei comandi nel terminale.
-4. Inizializzazione del repository Git e push su GitHub.
-
-Endpoint Rai individuati e usati:
-
-```text
-https://www.televideo.rai.it/televideo/pub/solotesto.jsp?pagina=100
-https://www.televideo.rai.it/televideo/pub/solotesto.jsp?pagina=101&sottopagina=01
-https://www.televideo.rai.it/televideo/pub/tt4web/Nazionale/16_9_page-100.png
-https://www.televideo.rai.it/televideo/pub/rss101.xml
-https://www.televideo.rai.it/televideo/pub/catturaSottopagine.jsp?pagina=102&regione=
-```
-
-Durante lo sviluppo e' emerso che alcuni endpoint Rai possono andare in timeout.
-Per questo la CLI non usa un solo host, ma prova sia:
-
-```text
-https://www.televideo.rai.it/televideo/pub/
-https://www.servizitelevideo.rai.it/televideo/pub/
-```
-
-La CLI espone anche `--timeout` e `--retries`, cosi' l'utente puo' adattare il
-comando a connessioni lente o a momenti in cui i server Rai rispondono male.
-
-La parte grafica non scarica librerie Python: usa semplicemente il PNG ufficiale
-Rai e, se presente, lo passa a `chafa`, un renderer immagini per terminale.
-
-Per Mediavideo e' stata fatta una verifica separata: il servizio live Mediaset
-non risulta piu' disponibile dal 2022. Per evitare informazioni fuorvianti, il
-progetto dichiara questo limite in modo esplicito.
+Sono accettate anche varianti pratiche come `emilia`, `emilia-romagna`,
+`friuli` e `valle-aosta`.
 
 ## Architettura
 
@@ -269,33 +228,34 @@ Scelte tecniche:
 
 - `argparse` per l'interfaccia CLI.
 - `urllib.request` per HTTP/HTTPS senza dipendenze esterne.
-- `xml.etree.ElementTree` per leggere il feed RSS.
+- `xml.etree.ElementTree` per leggere il feed RSS Rai.
+- Fallback tra host Rai ufficiali e mirror `servizitelevideo`.
+- Traduzione online opzionale senza chiavi API.
 - Regex mirate per estrarre il blocco `<pre>` dalle pagine solo testo Rai.
 - `tempfile` e `subprocess` per passare i PNG temporanei a `chafa`.
 
 ## Verifica
 
-Comandi usati durante lo sviluppo:
+Comandi usati per testare il progetto:
 
 ```sh
 python3 -m py_compile televideo
+./televideo
+./televideo --help
+./televideo --medievale 2 --latin-translator google
+./televideo --search Papa --latin-translator local
+./televideo --news 2
+./televideo --news 1 --full
 ./televideo 100
-./televideo 101 --timeout 20 --retries 2
-./televideo 300 -r Lazio
-./televideo 100 --image --url
-./televideo --news 3
-./televideo --news 2 --full
-./televideo --search Tajani
-./televideo --medieval-summary 3
-./televideo --medievale 2 --search Papa
-./televideo --medievale 1 --latin-translator google
 ./televideo 102 --capture
+./televideo --medievale 1 --watch 1 --count 1 --latin-translator local
 ```
 
 ## Limiti Noti
 
-- Il progetto dipende dagli endpoint pubblici Rai, che non sono API stabili.
-- La qualita' di `--image` dipende dal terminale e da `chafa`.
+- Il progetto dipende dagli endpoint pubblici Rai, che non sono API garantite.
+- Gli endpoint gratuiti di traduzione possono cambiare, limitare o degradare la qualita'.
+- `local` e' un fallback offline utile, ma non produce una traduzione latina completa.
 - `--watch` e' pensato per output testuale, non per `--image`.
 
 ## Licenza
