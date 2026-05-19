@@ -1,6 +1,6 @@
 {% load static %}
 <!doctype html>
-<html lang="it">
+<html lang="{{ ui.html_lang }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -19,10 +19,11 @@
         </header>
 
         {% include "news/_site_nav.html" %}
+        {% include "news/_language_dropdown.html" %}
 
         <section class="lottery-layout">
             <article class="lottery-card">
-                <p class="eyebrow">SuperEnalotto · pagina 696</p>
+                <p class="eyebrow">SuperEnalotto &middot; pagina 696</p>
                 {% if latest_superenalotto %}
                     <h2>Concorso N.{{ latest_superenalotto.draw_number }}</h2>
                     <p class="news-card__meta">{{ latest_superenalotto.draw_date|date:"d/m/Y" }}</p>
@@ -37,21 +38,21 @@
                         <div><dt>Jackpot</dt><dd>{% if latest_superenalotto.jackpot %}EUR {{ latest_superenalotto.jackpot }}{% else %}-{% endif %}</dd></div>
                         <div><dt>Montepremi</dt><dd>{% if latest_superenalotto.prize_pool %}EUR {{ latest_superenalotto.prize_pool }}{% else %}-{% endif %}</dd></div>
                     </dl>
-                    <a class="news-card__link" href="{% url 'news:superenalotto' %}">Apri archivio SuperEnalotto</a>
+                    <a class="news-card__link" href="{% url 'news:superenalotto' %}?lang={{ language }}">Apri archivio SuperEnalotto</a>
                 {% else %}
                     <h2>Archivio non ancora popolato</h2>
                 {% endif %}
             </article>
 
             <article class="lottery-card">
-                <p class="eyebrow">Lotto · pagina 691</p>
+                <p class="eyebrow">Lotto &middot; pagina 691</p>
                 {% if latest_lotto %}
                     <h2>Estrazione del {{ latest_lotto.draw_date|date:"d/m/Y" }}</h2>
                     <div class="lotto-table">
                         {% for wheel, numbers in latest_lotto.wheels.items %}
                             <div class="lotto-row">
                                 <strong>{{ wheel }}</strong>
-                                <span>{{ numbers|join:" · " }}</span>
+                                <span>{{ numbers|join:" &middot; " }}</span>
                             </div>
                         {% endfor %}
                     </div>
@@ -61,19 +62,34 @@
             </article>
         </section>
 
-        <main class="section-followup">
-            <h2 class="section-title">Pagine giochi da Televideo</h2>
-            <section class="section-grid section-grid--compact">
-                {% for card in cards %}
-                    <article class="section-card section-card--{{ card.content_kind }}">
-                        <p class="eyebrow">Pagina {{ card.page }}/{{ card.subpage }} · {{ card.label }}</p>
-                        <h2>{{ card.title }}</h2>
-                        <pre>{{ card.raw_text }}</pre>
-                        <a class="news-card__link" href="{{ card.source_url }}" rel="noopener noreferrer">Apri pagina Televideo</a>
-                    </article>
-                {% endfor %}
+        <main>
+            <section class="status-panel" aria-live="polite">
+                <div>
+                    <span class="status-label">Fonte</span>
+                    <strong>Rai Televideo</strong>
+                </div>
+                <div>
+                    <span class="status-label">Ultimo aggiornamento</span>
+                    <strong>{% if latest %}{{ latest|date:"d/m/Y H:i" }}{% else %}in attesa{% endif %}</strong>
+                </div>
             </section>
+
+            {% if cards %}
+                <section class="news-grid">
+                    {% for card in cards %}
+                        <article class="news-card">
+                            <div class="news-card__ribbon">Pagina {{ card.page }}/{{ card.subpage }}</div>
+                            <h2>{{ card.title }}</h2>
+                            <p class="news-card__category">{{ card.label }}</p>
+                            <pre class="section-card__pre">{{ card.raw_text }}</pre>
+                            <a class="news-card__link" href="{{ card.source_url }}" rel="noopener noreferrer">Apri pagina Televideo</a>
+                        </article>
+                    {% endfor %}
+                </section>
+            {% endif %}
         </main>
+
+        {% include "news/_footer.html" %}
     </div>
 </body>
 </html>

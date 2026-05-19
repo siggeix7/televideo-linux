@@ -13,7 +13,10 @@
     const pageStatus = document.getElementById("page-status");
     const buttons = Array.from(document.querySelectorAll("[data-language]"));
     const seen = new Set();
-    let language = localStorage.getItem("chronica-language") || body.dataset.initialLanguage || "la";
+    let language = body.dataset.initialLanguage || localStorage.getItem("chronica-language") || "la";
+    if (body.dataset.initialLanguage) {
+        localStorage.setItem("chronica-language", language);
+    }
     let selectedCategory = localStorage.getItem("chronica-category") || "all";
     let page = Number(localStorage.getItem("chronica-page") || 1);
     let ui = {};

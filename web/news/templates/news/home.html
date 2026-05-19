@@ -21,11 +21,7 @@
 
         {% include "news/_site_nav.html" %}
 
-        <nav class="toolbar" aria-label="{{ ui.language_nav_label }}">
-            {% for code, label in languages.items %}
-                <button class="language-button" type="button" data-language="{{ code }}">{{ label }}</button>
-            {% endfor %}
-        </nav>
+        {% include "news/_language_dropdown.html" %}
 
         <section class="category-panel" aria-label="{{ ui.categories_title }}">
             <h2 data-ui="categories_title">{{ ui.categories_title }}</h2>
@@ -56,6 +52,8 @@
             </div>
         </main>
     </div>
+
+    {% include "news/_footer.html" %}
 
     <template id="news-card-template">
         <article class="news-card">

@@ -1,6 +1,6 @@
 {% load static %}
 <!doctype html>
-<html lang="it">
+<html lang="{{ ui.html_lang }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -19,6 +19,7 @@
         </header>
 
         {% include "news/_site_nav.html" %}
+        {% include "news/_language_dropdown.html" %}
 
         <section class="status-panel" aria-live="polite">
             <div>
@@ -26,22 +27,23 @@
                 <strong>Rai Televideo</strong>
             </div>
             <div>
-                <span class="status-label">Ultima cache</span>
+                <span class="status-label">Ultimo aggiornamento</span>
                 <strong>{% if latest %}{{ latest|date:"d/m/Y H:i" }}{% else %}in attesa{% endif %}</strong>
             </div>
         </section>
 
         <main>
             {% if cards %}
-                <section class="section-grid">
+                <section class="news-grid">
                     {% for card in cards %}
-                        <article class="section-card section-card--{{ card.content_kind }}">
-                            <p class="eyebrow">Pagina {{ card.page }}/{{ card.subpage }} · {{ card.label }}</p>
+                        <article class="news-card">
+                            <div class="news-card__ribbon">Pagina {{ card.page }}/{{ card.subpage }}</div>
                             <h2>{{ card.title }}</h2>
+                            <p class="news-card__category">{{ card.label }}</p>
                             {% if card.render_pre %}
-                                <pre>{{ card.raw_text }}</pre>
+                                <pre class="section-card__pre">{{ card.raw_text }}</pre>
                             {% else %}
-                                <p class="section-card__body">{{ card.raw_text|linebreaksbr }}</p>
+                                <p class="news-card__summary">{{ card.raw_text|linebreaksbr }}</p>
                             {% endif %}
                             <a class="news-card__link" href="{{ card.source_url }}" rel="noopener noreferrer">Apri pagina Televideo</a>
                         </article>
@@ -54,6 +56,8 @@
                 </div>
             {% endif %}
         </main>
+
+        {% include "news/_footer.html" %}
     </div>
 </body>
 </html>

@@ -1,0 +1,7 @@
+<nav class="language-dropdown" aria-label="Lingua del sito">
+    <select class="language-dropdown__select" onchange="window.location.href=this.value">
+        {% for code, label in languages.items %}
+            <option value="?lang={{ code }}" {% if code == language %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+</nav>

@@ -168,6 +168,53 @@ h1 {
     background: var(--wine);
 }
 
+.site-nav__link {
+    padding: 8px 13px;
+    font-size: 0.86rem;
+}
+
+.language-dropdown {
+    display: flex;
+    justify-content: flex-end;
+    margin: 12px 0;
+}
+
+.language-dropdown__select {
+    border: 1px solid rgba(111, 29, 27, 0.36);
+    border-radius: 12px;
+    padding: 9px 14px;
+    color: var(--ink);
+    font: 700 0.92rem Inter, ui-sans-serif, system-ui, sans-serif;
+    background: rgba(255, 248, 224, 0.78);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236f1d1b' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 34px;
+}
+
+.site-footer {
+    margin-top: 40px;
+    padding: 22px 18px;
+    border: 1px solid rgba(80, 47, 24, 0.35);
+    border-radius: 12px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.86rem;
+    background: rgba(255, 248, 224, 0.38);
+}
+
+.site-footer a {
+    color: var(--wine);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.site-footer a:hover {
+    text-decoration: underline;
+}
+
 .category-panel {
     align-items: center;
     margin-top: 0;

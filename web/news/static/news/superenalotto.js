@@ -13,7 +13,10 @@
     const prizePool = document.getElementById("prize-pool");
     const chart = document.getElementById("trend-chart");
     const emptyState = document.getElementById("empty-state");
-    let language = localStorage.getItem("chronica-language") || body.dataset.initialLanguage || "la";
+    let language = body.dataset.initialLanguage || localStorage.getItem("chronica-language") || "la";
+    if (body.dataset.initialLanguage) {
+        localStorage.setItem("chronica-language", language);
+    }
     let selectedDate = localStorage.getItem("superenalotto-date") || "";
     let ui = {};
 

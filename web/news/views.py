@@ -263,6 +263,7 @@ def superenalotto(request):
 
 
 def televideo_section(request, section: str, active: str):
+    language = normalize_language(request.GET.get("lang"))
     if section not in SECTION_DEFINITIONS:
         raise Http404("Sezione non trovata")
     definition = section_definition(section)
@@ -277,6 +278,10 @@ def televideo_section(request, section: str, active: str):
             "cards": snapshots,
             "latest": latest,
             "nav_items": nav_items(active),
+            "language": language,
+            "languages": LANGUAGES,
+            "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
+            "ui": ui_for(language),
         },
     )
 
@@ -310,6 +315,7 @@ def travel(request):
 
 
 def games(request):
+    language = normalize_language(request.GET.get("lang"))
     refresh_section_if_stale("giochi")
     try:
         update_superenalotto()
@@ -330,11 +336,16 @@ def games(request):
             "latest_superenalotto": latest_superenalotto,
             "latest_lotto": latest_lotto,
             "nav_items": nav_items("giochi"),
+            "language": language,
+            "languages": LANGUAGES,
+            "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
+            "ui": ui_for(language),
         },
     )
 
 
 def regions(request, region_slug_value: str | None = None):
+    language = normalize_language(request.GET.get("lang"))
     selected_region = normalize_region(region_slug_value or request.GET.get("regione"))
     refresh_section_if_stale("regioni", selected_region)
     snapshots = section_snapshots("regioni", selected_region)
@@ -358,6 +369,10 @@ def regions(request, region_slug_value: str | None = None):
             "regions": regions_payload,
             "selected_region": selected_region,
             "nav_items": nav_items("regioni"),
+            "language": language,
+            "languages": LANGUAGES,
+            "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
+            "ui": ui_for(language),
         },
     )
 
