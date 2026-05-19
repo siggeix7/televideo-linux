@@ -1,6 +1,25 @@
 from django.db import models
 
 
+def clean_summary(value: str) -> str:
+    prefixes = (
+        "Dalle tavole del Televideo: ",
+        "From the Televideo chronicle: ",
+        "In chronicis scriptum est: ",
+    )
+    suffixes = (
+        " Haec rettulerunt cursores Televidei.",
+        " Haec rettulerunt cursores Televidei",
+    )
+    for prefix in prefixes:
+        if value.startswith(prefix):
+            value = value[len(prefix):]
+    for suffix in suffixes:
+        if value.endswith(suffix):
+            value = value[: -len(suffix)]
+    return value.strip()
+
+
 class Category(models.Model):
     code = models.SlugField(max_length=32, unique=True)
     page = models.PositiveSmallIntegerField(null=True, blank=True, db_index=True)
@@ -59,10 +78,10 @@ class NewsItem(models.Model):
 
     def summary_for(self, language: str) -> str:
         if language == "la" and self.summary_la:
-            return self.summary_la
+            return clean_summary(self.summary_la)
         if language == "en" and self.summary_en:
-            return self.summary_en
-        return self.summary_it
+            return clean_summary(self.summary_en)
+        return clean_summary(self.summary_it)
 
 
 class SuperEnalottoDraw(models.Model):

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from django.conf import settings
-from django.db.models import Count
+from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.db import connection
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -21,23 +21,26 @@ UI_TEXT = {
     "it": {
         "html_lang": "it",
         "eyebrow": "Rai Televideo RSS 101 e pagina 104",
-        "title": "Chronica Televidei",
-        "lede": "Notizie reali, raccolte in tempo quasi reale e ordinate nelle categorie del Televideo come una cronaca da monastero digitale.",
+        "title": "Televideo News",
+        "lede": "Notizie reali da Rai Televideo, archiviate automaticamente e organizzate per categoria.",
         "language_nav_label": "Lingua dell'interfaccia e delle notizie",
         "categories_title": "Categorie",
         "news_link": "Cronaca",
         "super_link": "SuperEnalotto",
         "all_categories": "Tutte",
-        "status_label": "Stato della cronaca",
+        "status_label": "Stato aggiornamento",
         "loading": "Carico le ultime notizie...",
         "last_reading": "Ultima lettura",
         "waiting": "in attesa",
         "empty_title": "Le pergamene sono ancora vuote",
         "empty_message": "Il feed Rai non ha risposto oppure il job di aggiornamento non ha ancora popolato il database.",
-        "card_ribbon": "Novella",
-        "source_prefix": "Fonte originale:",
+        "card_ribbon": "Notizia",
+        "source_prefix": "Titolo originale:",
         "category_prefix": "Categoria:",
-        "source_link": "Leggi fonte Rai",
+        "source_link": "Fonte Rai",
+        "previous_page": "Precedenti",
+        "next_page": "Successive",
+        "page_status": "Pagina {page} di {pages}",
         "super_title": "Archivio SuperEnalotto",
         "super_lede": "Ultima combinazione dalla pagina 696 di Rai Televideo, salvata nello storico SQLite.",
         "draw_label": "Concorso",
@@ -51,30 +54,33 @@ UI_TEXT = {
         "trend_label": "Andamento Jackpot e Montepremi",
         "select_date": "Seleziona data",
         "no_draws": "Nessuna estrazione salvata nello storico.",
-        "updated": "Cronaca aggiornata in {language}",
+        "updated": "Notizie aggiornate in {language}",
         "date_unavailable": "data non disponibile",
         "error_prefix": "Errore durante l'aggiornamento:",
     },
     "en": {
         "html_lang": "en",
         "eyebrow": "Rai Televideo RSS 101 and page 104",
-        "title": "Chronica Televidei",
-        "lede": "Real news, gathered almost live and arranged by Televideo categories as a digital monastic chronicle.",
+        "title": "Televideo News",
+        "lede": "Real Rai Televideo news, automatically archived and grouped by category.",
         "language_nav_label": "Interface and news language",
         "categories_title": "Categories",
         "news_link": "Chronicle",
         "super_link": "SuperEnalotto",
         "all_categories": "All",
-        "status_label": "Chronicle status",
+        "status_label": "Update status",
         "loading": "Loading the latest news...",
         "last_reading": "Last reading",
         "waiting": "waiting",
         "empty_title": "The parchments are still empty",
         "empty_message": "The Rai feed did not answer yet, or the updater has not populated the database.",
-        "card_ribbon": "Dispatch",
-        "source_prefix": "Original source:",
+        "card_ribbon": "News",
+        "source_prefix": "Original title:",
         "category_prefix": "Category:",
-        "source_link": "Read Rai source",
+        "source_link": "Rai source",
+        "previous_page": "Previous",
+        "next_page": "Next",
+        "page_status": "Page {page} of {pages}",
         "super_title": "SuperEnalotto Archive",
         "super_lede": "Latest draw from Rai Televideo page 696, stored in the SQLite history.",
         "draw_label": "Draw",
@@ -88,30 +94,33 @@ UI_TEXT = {
         "trend_label": "Jackpot and prize pool trend",
         "select_date": "Select date",
         "no_draws": "No draws saved in history yet.",
-        "updated": "Chronicle updated in {language}",
+        "updated": "News updated in {language}",
         "date_unavailable": "date unavailable",
         "error_prefix": "Update error:",
     },
     "la": {
         "html_lang": "la",
         "eyebrow": "Rai Televideo RSS CI et pagina CIV",
-        "title": "Chronica Televidei",
-        "lede": "Notitiae verae fere in ipso tempore collectae et per categorias Televidei dispositae, more chronicae monasticae digitalis.",
+        "title": "Nuntia Televidei",
+        "lede": "Notitiae verae ex Rai Televideo, in archivio servatae et per categorias dispositae.",
         "language_nav_label": "Lingua interfaciei et nuntiorum",
         "categories_title": "Categoriae",
         "news_link": "Chronica",
         "super_link": "SuperEnalotto",
         "all_categories": "Omnes",
-        "status_label": "Status chronicae",
+        "status_label": "Status renovationis",
         "loading": "Novissima nuntia colligo...",
         "last_reading": "Ultima lectio",
         "waiting": "exspectatur",
         "empty_title": "Pergamenae adhuc vacuae sunt",
         "empty_message": "Fons Rai nondum respondit aut minister renovandi datorum tabulam nondum implevit.",
-        "card_ribbon": "Novella",
-        "source_prefix": "Fons primus:",
+        "card_ribbon": "Nuntium",
+        "source_prefix": "Titulus primus:",
         "category_prefix": "Categoria:",
-        "source_link": "Fontem Rai lege",
+        "source_link": "Fons Rai",
+        "previous_page": "Priora",
+        "next_page": "Sequentia",
+        "page_status": "Pagina {page} ex {pages}",
         "super_title": "Archivum SuperEnalotto",
         "super_lede": "Ultima sortitio ex pagina DCXCVI Rai Televideo, in memoria SQLite servata.",
         "draw_label": "Concursus",
@@ -125,7 +134,7 @@ UI_TEXT = {
         "trend_label": "Cursus praemii maximi et montis praemiorum",
         "select_date": "Diem elige",
         "no_draws": "Nulla sortitio adhuc servata est.",
-        "updated": "Chronica renovata lingua {language}",
+        "updated": "Nuntia renovata lingua {language}",
         "date_unavailable": "dies ignotus",
         "error_prefix": "Error renovationis:",
     },
@@ -145,6 +154,13 @@ def parse_limit(value: str | None, default: int = 18) -> int:
         return min(max(int(value or default), 1), 80)
     except ValueError:
         return default
+
+
+def parse_page(value: str | None) -> int:
+    try:
+        return max(int(value or 1), 1)
+    except ValueError:
+        return 1
 
 
 def home(request):
@@ -187,7 +203,7 @@ def superenalotto(request):
 
 def serialized_categories(language: str) -> list[dict[str, object]]:
     categories = []
-    queryset = Category.objects.filter(active=True).annotate(news_count=Count("items")).filter(news_count__gt=0)
+    queryset = Category.objects.filter(active=True).annotate(news_count=Count("items", filter=displayable_category_filter())).filter(news_count__gt=0)
     for category in queryset.order_by("sort_order", "name_it"):
         categories.append(
             {
@@ -202,7 +218,8 @@ def serialized_categories(language: str) -> list[dict[str, object]]:
 
 def news_api(request):
     language = normalize_language(request.GET.get("lang"))
-    limit = parse_limit(request.GET.get("limit"))
+    limit = parse_limit(request.GET.get("limit"), default=12)
+    page = parse_page(request.GET.get("page"))
     category_code = request.GET.get("category") or "all"
     error = ""
     try:
@@ -210,7 +227,7 @@ def news_api(request):
     except RuntimeError as exc:
         error = str(exc)
 
-    queryset = NewsItem.objects.select_related("category").all()
+    queryset = NewsItem.objects.select_related("category").filter(displayable_filter())
     if category_code != "all":
         filtered = queryset.filter(category__code=category_code)
         if filtered.exists():
@@ -218,8 +235,21 @@ def news_api(request):
         else:
             category_code = "all"
 
+    queryset = queryset.annotate(
+        source_rank=Case(
+            When(category__code="rss101", then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField(),
+        )
+    ).order_by("source_rank", "-published_at", "-created_at")
+    total_items = queryset.count()
+    total_pages = max((total_items + limit - 1) // limit, 1)
+    page = min(page, total_pages)
+    start = (page - 1) * limit
+    end = start + limit
+
     items = []
-    for item in queryset[:limit]:
+    for item in queryset[start:end]:
         category = item.category
         items.append(
             {
@@ -232,7 +262,6 @@ def news_api(request):
                 "source_page": item.source_page,
                 "published": item.pub_date_text,
                 "published_iso": item.published_at.isoformat() if item.published_at else "",
-                "link": item.link,
             }
         )
 
@@ -245,10 +274,26 @@ def news_api(request):
             "selected_category": category_code,
             "ui": ui_for(language),
             "categories": serialized_categories(language),
+            "pagination": {
+                "page": page,
+                "pages": total_pages,
+                "limit": limit,
+                "total": total_items,
+                "has_previous": page > 1,
+                "has_next": page < total_pages,
+            },
             "error": error,
             "items": items,
         }
     )
+
+
+def displayable_filter() -> Q:
+    return ~Q(title_it__regex=r"^\d+/\d+$") & ~Q(summary_it__regex=r"^S\.?\s*S\.?$", title_it__regex=r"^\d+/\d+$")
+
+
+def displayable_category_filter() -> Q:
+    return ~Q(items__title_it__regex=r"^\d+/\d+$") & ~Q(items__summary_it__regex=r"^S\.?\s*S\.?$", items__title_it__regex=r"^\d+/\d+$")
 
 
 def healthcheck(request):

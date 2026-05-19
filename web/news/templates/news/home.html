@@ -48,6 +48,11 @@
 
         <main>
             <section id="news-grid" class="news-grid" aria-live="polite"></section>
+            <nav class="pagination" aria-label="Paginazione notizie">
+                <button id="previous-page" class="pagination__button" type="button"></button>
+                <span id="page-status" class="pagination__status"></span>
+                <button id="next-page" class="pagination__button" type="button"></button>
+            </nav>
             <div id="empty-state" class="empty-state" hidden>
                 <h2 data-ui="empty_title">{{ ui.empty_title }}</h2>
                 <p data-ui="empty_message">{{ ui.empty_message }}</p>
@@ -63,7 +68,6 @@
             <p class="news-card__category"></p>
             <p class="news-card__source"></p>
             <p class="news-card__summary"></p>
-            <a class="news-card__link" target="_blank" rel="noopener"></a>
         </article>
     </template>
 </body>

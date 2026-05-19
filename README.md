@@ -12,6 +12,8 @@ notizie. Le lingue disponibili nella UI sono latino, italiano e inglese.
 - Web app Django con stile medievale curato e responsive.
 - Notizie reali dal feed pubblico Rai Televideo RSS 101.
 - Categorie importate dalla pagina 104 di Televideo e notizie figlie nelle rispettive sezioni.
+- Storico notizie persistente: le notizie restano salvate anche dopo che spariscono da Televideo.
+- Paginazione automatica quando lo storico contiene molte notizie.
 - Pagina dedicata al SuperEnalotto da pagina 696, con storico estrazioni e andamento montepremi.
 - Database SQLite persistente su volume esterno `/data`.
 - Job di aggiornamento automatico eseguibile in loop.
@@ -267,6 +269,17 @@ lingua cambia anche nomi delle categorie e testi dell'interfaccia.
 Le categorie che Televideo pubblica vuote o senza pagine figlie vengono nascoste
 dall'interfaccia; se una categoria salvata nel browser non ha piu' notizie, il
 sito torna automaticamente a `Tutte`.
+
+Oltre alle categorie della pagina 104, il job importa anche sezioni utili e
+sportive quando sono disponibili, per esempio:
+
+```text
+Calcio, Altri Sport, Brevi Sport, Almanacco, Viabilita', Meteo, Temperature
+```
+
+Le notizie non vengono eliminate quando non compaiono piu' su Televideo: restano
+nello storico SQLite e la pagina principale usa una paginazione lato API/UI per
+non caricare troppe schede insieme.
 
 ## SuperEnalotto
 

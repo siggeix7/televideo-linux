@@ -16,7 +16,7 @@ from email.utils import parsedate_to_datetime
 from functools import lru_cache
 
 from django.conf import settings
-from django.db import transaction
+from django.db import close_old_connections, transaction
 from django.utils import timezone
 
 from .models import Category, NewsItem, SuperEnalottoDraw
@@ -52,8 +52,16 @@ CATEGORY_LABELS = {
     170: ("p170", "Cittadini", "Cives", "Citizens"),
     180: ("p180", "Focus", "Inquisitio", "Focus"),
     190: ("p190", "Motori", "Currus", "Motors"),
+    201: ("p201", "Calcio", "Pediludium", "Football"),
+    260: ("p260", "Altri Sport", "Alii Ludi", "Other Sports"),
+    299: ("p299", "Brevi Sport", "Breves Ludi", "Sports Briefs"),
+    401: ("p401", "Almanacco", "Almanach", "Almanac"),
+    613: ("p613", "Viabilita'", "Viae", "Traffic"),
+    700: ("p700", "Meteo", "Tempestas", "Weather"),
+    711: ("p711", "Temperature", "Temperaturae", "Temperatures"),
 }
 COMPOSITE_CATEGORY_PAGES = {103, 105, 110, 170, 180, 190}
+EXTRA_CATEGORY_PAGES = (201, 260, 299, 401, 613, 700, 711)
 
 
 def strip_html(value: str) -> str:
@@ -181,6 +189,10 @@ def sync_categories_from_page_104() -> list[Category]:
     except RuntimeError:
         discovered_pages = [page for page in CATEGORY_LABELS if page != 101]
 
+    for page in EXTRA_CATEGORY_PAGES:
+        if page not in discovered_pages:
+            discovered_pages.append(page)
+
     categories = [rss_category]
     for index, page in enumerate(discovered_pages, start=1):
         categories.append(category_from_labels(page, index))
@@ -286,17 +298,17 @@ def preserve_title_lead(source_title: str, translated_title: str) -> str:
 
 
 def italian_chronicle(summary: str) -> str:
-    return "Dalle tavole del Televideo: " + ensure_sentence(summary)
+    return ensure_sentence(summary)
 
 
 def english_chronicle(summary: str) -> str:
     translated = translate_text(summary, "en")
-    return "From the Televideo chronicle: " + ensure_sentence(translated)
+    return ensure_sentence(translated)
 
 
 def latin_chronicle(summary: str) -> str:
     translated = medieval_latin_style(translate_text(summary, "la"))
-    return "In chronicis scriptum est: " + ensure_sentence(translated) + " Haec rettulerunt cursores Televidei."
+    return ensure_sentence(translated)
 
 
 def build_translated_item(item: dict[str, str], category: Category | None = None, source_page: str = "") -> dict[str, object]:
@@ -370,7 +382,20 @@ def parse_article_content(content: str, fallback_title: str) -> tuple[str, str] 
         body_start += 1
     title = compact_text(title_line).strip(" -") or fallback_title
     body = unwrap_televideo_lines(lines[body_start:]) or title
+    if is_low_quality_article(title, body):
+        return None
     return title, body
+
+
+def is_low_quality_article(title: str, body: str) -> bool:
+    compact_body = compact_text(body)
+    if re.fullmatch(r"\d+/\d+", title.strip()):
+        return True
+    if len(compact_body) < 40:
+        return True
+    if compact_body in {"S. S.", "S.S.", "np"}:
+        return True
+    return False
 
 
 def detail_pages_from_category(content: str, category_pages: set[int]) -> list[int]:
@@ -503,7 +528,15 @@ def refresh_if_stale() -> None:
         return
     if not _REFRESH_LOCK.acquire(blocking=False):
         return
+
+    thread = threading.Thread(target=refresh_worker, daemon=True)
+    thread.start()
+
+
+def refresh_worker() -> None:
     try:
+        close_old_connections()
         update_news(settings.NEWS_FETCH_LIMIT, settings.CATEGORY_FETCH_LIMIT)
     finally:
+        close_old_connections()
         _REFRESH_LOCK.release()

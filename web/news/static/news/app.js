@@ -8,10 +8,14 @@
     const lastRefresh = document.getElementById("last-refresh");
     const emptyState = document.getElementById("empty-state");
     const categoryList = document.getElementById("category-list");
+    const previousPage = document.getElementById("previous-page");
+    const nextPage = document.getElementById("next-page");
+    const pageStatus = document.getElementById("page-status");
     const buttons = Array.from(document.querySelectorAll("[data-language]"));
     const seen = new Set();
     let language = localStorage.getItem("chronica-language") || body.dataset.initialLanguage || "la";
     let selectedCategory = localStorage.getItem("chronica-category") || "all";
+    let page = Number(localStorage.getItem("chronica-page") || 1);
     let ui = {};
     let firstRender = true;
 
@@ -71,15 +75,31 @@
             button.addEventListener("click", () => {
                 selectedCategory = button.dataset.category;
                 localStorage.setItem("chronica-category", selectedCategory);
+                page = 1;
+                localStorage.setItem("chronica-page", String(page));
                 firstRender = true;
                 loadNews();
             });
         });
     }
 
+    function renderPagination(pagination) {
+        const data = pagination || { page: 1, pages: 1, has_previous: false, has_next: false };
+        page = data.page;
+        localStorage.setItem("chronica-page", String(page));
+        previousPage.textContent = ui.previous_page || "Precedenti";
+        nextPage.textContent = ui.next_page || "Successive";
+        previousPage.disabled = !data.has_previous;
+        nextPage.disabled = !data.has_next;
+        pageStatus.textContent = (ui.page_status || "Pagina {page} di {pages}")
+            .replace("{page}", data.page)
+            .replace("{pages}", data.pages);
+    }
+
     function renderNews(payload) {
         applyUi(payload.ui);
         renderCategories(payload.categories || []);
+        selectedCategory = payload.selected_category || selectedCategory;
         grid.replaceChildren();
         emptyState.hidden = payload.items.length > 0;
         statusText.textContent = payload.error || (ui.updated || "Cronaca aggiornata in {language}").replace("{language}", payload.language_label);
@@ -91,21 +111,17 @@
             node.querySelector("h2").textContent = item.title;
             node.querySelector(".news-card__meta").textContent = item.published || "Ultim'Ora Rai Televideo";
             node.querySelector(".news-card__category").textContent = item.category_name ? `${ui.category_prefix || "Categoria:"} ${item.category_name}` : "";
-            node.querySelector(".news-card__source").textContent = `${ui.source_prefix || "Fonte originale:"} ${item.source_title}`;
+            node.querySelector(".news-card__source").textContent = item.source_title && item.source_title !== item.title
+                ? `${ui.source_prefix || "Titolo originale:"} ${item.source_title}`
+                : "";
             node.querySelector(".news-card__summary").textContent = item.summary;
-            const link = node.querySelector(".news-card__link");
-            link.textContent = ui.source_link || "Leggi fonte Rai";
-            if (item.link) {
-                link.href = item.link;
-            } else {
-                link.hidden = true;
-            }
             if (!firstRender && !seen.has(item.id)) {
                 node.classList.add("is-new");
             }
             seen.add(item.id);
             grid.appendChild(node);
         });
+        renderPagination(payload.pagination);
         firstRender = false;
     }
 
@@ -113,6 +129,7 @@
         const url = new URL(apiUrl, window.location.origin);
         url.searchParams.set("lang", language);
         url.searchParams.set("category", selectedCategory);
+        url.searchParams.set("page", String(page));
         try {
             const response = await fetch(url, { headers: { Accept: "application/json" } });
             if (!response.ok) {
@@ -132,6 +149,16 @@
             setActiveLanguage();
             loadNews();
         });
+    });
+
+    previousPage.addEventListener("click", () => {
+        page = Math.max(1, page - 1);
+        loadNews();
+    });
+
+    nextPage.addEventListener("click", () => {
+        page += 1;
+        loadNews();
     });
 
     setActiveLanguage();
