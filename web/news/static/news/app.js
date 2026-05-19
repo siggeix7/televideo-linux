@@ -1,18 +1,25 @@
 (function () {
+    "use strict";
+
     const body = document.body;
     const apiUrl = body.dataset.apiUrl;
-    const refreshSeconds = Number(body.dataset.refreshSeconds || 60);
+    const refreshSeconds = Math.max(Number(body.dataset.refreshSeconds || 60), 15);
     const grid = document.getElementById("news-grid");
     const template = document.getElementById("news-card-template");
+    const skeletonTemplate = document.getElementById("skeleton-card-template");
     const statusText = document.getElementById("status-text");
     const lastRefresh = document.getElementById("last-refresh");
     const emptyState = document.getElementById("empty-state");
+    const errorState = document.getElementById("error-state");
+    const errorMessage = document.getElementById("error-message");
     const categoryList = document.getElementById("category-list");
     const previousPage = document.getElementById("previous-page");
     const nextPage = document.getElementById("next-page");
     const pageStatus = document.getElementById("page-status");
     const buttons = Array.from(document.querySelectorAll("[data-language]"));
     const seen = new Set();
+    const DEFAULT_LIMIT = 12;
+
     let language = body.dataset.initialLanguage || localStorage.getItem("chronica-language") || "la";
     if (body.dataset.initialLanguage) {
         localStorage.setItem("chronica-language", language);
@@ -21,9 +28,14 @@
     let page = Number(localStorage.getItem("chronica-page") || 1);
     let ui = {};
     let firstRender = true;
+    let loading = false;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
     function setActiveLanguage() {
-        buttons.forEach((button) => button.classList.toggle("is-active", button.dataset.language === language));
+        buttons.forEach(function (button) {
+            button.classList.toggle("is-active", button.dataset.language === language);
+        });
     }
 
     function applyUi(nextUi) {
@@ -31,8 +43,8 @@
         if (ui.html_lang) {
             document.documentElement.lang = ui.html_lang;
         }
-        document.querySelectorAll("[data-ui]").forEach((node) => {
-            const key = node.dataset.ui;
+        document.querySelectorAll("[data-ui]").forEach(function (node) {
+            var key = node.dataset.ui;
             if (ui[key]) {
                 node.textContent = ui[key];
             }
@@ -40,54 +52,77 @@
     }
 
     function formatDate(value) {
-        if (!value) {
-            return ui.date_unavailable || "data non disponibile";
+        if (!value) return ui.date_unavailable || "data non disponibile";
+        var parsed = new Date(value);
+        if (isNaN(parsed.getTime())) return value;
+        return parsed.toLocaleString(language === "en" ? "en-GB" : "it-IT", {
+            dateStyle: "medium",
+            timeStyle: "short",
+        });
+    }
+
+    function showSkeletons(count) {
+        if (!skeletonTemplate) return;
+        grid.replaceChildren();
+        for (var i = 0; i < count; i++) {
+            grid.appendChild(skeletonTemplate.content.firstElementChild.cloneNode(true));
         }
-        const parsed = new Date(value);
-        if (Number.isNaN(parsed.getTime())) {
-            return value;
+    }
+
+    function hideError() {
+        if (errorState) errorState.hidden = true;
+    }
+
+    function showError(msg) {
+        if (errorState && errorMessage) {
+            errorState.hidden = false;
+            errorMessage.textContent = msg || "Errore sconosciuto";
         }
-        return parsed.toLocaleString(language === "en" ? "en-GB" : "it-IT", { dateStyle: "medium", timeStyle: "short" });
+        if (statusText) {
+            statusText.textContent = (ui.error_prefix || "Errore:") + " " + (msg || "");
+        }
     }
 
     function renderCategories(categories) {
         categoryList.replaceChildren();
-        if (selectedCategory !== "all" && !categories.some((category) => category.code === selectedCategory)) {
+        if (selectedCategory !== "all" && !categories.some(function (c) { return c.code === selectedCategory; })) {
             selectedCategory = "all";
             localStorage.setItem("chronica-category", selectedCategory);
         }
-        const allCount = categories.reduce((sum, category) => sum + Number(category.count || 0), 0);
-        const allButton = document.createElement("button");
+
+        var allCount = categories.reduce(function (sum, c) { return sum + Number(c.count || 0); }, 0);
+        var allButton = document.createElement("button");
         allButton.type = "button";
         allButton.className = "category-button";
         allButton.dataset.category = "all";
-        allButton.textContent = `${ui.all_categories || "Tutte"} (${allCount})`;
+        allButton.textContent = (ui.all_categories || "Tutte") + " (" + allCount + ")";
         categoryList.appendChild(allButton);
 
-        categories.forEach((category) => {
-            const button = document.createElement("button");
+        categories.forEach(function (category) {
+            var button = document.createElement("button");
             button.type = "button";
             button.className = "category-button";
             button.dataset.category = category.code;
-            button.textContent = `${category.name} (${category.count})`;
+            button.textContent = category.name + " (" + category.count + ")";
             categoryList.appendChild(button);
         });
 
-        categoryList.querySelectorAll("[data-category]").forEach((button) => {
+        categoryList.querySelectorAll("[data-category]").forEach(function (button) {
             button.classList.toggle("is-active", button.dataset.category === selectedCategory);
-            button.addEventListener("click", () => {
+            button.addEventListener("click", function () {
                 selectedCategory = button.dataset.category;
                 localStorage.setItem("chronica-category", selectedCategory);
                 page = 1;
                 localStorage.setItem("chronica-page", String(page));
                 firstRender = true;
+                retryCount = 0;
                 loadNews();
             });
         });
     }
 
     function renderPagination(pagination) {
-        const data = pagination || { page: 1, pages: 1, has_previous: false, has_next: false };
+        var data = pagination || { page: 1, pages: 1, has_previous: false, has_next: false };
         page = data.page;
         localStorage.setItem("chronica-page", String(page));
         previousPage.textContent = ui.previous_page || "Precedenti";
@@ -102,21 +137,33 @@
     function renderNews(payload) {
         applyUi(payload.ui);
         renderCategories(payload.categories || []);
-        selectedCategory = payload.selected_category || selectedCategory;
+
         grid.replaceChildren();
         emptyState.hidden = payload.items.length > 0;
-        statusText.textContent = payload.error || (ui.updated || "Cronaca aggiornata in {language}").replace("{language}", payload.language_label);
+
+        var statusPrefix = payload.error ? (ui.error_prefix || "Errore:") + " " : "";
+        statusText.textContent = statusPrefix + payload.error || (ui.updated || "Cronaca aggiornata in {language}").replace("{language}", payload.language_label);
         lastRefresh.textContent = formatDate(payload.generated_at);
 
-        payload.items.forEach((item) => {
-            const node = template.content.firstElementChild.cloneNode(true);
+        if (payload.error) {
+            showError(payload.error);
+        } else {
+            hideError();
+            retryCount = 0;
+        }
+
+        payload.items.forEach(function (item) {
+            var node = template.content.firstElementChild.cloneNode(true);
             node.querySelector(".news-card__ribbon").textContent = ui.card_ribbon || "Novella";
             node.querySelector("h2").textContent = item.title;
             node.querySelector(".news-card__meta").textContent = item.published || "Ultim'Ora Rai Televideo";
-            node.querySelector(".news-card__category").textContent = item.category_name ? `${ui.category_prefix || "Categoria:"} ${item.category_name}` : "";
-            node.querySelector(".news-card__source").textContent = item.source_title && item.source_title !== item.title
-                ? `${ui.source_prefix || "Titolo originale:"} ${item.source_title}`
+            node.querySelector(".news-card__category").textContent = item.category_name
+                ? (ui.category_prefix || "Categoria:") + " " + item.category_name
                 : "";
+            node.querySelector(".news-card__source").textContent =
+                item.source_title && item.source_title !== item.title
+                    ? (ui.source_prefix || "Titolo originale:") + " " + item.source_title
+                    : "";
             node.querySelector(".news-card__summary").textContent = item.summary;
             if (!firstRender && !seen.has(item.id)) {
                 node.classList.add("is-new");
@@ -124,47 +171,74 @@
             seen.add(item.id);
             grid.appendChild(node);
         });
+
         renderPagination(payload.pagination);
         firstRender = false;
+        loading = false;
     }
 
     async function loadNews() {
-        const url = new URL(apiUrl, window.location.origin);
+        if (loading) return;
+        loading = true;
+        hideError();
+
+        showSkeletons(DEFAULT_LIMIT);
+
+        var url = new URL(apiUrl, window.location.origin);
         url.searchParams.set("lang", language);
         url.searchParams.set("category", selectedCategory);
         url.searchParams.set("page", String(page));
+
         try {
-            const response = await fetch(url, { headers: { Accept: "application/json" } });
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
+            var response = await fetch(url, {
+                headers: { Accept: "application/json" },
+                signal: AbortSignal.timeout(15000),
+            });
+            if (!response.ok) throw new Error("HTTP " + response.status);
             renderNews(await response.json());
         } catch (error) {
-            statusText.textContent = `${ui.error_prefix || "Errore durante l'aggiornamento:"} ${error.message}`;
+            loading = false;
+            grid.replaceChildren();
+            emptyState.hidden = true;
+            if (error.name === "TimeoutError" || error.name === "AbortError") {
+                showError("Timeout: il server non risponde. Nuovo tentativo in corso...");
+            } else {
+                showError(error.message);
+            }
+
+            if (retryCount < MAX_RETRIES) {
+                retryCount++;
+                setTimeout(loadNews, 2000 * retryCount);
+            }
         }
     }
 
-    buttons.forEach((button) => {
-        button.addEventListener("click", () => {
+    buttons.forEach(function (button) {
+        button.addEventListener("click", function () {
             language = button.dataset.language;
             localStorage.setItem("chronica-language", language);
             firstRender = true;
+            retryCount = 0;
             setActiveLanguage();
             loadNews();
         });
     });
 
-    previousPage.addEventListener("click", () => {
-        page = Math.max(1, page - 1);
-        loadNews();
+    previousPage.addEventListener("click", function () {
+        if (page > 1) {
+            page -= 1;
+            loadNews();
+        }
     });
 
-    nextPage.addEventListener("click", () => {
+    nextPage.addEventListener("click", function () {
         page += 1;
         loadNews();
     });
 
     setActiveLanguage();
     loadNews();
-    setInterval(loadNews, Math.max(refreshSeconds, 15) * 1000);
+    setInterval(function () {
+        if (!loading) loadNews();
+    }, refreshSeconds * 1000);
 })();

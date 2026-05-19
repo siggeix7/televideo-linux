@@ -1,0 +1,27 @@
+{% load static %}
+<!doctype html>
+<html lang="{{ ui.html_lang }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#6f1d1b">
+    <title>{{ code }} &mdash; Televideo News</title>
+    <link rel="stylesheet" href="{% static 'news/styles.css' %}">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="hero hero--compact">
+            <div class="hero__copy">
+                <p class="eyebrow">Errore {{ code }}</p>
+                <h1>{{ title }}</h1>
+                <p class="lede">{{ message }}</p>
+            </div>
+            <div class="seal" aria-hidden="true">{{ code }}</div>
+        </header>
+
+        <div style="text-align:center;margin-top:24px">
+            <a href="/" class="site-nav__link">Torna alla cronaca</a>
+        </div>
+    </div>
+</body>
+</html>

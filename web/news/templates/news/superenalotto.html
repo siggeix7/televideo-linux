@@ -2,9 +2,8 @@
 <!doctype html>
 <html lang="{{ ui.html_lang }}">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ ui.super_title }}</title>
+    {% include "news/_head.html" with title_og=ui.super_title %}
+    <title>{{ ui.super_title }} &mdash; Televideo News</title>
     <link rel="stylesheet" href="{% static 'news/styles.css' %}">
     <script defer src="{% static 'news/superenalotto.js' %}"></script>
 </head>
@@ -31,21 +30,34 @@
                 <p class="news-card__meta" id="draw-date-text"></p>
                 <div class="number-row" id="winning-numbers"></div>
                 <dl class="lottery-stats">
-                    <div><dt data-ui="jolly_label">{{ ui.jolly_label }}</dt><dd id="jolly-number">-</dd></div>
-                    <div><dt data-ui="superstar_label">{{ ui.superstar_label }}</dt><dd id="superstar-number">-</dd></div>
-                    <div><dt data-ui="jackpot_label">{{ ui.jackpot_label }}</dt><dd id="jackpot">-</dd></div>
-                    <div><dt data-ui="prize_pool_label">{{ ui.prize_pool_label }}</dt><dd id="prize-pool">-</dd></div>
+                    <div><dt data-ui="jolly_label">{{ ui.jolly_label }}</dt><dd id="jolly-number">&mdash;</dd></div>
+                    <div><dt data-ui="superstar_label">{{ ui.superstar_label }}</dt><dd id="superstar-number">&mdash;</dd></div>
+                    <div><dt data-ui="jackpot_label">{{ ui.jackpot_label }}</dt><dd id="jackpot">&mdash;</dd></div>
+                    <div><dt data-ui="prize_pool_label">{{ ui.prize_pool_label }}</dt><dd id="prize-pool">&mdash;</dd></div>
                 </dl>
             </article>
 
             <article class="trend-card">
                 <h2 data-ui="trend_label">{{ ui.trend_label }}</h2>
-                <div id="trend-chart" class="trend-chart"></div>
+                <div id="trend-chart" class="trend-chart">
+                    <div class="trend-row" aria-hidden="true">
+                        <div class="skeleton skeleton--text" style="width:6em;height:0.8em"></div>
+                        <div class="trend-bars">
+                            <div class="skeleton" style="height:10px;border-radius:999px"></div>
+                            <div class="skeleton" style="height:10px;border-radius:999px;width:65%"></div>
+                        </div>
+                    </div>
+                </div>
             </article>
         </section>
 
         <div id="empty-state" class="empty-state" hidden>
             <h2 data-ui="no_draws">{{ ui.no_draws }}</h2>
+        </div>
+
+        <div id="error-state" class="error-state" hidden>
+            <h2>Errore di caricamento</h2>
+            <p id="error-message"></p>
         </div>
     </div>
 

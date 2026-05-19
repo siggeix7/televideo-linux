@@ -1,7 +1,19 @@
-<nav class="language-dropdown" aria-label="Lingua del sito">
-    <select class="language-dropdown__select" onchange="window.location.href=this.value">
+<nav class="language-dropdown" aria-label="{{ ui.language_nav_label }}">
+    <select class="language-dropdown__select" id="language-select">
         {% for code, label in languages.items %}
-            <option value="?lang={{ code }}" {% if code == language %}selected{% endif %}>{{ label }}</option>
+            <option value="{{ code }}" {% if code == language %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
     </select>
 </nav>
+<script>
+(function() {
+    var select = document.getElementById("language-select");
+    if (!select) return;
+    select.addEventListener("change", function() {
+        var lang = this.value;
+        var url = new URL(window.location.href);
+        url.searchParams.set("lang", lang);
+        window.location.href = url.toString();
+    });
+})();
+</script>

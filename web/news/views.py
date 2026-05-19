@@ -17,8 +17,6 @@ from .services import (
     refresh_section_if_stale,
     region_slug,
     section_definition,
-    update_lotto,
-    update_superenalotto,
 )
 
 
@@ -317,11 +315,6 @@ def travel(request):
 def games(request):
     language = normalize_language(request.GET.get("lang"))
     refresh_section_if_stale("giochi")
-    try:
-        update_superenalotto()
-        update_lotto()
-    except RuntimeError:
-        pass
     latest_superenalotto = SuperEnalottoDraw.objects.first()
     latest_lotto = LottoDraw.objects.first()
     snapshots = section_snapshots("giochi")
@@ -482,6 +475,42 @@ def displayable_category_filter() -> Q:
         ~Q(items__category__code__in=HIDDEN_CATEGORY_CODES)
         & ~Q(items__title_it__regex=r"^\d+/\d+$")
         & ~Q(items__summary_it__regex=r"^S\.?\s*S\.?$", items__title_it__regex=r"^\d+/\d+$")
+    )
+
+
+def page_not_found(request, exception=None):
+    language = normalize_language(request.GET.get("lang"))
+    return render(
+        request,
+        "news/error.html",
+        {
+            "code": 404,
+            "title": "Pagina non trovata",
+            "message": "La pergamena che cerchi non esiste o e' stata spostata.",
+            "language": language,
+            "languages": LANGUAGES,
+            "ui": ui_for(language),
+            "nav_items": [],
+        },
+        status=404,
+    )
+
+
+def server_error(request):
+    language = normalize_language(request.GET.get("lang"))
+    return render(
+        request,
+        "news/error.html",
+        {
+            "code": 500,
+            "title": "Errore del server",
+            "message": "Un imprevisto ha interrotto la lettura delle pergamene. Riprova tra poco.",
+            "language": language,
+            "languages": LANGUAGES,
+            "ui": ui_for(language),
+            "nav_items": [],
+        },
+        status=500,
     )
 
 

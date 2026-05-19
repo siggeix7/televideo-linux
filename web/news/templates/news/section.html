@@ -2,9 +2,8 @@
 <!doctype html>
 <html lang="{{ ui.html_lang }}">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ section.title }} - Televideo News</title>
+    {% include "news/_head.html" with title_og=section.title %}
+    <title>{{ section.title }} &mdash; Televideo News</title>
     <link rel="stylesheet" href="{% static 'news/styles.css' %}">
 </head>
 <body>
@@ -34,7 +33,7 @@
 
         <main>
             {% if cards %}
-                <section class="news-grid">
+                <section id="section-grid" class="news-grid" aria-label="{{ section.title }}">
                     {% for card in cards %}
                         <article class="news-card">
                             <div class="news-card__ribbon">Pagina {{ card.page }}/{{ card.subpage }}</div>
@@ -45,14 +44,14 @@
                             {% else %}
                                 <p class="news-card__summary">{{ card.raw_text|linebreaksbr }}</p>
                             {% endif %}
-                            <a class="news-card__link" href="{{ card.source_url }}" rel="noopener noreferrer">Apri pagina Televideo</a>
+                            <a class="news-card__link" href="{{ card.source_url }}" rel="noopener noreferrer" target="_blank">Apri pagina Televideo &nearr;</a>
                         </article>
                     {% endfor %}
                 </section>
             {% else %}
                 <div class="empty-state">
                     <h2>Nessun contenuto disponibile</h2>
-                    <p>La sezione non ha ancora risposto oppure la cache non e' stata popolata.</p>
+                    <p>La sezione non ha ancora risposto oppure la cache non &egrave; stata popolata.</p>
                 </div>
             {% endif %}
         </main>
