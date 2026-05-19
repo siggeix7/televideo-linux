@@ -1,15 +1,15 @@
 # televideo-linux
 
-Sito web e CLI per leggere notizie reali da Rai Televideo e presentarle come
-una cronaca medievale aggiornata in automatico.
+Sito web e CLI per leggere notizie reali da Rai Televideo con uno stile
+mediavideo/teletext retro: sfondo nero, font monospace e palette di colori CRT.
 
 Il flusso principale e' la web app Django: un job interno scarica le Ultim'Ora
 Rai, salva tutto in SQLite e la pagina si aggiorna da sola mostrando le nuove
-notizie. Le lingue disponibili nella UI sono latino, italiano e inglese.
+notizie.
 
 ## Funzioni Principali
 
-- Web app Django con stile medievale curato, responsive e design system a token.
+- Web app Django con stile mediavideo retro curato, responsive e design system a token.
 - Notizie reali dal feed pubblico Rai Televideo RSS 101.
 - Categorie importate dalla pagina 104 di Televideo e notizie figlie nelle rispettive sezioni.
 - Barra di ricerca client-side per filtrare le notizie nella pagina principale.
@@ -17,6 +17,7 @@ notizie. Le lingue disponibili nella UI sono latino, italiano e inglese.
 - Paginazione automatica quando lo storico contiene molte notizie.
 - Pagina dedicata al SuperEnalotto da pagina 696, con storico estrazioni e andamento montepremi.
 - Sezioni Televideo dedicate per TV, cultura, ambiente/scienza, lavoro, sport, meteo, viaggi, giochi e regioni.
+- Mappa SVG interattiva dell'Italia nella sezione meteo: ogni regione e' cliccabile e apre il Televideo regionale.
 - Tabelle dati strutturate: classifica Serie A, risultati, palinsesto TV, Auditel, stazioni meteo, ruote Lotto.
 - Articoli multi-pagina: il parser fonde automaticamente le sottopagine Televideo in un unico articolo.
 - Cache SQLite delle pagine Televideo non-news, separata dallo storico notizie.
@@ -24,10 +25,8 @@ notizie. Le lingue disponibili nella UI sono latino, italiano e inglese.
 - Database SQLite persistente su volume esterno `/data`.
 - Job di aggiornamento automatico con worker paralleli (news + sezioni).
 - API JSON usata dalla pagina per aggiornarsi senza refresh manuale.
-- Traduzione on-demand di UI, notizie, sezioni, label e contenuti Televideo in latino, italiano e inglese.
-- Skeleton loading, retry automatico (3 tentativi) e pagine di errore 404/500.
+- Skeleton loading con effetto shimmer, retry automatico (3 tentativi) e pagine di errore 404/500.
 - Meta tag Open Graph / Twitter Card e favicon SVG.
-- Selettore lingua: `Latino`, `Italiano`, `English`.
 - Container Docker con Gunicorn, worker background e volume dati `/data`.
 - Makefile per build, run, test e salvataggio immagine in `/tmp`.
 - GitHub Action per build, push su GHCR e release del container.
@@ -71,8 +70,6 @@ services:
       NEWS_FETCH_LIMIT: "${NEWS_FETCH_LIMIT:-12}"
       CATEGORY_FETCH_LIMIT: "${CATEGORY_FETCH_LIMIT:-2}"
       TELETEXT_SECTION_REFRESH_SECONDS: "${TELETEXT_SECTION_REFRESH_SECONDS:-1800}"
-      TRANSLATION_TIMEOUT: "${TRANSLATION_TIMEOUT:-8}"
-      TRANSLATION_RETRIES: "${TRANSLATION_RETRIES:-1}"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-false}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-*}"
       DJANGO_CSRF_TRUSTED_ORIGINS: "${DJANGO_CSRF_TRUSTED_ORIGINS:-}"
@@ -98,8 +95,6 @@ NEWS_REFRESH_SECONDS=60
 NEWS_FETCH_LIMIT=12
 CATEGORY_FETCH_LIMIT=2
 TELETEXT_SECTION_REFRESH_SECONDS=1800
-TRANSLATION_TIMEOUT=8
-TRANSLATION_RETRIES=1
 
 DJANGO_DEBUG=false
 DJANGO_ADMIN_ENABLED=false
@@ -253,8 +248,6 @@ NEWS_REFRESH_SECONDS  frequenza aggiornamento notizie, default 60
 NEWS_FETCH_LIMIT      quante notizie conservare a ogni giro, default 12
 CATEGORY_FETCH_LIMIT  quante notizie importare per ogni categoria Televideo, default 2
 TELETEXT_SECTION_REFRESH_SECONDS frequenza cache sezioni Televideo dedicate, default 1800
-TRANSLATION_TIMEOUT   timeout traduttori online, default 8
-TRANSLATION_RETRIES   retry traduttori/feed, default 1
 DJANGO_DEBUG          debug Django, default false
 DJANGO_ALLOWED_HOSTS  host consentiti, default *
 DJANGO_CSRF_TRUSTED_ORIGINS origini HTTPS fidate per admin/form, es. https://dominio
@@ -301,8 +294,7 @@ Esempi di categorie:
 Ultim'Ora, Politica, Economia, Dall'Italia, Dal Mondo, Culture, Focus
 ```
 
-Puoi filtrare le notizie dalla barra categorie nella pagina web. Il selettore
-lingua cambia anche nomi delle categorie e testi dell'interfaccia.
+Puoi filtrare le notizie dalla barra categorie nella pagina web.
 
 Le categorie che Televideo pubblica vuote o senza pagine figlie vengono nascoste
 dall'interfaccia; se una categoria salvata nel browser non ha piu' notizie, il
@@ -334,7 +326,7 @@ separate, con cache SQLite propria e layout dedicato:
 /ambiente/    ambiente, scienza, salute, CNR, INAF, ASviS
 /lavoro/      concorsi, Gazzetta, formazione, agenzie, eventi lavoro
 /sport/       classifica Serie A con colori posizione + griglia risultati
-/meteo/       griglia stazioni meteo con barre temperatura
+/meteo/       mappa Italia interattiva, stazioni meteo, barre temperatura
 /viaggi/      viaggiare sicuri, FAI, Touring Club, itinerari, mare
 /giochi/      griglia ruote Lotto, SuperEnalotto e giochi Televideo
 /regioni/     Televideo regionale con selettore regione
@@ -357,7 +349,6 @@ http://localhost:8000/superenalotto/
 ```
 
 La pagina legge la pagina Televideo 696, salva l'estrazione in SQLite e mostra:
-
 - numero concorso e data;
 - combinazione vincente;
 - numero Jolly e SuperStar;
@@ -369,39 +360,21 @@ La pagina legge la pagina Televideo 696, salva l'estrazione in SQLite e mostra:
 Lo storico cresce mentre il container resta in funzione nei giorni successivi o
 quando viene riavviato con lo stesso volume `/data`.
 
-## Lingue E Traduzioni
-
-La pagina permette di cambiare lingua dal selettore globale:
-
-```text
-Latino    resa medievale latina
-Italiano  testo originale Televideo con cornice cronachistica
-English   traduzione inglese con cornice cronachistica
-```
-
-La traduzione copre UI, notizie, sezioni dedicate, label, tabelle e contenuti
-Televideo salvati nella cache. Le traduzioni usano endpoint gratuiti senza API
-key, con chunking dei testi lunghi e cache in-process:
-
-1. Google Translate endpoint non ufficiale.
-2. MyMemory.
-3. Fallback al testo originale se i servizi non rispondono.
-
 ## CLI Terminale
 
 La CLI resta disponibile:
 
 ```sh
 ./televideo
-./televideo --medievale 5
+./televideo 5
 ./televideo --search Papa
 ./televideo --news 3 --full
 ./televideo 100
 ./televideo 102 --capture
 ```
 
-Senza argomenti mostra la cronaca medievale live nel terminale. Passando un
-numero pagina, per esempio `100`, consulta invece la pagina Televideo classica.
+Senza argomenti mostra le notizie live nel terminale. Passando un numero
+pagina, per esempio `100`, consulta invece la pagina Televideo classica.
 
 ## Fonte Dati
 
@@ -469,11 +442,11 @@ web/news/services/                         servizi modulari
 web/news/services/constants.py             definizioni pagine e sezioni Televideo
 web/news/services/fetcher.py               fetch HTTP da endpoint Rai
 web/news/services/parser.py                parsing RSS e pagine Televideo
-web/news/services/translator.py            traduzioni latino/inglese
 web/news/services/updater.py               persistenza SQLite e logica aggiornamento
 web/news/templates/news/home.html          pagina principale
 web/news/templates/news/superenalotto.html pagina SuperEnalotto
 web/news/templates/news/regions.html       Televideo regionale
+web/news/templates/news/_meteo_map.html    mappa Italia interattiva SVG
 web/news/templates/news/section.html       base sezioni dedicate
 web/news/templates/news/section_*.html     layout specifici per TV, sport, meteo, cultura, giochi
 web/news/templates/news/error.html         pagine 404/500
@@ -505,9 +478,8 @@ docker run --rm -p 8000:8000 -v televideo-data:/data televideo-linux:latest
 ## Limiti Noti
 
 - Gli endpoint Rai sono pubblici ma non API garantite.
-- Gli endpoint gratuiti di traduzione possono cambiare o limitare il traffico.
-- Il latino e' una resa automatica medievaleggiante, non una traduzione filologica.
 - La release automatica richiede un runner self-hosted gia' registrato su GitHub.
+- SQLite in scrittura concorrente puo' dare sporadici lock con worker paralleli.
 
 ## Licenza
 

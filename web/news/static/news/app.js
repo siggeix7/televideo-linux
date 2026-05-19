@@ -82,9 +82,6 @@
             errorState.hidden = false;
             errorMessage.textContent = msg || ui.unknown_error || "Errore sconosciuto";
         }
-        if (statusText) {
-            statusText.textContent = (ui.error_prefix || "Errore:") + " " + (msg || "");
-        }
     }
 
     function renderCategories(categories) {
@@ -144,20 +141,28 @@
 
         grid.classList.remove("is-loading");
         grid.replaceChildren();
-        emptyState.hidden = payload.items.length > 0;
 
-        var statusPrefix = payload.error ? (ui.error_prefix || "Errore:") + " " : "";
-        statusText.textContent = statusPrefix + payload.error || ui.updated || "Notizie aggiornate";
-        lastRefresh.textContent = formatDate(payload.generated_at);
+        var hasError = !!payload.error;
+        hideError();
+        emptyState.hidden = true;
 
-        if (payload.error) {
+        if (hasError) {
             showError(payload.error);
-        } else {
-            hideError();
-            retryCount = 0;
+            statusText.textContent = (ui.error_prefix || "Errore:") + " " + payload.error;
+            lastRefresh.textContent = formatDate(payload.generated_at);
+            renderPagination(payload.pagination);
+            return;
         }
 
-        var grouped = new Map();
+        if (payload.items.length === 0) {
+            emptyState.hidden = false;
+            emptyState.querySelector("h2").textContent = ui.empty_title || "Nessuna notizia";
+            emptyState.querySelector("p").textContent = ui.empty_message || "";
+        }
+
+        statusText.textContent = ui.updated || "Notizie aggiornate";
+        lastRefresh.textContent = formatDate(payload.generated_at);
+        retryCount = 0;
         payload.items.forEach(function (item) {
             var key = item.category_code || "uncategorized";
             if (!grouped.has(key)) {
@@ -244,11 +249,15 @@
             grid.classList.remove("is-loading");
             grid.replaceChildren();
             emptyState.hidden = true;
+            var errMsg;
             if (error.name === "TimeoutError" || error.name === "AbortError") {
-                showError(ui.timeout_error || "Timeout: il server non risponde. Nuovo tentativo in corso...");
+                errMsg = ui.timeout_error || "Timeout";
+                showError(errMsg);
             } else {
-                showError(error.message);
+                errMsg = error.message;
+                showError(errMsg);
             }
+            statusText.textContent = (ui.error_prefix || "Errore:") + " " + errMsg;
 
             if (retryCount < MAX_RETRIES) {
                 retryCount++;
