@@ -652,8 +652,8 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
     padding: 0 8px 8px;
 }
 
-.italy-region { transition: fill 60ms var(--ease), stroke 60ms var(--ease); cursor: pointer; }
-.italy-region:hover { fill: rgba(0, 255, 0, 0.35) !important; stroke: var(--yellow) !important; stroke-width: 2 !important; }
+.italy-region { transition: fill 80ms var(--ease), stroke 80ms var(--ease); cursor: pointer; }
+.italy-region:hover { fill: rgba(0,255,0,0.5) !important; stroke: var(--yellow) !important; stroke-width: 2 !important; }
 
 .toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 10px; border-color: var(--border-dim); margin-bottom: 10px; }
 .empty-state,

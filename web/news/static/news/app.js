@@ -163,6 +163,8 @@
         statusText.textContent = ui.updated || "Notizie aggiornate";
         lastRefresh.textContent = formatDate(payload.generated_at);
         retryCount = 0;
+
+        var grouped = new Map();
         payload.items.forEach(function (item) {
             var key = item.category_code || "uncategorized";
             if (!grouped.has(key)) {
