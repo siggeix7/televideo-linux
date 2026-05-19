@@ -16,9 +16,13 @@
     {% endfor %}
     {% endif %}
 
+    {% if data.cards %}
+    <div class="content-grid">
     {% for card in data.cards %}
         {% include "news/_content_card.html" with card=card %}
     {% endfor %}
+    </div>
+    {% endif %}
 
     {% if not data.articles and not data.cards %}
     <div class="empty-state">

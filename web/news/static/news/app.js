@@ -69,6 +69,7 @@
 
     function showSkeletons(count) {
         if (!skeletonTemplate) return;
+        grid.classList.add("is-loading");
         grid.replaceChildren();
         for (var i = 0; i < count; i++) {
             grid.appendChild(skeletonTemplate.content.firstElementChild.cloneNode(true));
@@ -144,6 +145,7 @@
         applyUi(payload.ui);
         renderCategories(payload.categories || []);
 
+        grid.classList.remove("is-loading");
         grid.replaceChildren();
         emptyState.hidden = payload.items.length > 0;
 
@@ -158,24 +160,62 @@
             retryCount = 0;
         }
 
+        var grouped = new Map();
         payload.items.forEach(function (item) {
-            var node = template.content.firstElementChild.cloneNode(true);
-            node.querySelector(".news-card__ribbon").textContent = ui.card_ribbon || "Novella";
-            node.querySelector("h2").textContent = item.title;
-            node.querySelector(".news-card__meta").textContent = item.published || "Ultim'Ora Rai Televideo";
-            node.querySelector(".news-card__category").textContent = item.category_name
-                ? (ui.category_prefix || "Categoria:") + " " + item.category_name
-                : "";
-            node.querySelector(".news-card__source").textContent =
-                item.source_title && item.source_title !== item.title
-                    ? (ui.source_prefix || "Titolo originale:") + " " + item.source_title
-                    : "";
-            node.querySelector(".news-card__summary").textContent = item.summary;
-            if (!firstRender && !seen.has(item.id)) {
-                node.classList.add("is-new");
+            var key = item.category_code || "uncategorized";
+            if (!grouped.has(key)) {
+                grouped.set(key, {
+                    name: item.category_name || ui.all_categories || "Tutte",
+                    items: [],
+                });
             }
-            seen.add(item.id);
-            grid.appendChild(node);
+            grouped.get(key).items.push(item);
+        });
+
+        var absoluteIndex = 0;
+        grouped.forEach(function (group) {
+            var section = document.createElement("section");
+            section.className = "news-group";
+
+            var header = document.createElement("div");
+            header.className = "news-group__header";
+            var title = document.createElement("h2");
+            title.textContent = group.name;
+            var count = document.createElement("span");
+            count.textContent = String(group.items.length);
+            header.appendChild(title);
+            header.appendChild(count);
+
+            var cards = document.createElement("div");
+            cards.className = "news-group__grid";
+
+            group.items.forEach(function (item) {
+                var node = template.content.firstElementChild.cloneNode(true);
+                if (absoluteIndex === 0) {
+                    node.classList.add("news-card--lead");
+                }
+                node.querySelector(".news-card__ribbon").textContent = ui.card_ribbon || "Novella";
+                node.querySelector("h2").textContent = item.title;
+                node.querySelector(".news-card__meta").textContent = item.published || "Ultim'Ora Rai Televideo";
+                node.querySelector(".news-card__category").textContent = item.category_name
+                    ? (ui.category_prefix || "Categoria:") + " " + item.category_name
+                    : "";
+                node.querySelector(".news-card__source").textContent =
+                    item.source_title && item.source_title !== item.title
+                        ? (ui.source_prefix || "Titolo originale:") + " " + item.source_title
+                        : "";
+                node.querySelector(".news-card__summary").textContent = item.summary;
+                if (!firstRender && !seen.has(item.id)) {
+                    node.classList.add("is-new");
+                }
+                seen.add(item.id);
+                cards.appendChild(node);
+                absoluteIndex++;
+            });
+
+            section.appendChild(header);
+            section.appendChild(cards);
+            grid.appendChild(section);
         });
 
         renderPagination(payload.pagination);
@@ -204,6 +244,7 @@
             renderNews(await response.json());
         } catch (error) {
             loading = false;
+            grid.classList.remove("is-loading");
             grid.replaceChildren();
             emptyState.hidden = true;
             if (error.name === "TimeoutError" || error.name === "AbortError") {
@@ -245,6 +286,12 @@
                     var match = !query || text.indexOf(query) !== -1;
                     card.style.display = match ? "" : "none";
                     if (match) visible++;
+                });
+                grid.querySelectorAll(".news-group").forEach(function (group) {
+                    var hasVisibleCards = Array.from(group.querySelectorAll(".news-card:not(.skeleton)")).some(function (card) {
+                        return card.style.display !== "none";
+                    });
+                    group.hidden = !hasVisibleCards;
                 });
                 if (query && visible === 0 && cards.length > 0) {
                     emptyState.hidden = false;

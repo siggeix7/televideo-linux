@@ -60,9 +60,13 @@
     </section>
     {% endif %}
 
+    {% if data.cards %}
+    <div class="content-grid">
     {% for card in data.cards %}
         {% include "news/_content_card.html" with card=card %}
     {% endfor %}
+    </div>
+    {% endif %}
 
     {% if not latest_superenalotto and not data.lotto and not latest_lotto and not data.cards %}
     <div class="empty-state">

@@ -7,6 +7,7 @@
     <p class="section-note">{{ data.round_info }}</p>
     {% endif %}
 
+    <div class="sport-layout">
     {% if data.standings %}
     <section class="standings-card">
         <div class="standings-header">
@@ -59,11 +60,16 @@
         </div>
     </section>
     {% endif %}
+    </div>
     {% endif %}
 
+    {% if data.cards %}
+    <div class="content-grid">
     {% for card in data.cards %}
         {% include "news/_content_card.html" with card=card %}
     {% endfor %}
+    </div>
+    {% endif %}
 
     {% if not data.standings and not data.results and not data.cards %}
     <div class="empty-state">

@@ -9,9 +9,11 @@
 
 <main class="section-stack">
     {% if data.cards %}
+        <div class="content-grid content-grid--regional">
         {% for card in data.cards %}
             {% include "news/_content_card.html" with card=card %}
         {% endfor %}
+        </div>
     {% else %}
     <div class="empty-state">
         <h2>{{ ui.section_empty_title }}</h2>

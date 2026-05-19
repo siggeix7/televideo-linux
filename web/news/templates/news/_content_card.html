@@ -1,4 +1,4 @@
-<article class="content-card{% if card.content_kind == 'article' %} content-card--article{% endif %}">
+<article class="content-card content-card--{{ card.content_kind }}{% if card.content_kind == 'article' %} content-card--article{% endif %}">
     <div class="content-card__meta">
         <span>{{ ui.page_label }} {{ card.page }}{% if card.subpages %}/{{ card.subpages|join:", " }}{% elif card.subpage %}/{{ card.subpage }}{% endif %}</span>
         {% if card.label %}<span>{{ card.label }}</span>{% endif %}

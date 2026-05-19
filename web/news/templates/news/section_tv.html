@@ -2,6 +2,8 @@
 
 {% block section_content %}
 <main class="section-stack">
+    {% if data.films or data.auditel %}
+    <div class="section-mosaic section-mosaic--tv">
     {% if data.films %}
     <section class="schedule-card">
         <h2>{{ ui.film_schedule_title }}</h2>
@@ -26,6 +28,7 @@
     {% endif %}
 
     {% if data.auditel %}
+    <div class="metric-stack">
     {% for aud in data.auditel %}
     <section class="content-card">
         <h2>{{ aud.label }}</h2>
@@ -45,11 +48,18 @@
         </div>
     </section>
     {% endfor %}
+    </div>
+    {% endif %}
+    </div>
     {% endif %}
 
+    {% if data.cards %}
+    <div class="content-grid">
     {% for card in data.cards %}
         {% include "news/_content_card.html" with card=card %}
     {% endfor %}
+    </div>
+    {% endif %}
 
     {% if not data.films and not data.auditel and not data.cards %}
     <div class="empty-state">

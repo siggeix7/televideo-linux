@@ -25,30 +25,34 @@
             </div>
         </header>
 
-        <div class="search-bar">
-            <input type="search" id="search-input" class="search-bar__input" placeholder="{{ ui.search_placeholder }}" aria-label="{{ ui.search_placeholder }}" data-ui-placeholder="search_placeholder">
+        <div class="home-controls">
+            <div class="home-controls__filters">
+                <div class="search-bar">
+                    <input type="search" id="search-input" class="search-bar__input" placeholder="{{ ui.search_placeholder }}" aria-label="{{ ui.search_placeholder }}" data-ui-placeholder="search_placeholder">
+                </div>
+
+                <section class="category-panel" aria-label="{{ ui.categories_title }}">
+                    <h2 data-ui="categories_title">{{ ui.categories_title }}</h2>
+                    <div id="category-list" class="category-list">
+                        <span class="skeleton skeleton--pill"></span>
+                    </div>
+                </section>
+            </div>
+
+            <section class="status-panel status-panel--home" aria-live="polite">
+                <div>
+                    <span class="status-label" data-ui="status_label">{{ ui.status_label }}</span>
+                    <strong id="status-text" data-ui="loading">{{ ui.loading }}</strong>
+                </div>
+                <div>
+                    <span class="status-label" data-ui="last_reading">{{ ui.last_reading }}</span>
+                    <strong id="last-refresh" data-ui="waiting">{{ ui.waiting }}</strong>
+                </div>
+            </section>
         </div>
 
-        <section class="category-panel" aria-label="{{ ui.categories_title }}">
-            <h2 data-ui="categories_title">{{ ui.categories_title }}</h2>
-            <div id="category-list" class="category-list">
-                <span class="skeleton skeleton--pill"></span>
-            </div>
-        </section>
-
-        <section class="status-panel" aria-live="polite">
-            <div>
-                <span class="status-label" data-ui="status_label">{{ ui.status_label }}</span>
-                <strong id="status-text" data-ui="loading">{{ ui.loading }}</strong>
-            </div>
-            <div>
-                <span class="status-label" data-ui="last_reading">{{ ui.last_reading }}</span>
-                <strong id="last-refresh" data-ui="waiting">{{ ui.waiting }}</strong>
-            </div>
-        </section>
-
         <main>
-            <section id="news-grid" class="news-grid" aria-live="polite" aria-label="Notizie">
+            <section id="news-grid" class="news-grid" aria-live="polite" aria-label="{{ ui.news_link }}">
                 <article class="news-card skeleton skeleton--card" aria-hidden="true">
                     <div class="skeleton skeleton--text skeleton--short"></div>
                     <div class="skeleton skeleton--title"></div>
