@@ -9,23 +9,29 @@ notizie. Le lingue disponibili nella UI sono latino, italiano e inglese.
 
 ## Funzioni Principali
 
-- Web app Django con stile medievale curato e responsive.
+- Web app Django con stile medievale curato, responsive e design system a token.
 - Notizie reali dal feed pubblico Rai Televideo RSS 101.
 - Categorie importate dalla pagina 104 di Televideo e notizie figlie nelle rispettive sezioni.
+- Barra di ricerca client-side per filtrare le notizie nella pagina principale.
 - Storico notizie persistente: le notizie restano salvate anche dopo che spariscono da Televideo.
 - Paginazione automatica quando lo storico contiene molte notizie.
 - Pagina dedicata al SuperEnalotto da pagina 696, con storico estrazioni e andamento montepremi.
 - Sezioni Televideo dedicate per TV, cultura, ambiente/scienza, lavoro, sport, meteo, viaggi, giochi e regioni.
+- Tabelle dati strutturate: classifica Serie A, risultati, palinsesto TV, Auditel, stazioni meteo, ruote Lotto.
+- Articoli multi-pagina: il parser fonde automaticamente le sottopagine Televideo in un unico articolo.
 - Cache SQLite delle pagine Televideo non-news, separata dallo storico notizie.
 - Lotto da pagina 691 con parsing delle ruote e SuperEnalotto nella pagina giochi.
 - Database SQLite persistente su volume esterno `/data`.
-- Job di aggiornamento automatico eseguibile in loop.
+- Job di aggiornamento automatico con worker paralleli (news + sezioni).
 - API JSON usata dalla pagina per aggiornarsi senza refresh manuale.
+- Skeleton loading, retry automatico (3 tentativi) e pagine di errore 404/500.
+- Meta tag Open Graph / Twitter Card e favicon SVG.
 - Selettore lingua: `Latino`, `Italiano`, `English`.
-- Container Docker con Gunicorn, job di fetch e volume dati `/data`.
+- Container Docker con Gunicorn, worker background e volume dati `/data`.
 - Makefile per build, run, test e salvataggio immagine in `/tmp`.
 - GitHub Action per build, push su GHCR e release del container.
 - CLI `./televideo` ancora disponibile per uso terminale.
+- Test automatizzati: modelli Django e viste (19 test).
 
 ## Avvio Con Docker
 
@@ -267,7 +273,7 @@ Il container avvia automaticamente:
 1. Controllo piano migrazioni Django.
 2. Migrazioni Django non distruttive sul database presente in `/data`.
 3. Primo fetch di notizie, categorie e SuperEnalotto.
-4. Worker in background per aggiornare SQLite.
+4. Worker in background per aggiornare SQLite (news e sezioni in parallelo).
 5. Gunicorn per servire la web app.
 
 Il database non viene cancellato dall'entrypoint. Se `/data/chronica.sqlite3`
@@ -322,20 +328,24 @@ Le pagine Televideo non adatte a diventare notizie sono integrate in sezioni
 separate, con cache SQLite propria e layout dedicato:
 
 ```text
-/tv/          guida TV, prima serata, film, canali Rai, Auditel, radio
-/cultura/     libri, cinema, teatro, concerti, eventi, mostre
+/tv/          guida TV con card film, palinsesto, Auditel, radio
+/cultura/     libri, cinema, teatro, concerti, eventi, mostre (articoli multi-pagina)
 /ambiente/    ambiente, scienza, salute, CNR, INAF, ASviS
 /lavoro/      concorsi, Gazzetta, formazione, agenzie, eventi lavoro
-/sport/       risultati, classifiche, calendari, club, altri sport
-/meteo/       previsioni, temperature, aeroporti, mari, venti
+/sport/       classifica Serie A con colori posizione + griglia risultati
+/meteo/       griglia stazioni meteo con barre temperatura
 /viaggi/      viaggiare sicuri, FAI, Touring Club, itinerari, mare
-/giochi/      SuperEnalotto, Lotto e pagine giochi Televideo
+/giochi/      griglia ruote Lotto, SuperEnalotto e giochi Televideo
 /regioni/     Televideo regionale con selettore regione
 ```
 
-Queste sezioni non vengono mischiate con la cronaca principale. Le pagine
-tabellari, come meteo o classifiche sportive, sono mostrate preservando il
-layout monospace originale; le rubriche testuali sono mostrate come schede.
+Queste sezioni non vengono mischiate con la cronaca principale. I dati
+vengono parsati lato server dai formatters (classifica, risultati, palinsesto,
+meteo, Lotto, Auditel) e mostrati in tabelle e card strutturate.
+
+Le pagine sezioni rispondono in ~150ms grazie alla cache SQLite pre-popolata
+dal worker `fetch_sections`, invece dei 30+ secondi di una chiamata diretta
+agli endpoint Rai.
 
 ## SuperEnalotto
 
@@ -446,21 +456,31 @@ installato e l'utente del runner deve poter eseguire `docker build` e
 ## Architettura
 
 ```text
-televideo                         CLI Python
-web/manage.py                     entrypoint Django
-web/chronica/                     progetto Django
-web/news/                         app notizie, API, job e template
-web/news/services.py              fetch RSS, sezioni Televideo, traduzioni, persistenza SQLite
-web/news/templates/news/home.html pagina web
+televideo                                  CLI Python
+web/manage.py                              entrypoint Django
+web/chronica/                              progetto Django
+web/news/                                  app notizie, API, job e template
+web/news/formatters.py                     parser strutturati: Serie A, TV, meteo, Lotto, Auditel
+web/news/models.py                         modelli Django (NewsItem, Category, SuperEnalotto, Lotto, Snapshot)
+web/news/services/                         servizi modulari
+web/news/services/constants.py             definizioni pagine e sezioni Televideo
+web/news/services/fetcher.py               fetch HTTP da endpoint Rai
+web/news/services/parser.py                parsing RSS e pagine Televideo
+web/news/services/translator.py            traduzioni latino/inglese
+web/news/services/updater.py               persistenza SQLite e logica aggiornamento
+web/news/templates/news/home.html          pagina principale
 web/news/templates/news/superenalotto.html pagina SuperEnalotto
-web/news/templates/news/section.html sezioni dedicate Televideo
-web/news/templates/news/regions.html Televideo regionale
-web/news/templates/news/games.html Lotto e giochi
-web/news/static/news/             CSS e JavaScript
-Dockerfile                        immagine applicativa
-docker-compose.yml                compose consigliato con /opt/televideo-docker
-docker/entrypoint.sh              migrazioni, worker e Gunicorn
-Makefile                          build/run/test/save
+web/news/templates/news/games.html         Lotto e giochi
+web/news/templates/news/regions.html       Televideo regionale
+web/news/templates/news/section.html       base sezioni dedicate
+web/news/templates/news/section_*.html     layout specifici per TV, sport, meteo, cultura, giochi
+web/news/templates/news/error.html         pagine 404/500
+web/news/static/news/                      CSS e JavaScript
+web/news/tests/                            test modelli e viste (19 test)
+Dockerfile                                 immagine applicativa
+docker-compose.yml                         compose consigliato con /opt/televideo-docker
+docker/entrypoint.sh                       migrazioni, worker paralleli e Gunicorn
+Makefile                                   build/run/test/save
 ```
 
 ## Verifica
@@ -474,6 +494,7 @@ python web/manage.py makemigrations --check --dry-run
 python web/manage.py migrate --noinput
 python web/manage.py fetch_televideo --once --limit 3
 python web/manage.py collectstatic --noinput
+python web/manage.py test news
 make test
 make save
 docker run --rm -p 8000:8000 -v televideo-data:/data televideo-linux:latest
