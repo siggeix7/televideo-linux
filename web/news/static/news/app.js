@@ -236,6 +236,32 @@
         loadNews();
     });
 
+    var searchInput = document.getElementById("search-input");
+    if (searchInput) {
+        var searchTimeout;
+        searchInput.addEventListener("input", function () {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(function () {
+                var query = searchInput.value.toLowerCase().trim();
+                var cards = grid.querySelectorAll(".news-card:not(.skeleton)");
+                var visible = 0;
+                cards.forEach(function (card) {
+                    var text = (card.textContent || "").toLowerCase();
+                    var match = !query || text.indexOf(query) !== -1;
+                    card.style.display = match ? "" : "none";
+                    if (match) visible++;
+                });
+                if (query && visible === 0 && cards.length > 0) {
+                    emptyState.hidden = false;
+                    emptyState.querySelector("h2").textContent = "Nessun risultato";
+                    emptyState.querySelector("p").textContent = 'Nessuna notizia contiene "' + query + '".';
+                } else if (!query) {
+                    emptyState.hidden = true;
+                }
+            }, 200);
+        });
+    }
+
     setActiveLanguage();
     loadNews();
     setInterval(function () {

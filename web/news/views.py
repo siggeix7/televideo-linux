@@ -8,6 +8,19 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
 
+from .formatters import (
+    format_date_televideo,
+    merge_snapshot_pages,
+    parse_article_multipage,
+    parse_auditel,
+    parse_film_schedule,
+    parse_lotto_results,
+    parse_match_results,
+    parse_round_info,
+    parse_serie_a_standings,
+    parse_temperatures,
+    parse_weather_observation,
+)
 from .models import Category, LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
 from .services import (
     REGION_CHOICES,
@@ -193,7 +206,6 @@ def snapshot_payload(snapshot: TelevideoPageSnapshot) -> dict[str, object]:
         "raw_text": snapshot.raw_text,
         "paragraphs": paragraphs,
         "fetched_at": snapshot.fetched_at,
-        "render_pre": snapshot.content_kind in {"index", "schedule", "table", "weather"},
     }
 
 
@@ -204,6 +216,102 @@ def section_snapshots(section: str, region: str = "") -> list[dict[str, object]]
         "subpage",
     )
     return [snapshot_payload(snapshot) for snapshot in queryset]
+
+
+def formatted_section_data(section: str, region: str = "") -> dict:
+    """Build structured/formatted data for a section using the formatters."""
+    raw_snapshots = section_snapshots(section, region)
+    merged = merge_snapshot_pages(raw_snapshots)
+
+    data: dict = {
+        "raw": raw_snapshots,
+        "merged": merged,
+        "standings": None,
+        "results": None,
+        "films": [],
+        "weather_stations": [],
+        "temperatures": [],
+        "auditel": [],
+        "lotto": None,
+        "articles": [],
+        "round_info": None,
+    }
+
+    for snap in merged:
+        raw = snap.get("all_text", snap.get("raw_text", ""))
+        page = snap.get("page")
+
+        # Serie A standings
+        if section == "sport" and page == 203:
+            s = parse_serie_a_standings(raw)
+            if s:
+                data["standings"] = s
+
+        # Match results
+        if section == "sport" and page == 202:
+            r = parse_match_results(raw)
+            if r:
+                data["results"] = r
+            ri = parse_round_info(raw)
+            if ri:
+                data["round_info"] = ri
+
+        # Film schedules
+        if section == "tv" and page in (514, 515):
+            films = parse_film_schedule(raw)
+            if films:
+                data["films"].extend(films)
+
+        # Weather observations
+        if section == "meteo" and page in (702, 703, 704, 705, 706, 707, 708, 709):
+            stations = parse_weather_observation(raw)
+            if stations:
+                data["weather_stations"].append({
+                    "page": page,
+                    "label": snap.get("label", ""),
+                    "stations": stations,
+                })
+
+        # Temperatures
+        if section == "meteo" and page in (711, 712):
+            temps = parse_temperatures(raw)
+            if temps:
+                data["temperatures"].append({
+                    "page": page,
+                    "label": snap.get("label", ""),
+                    "cities": temps,
+                })
+
+        # Auditel
+        if section == "tv" and page in (531, 532, 533):
+            aud = parse_auditel(raw)
+            if aud:
+                data["auditel"].append({
+                    "page": page,
+                    "label": snap.get("label", ""),
+                    "rows": aud,
+                })
+
+        # Lotto
+        if section == "giochi" and page in (691, 692):
+            lotto = parse_lotto_results(raw)
+            if lotto:
+                lotto["page"] = page
+                lotto["label"] = snap.get("label", "")
+                data["lotto"] = lotto
+
+        # Multi-page articles (cultura section)
+        if snap.get("content_kind") == "article":
+            pages_for_article = [s for s in raw_snapshots if s["page"] == page]
+            if len(pages_for_article) > 1:
+                article = parse_article_multipage(pages_for_article)
+                if article:
+                    article["page"] = page
+                    article["label"] = snap.get("label", "")
+                    article["title"] = article.get("title") or snap.get("title", "")
+                    data["articles"].append(article)
+
+    return data
 
 
 def parse_limit(value: str | None, default: int = 18) -> int:
@@ -266,22 +374,25 @@ def televideo_section(request, section: str, active: str):
         raise Http404("Sezione non trovata")
     definition = section_definition(section)
     refresh_section_if_stale(section)
-    snapshots = section_snapshots(section)
-    latest = max((card["fetched_at"] for card in snapshots), default=None)
-    return render(
-        request,
-        "news/section.html",
-        {
-            "section": {**definition, "key": section},
-            "cards": snapshots,
-            "latest": latest,
-            "nav_items": nav_items(active),
-            "language": language,
-            "languages": LANGUAGES,
-            "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
-            "ui": ui_for(language),
-        },
-    )
+    formatted = formatted_section_data(section)
+    latest = max((card["fetched_at"] for card in formatted["raw"]), default=None)
+    ctx = {
+        "section": {**definition, "key": section},
+        "data": formatted,
+        "latest": latest,
+        "nav_items": nav_items(active),
+        "language": language,
+        "languages": LANGUAGES,
+        "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
+        "ui": ui_for(language),
+    }
+    specific = f"news/section_{section}.html"
+    try:
+        from django.template.loader import get_template
+        get_template(specific)
+        return render(request, specific, ctx)
+    except Exception:
+        return render(request, "news/section.html", ctx)
 
 
 def tv(request):
@@ -315,16 +426,16 @@ def travel(request):
 def games(request):
     language = normalize_language(request.GET.get("lang"))
     refresh_section_if_stale("giochi")
+    formatted = formatted_section_data("giochi")
+    latest = max((card["fetched_at"] for card in formatted["raw"]), default=None)
     latest_superenalotto = SuperEnalottoDraw.objects.first()
     latest_lotto = LottoDraw.objects.first()
-    snapshots = section_snapshots("giochi")
-    latest = max((card["fetched_at"] for card in snapshots), default=None)
     return render(
         request,
-        "news/games.html",
+        "news/section_giochi.html",
         {
             "section": {**section_definition("giochi"), "key": "giochi"},
-            "cards": snapshots,
+            "data": formatted,
             "latest": latest,
             "latest_superenalotto": latest_superenalotto,
             "latest_lotto": latest_lotto,
@@ -341,8 +452,8 @@ def regions(request, region_slug_value: str | None = None):
     language = normalize_language(request.GET.get("lang"))
     selected_region = normalize_region(region_slug_value or request.GET.get("regione"))
     refresh_section_if_stale("regioni", selected_region)
-    snapshots = section_snapshots("regioni", selected_region)
-    latest = max((card["fetched_at"] for card in snapshots), default=None)
+    formatted = formatted_section_data("regioni", selected_region)
+    latest = max((card["fetched_at"] for card in formatted["raw"]), default=None)
     regions_payload = [
         {
             "name": region,
@@ -357,7 +468,7 @@ def regions(request, region_slug_value: str | None = None):
         "news/regions.html",
         {
             "section": {**section_definition("regioni"), "key": "regioni", "title": f"Televideo {selected_region}"},
-            "cards": snapshots,
+            "data": formatted,
             "latest": latest,
             "regions": regions_payload,
             "selected_region": selected_region,

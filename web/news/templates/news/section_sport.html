@@ -1,0 +1,90 @@
+{% extends "news/_section_base.html" %}
+
+{% block section_content %}
+<main>
+    {% if data.standings or data.results %}
+    {% if data.round_info %}
+    <p class="eyebrow" style="margin-bottom:8px">{{ data.round_info }}</p>
+    {% endif %}
+
+    {% if data.standings %}
+    <section class="standings-card">
+        <div class="standings-header">
+            <h2>Classifica Serie A</h2>
+            {% if data.round_info %}<span style="color:var(--muted);font-size:.82rem">{{ data.round_info }}</span>{% endif %}
+        </div>
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th><th>Squadra</th><th class="right">Pt</th>
+                        <th class="right">V</th><th class="right">P</th><th class="right">S</th>
+                        <th class="right">GF</th><th class="right">GS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data.standings %}
+                    <tr class="{% if forloop.counter <= 1 %}highlight{% endif %}">
+                        <td>
+                            <span class="standings-pos {% if forloop.counter == 1 %}pos-1{% elif forloop.counter <= 4 %}pos-2{% endif %}">
+                                {{ forloop.counter }}
+                            </span>
+                        </td>
+                        <td class="team">{{ row.team }}</td>
+                        <td class="right">{{ row.pts }}</td>
+                        <td class="right">{{ row.w }}</td>
+                        <td class="right">{{ row.d }}</td>
+                        <td class="right">{{ row.l }}</td>
+                        <td class="right">{{ row.gf }}</td>
+                        <td class="right">{{ row.gs }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if data.results %}
+    <section class="results-card" style="margin-top:12px">
+        <h2>Ultimi risultati</h2>
+        <div class="results-list">
+            {% for match in data.results %}
+            <div class="result-item">
+                <span class="home">{{ match.home }}</span>
+                <span class="score">{{ match.score }}</span>
+                <span class="away">{{ match.away }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+    {% endif %}
+
+    {% for snap in data.merged %}
+        {% if snap.content_kind == "article" and snap.page not in "200 202 203" %}
+        <article class="article-card" style="margin-top:12px">
+            <h2>{{ snap.title }}</h2>
+            <div class="article-card__body">{{ snap.all_text|linebreaksbr }}</div>
+            <div class="article-card__meta">Pagina {{ snap.page }}{% if snap.subpage %}/{{ snap.subpage|join:", " }}{% endif %}</div>
+            <a class="news-card__link" href="{{ snap.source_url }}" rel="noopener noreferrer" target="_blank">Apri su Televideo &nearr;</a>
+        </article>
+        {% elif snap.content_kind == "table" and snap.page not in "202 203" %}
+        <section class="content-card" style="margin-top:12px">
+            <h2>{{ snap.title }}</h2>
+            <div class="table-wrap">
+                <pre style="font:.82rem/1.4 var(--font-mono);color:var(--ink-soft);white-space:pre-wrap;background:var(--surface-deep);padding:12px;border-radius:8px;border:1px dashed var(--border-light);margin:0">{{ snap.all_text }}</pre>
+            </div>
+            <a class="news-card__link" href="{{ snap.source_url }}" rel="noopener noreferrer" target="_blank">Apri su Televideo &nearr;</a>
+        </section>
+        {% endif %}
+    {% endfor %}
+
+    {% if not data.standings and not data.results and not data.merged %}
+    <div class="empty-state">
+        <h2>Nessun dato sportivo disponibile</h2>
+        <p>I dati non sono ancora stati recuperati da Rai Televideo.</p>
+    </div>
+    {% endif %}
+</main>
+{% endblock %}

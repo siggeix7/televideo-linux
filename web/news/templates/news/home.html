@@ -19,8 +19,11 @@
         </header>
 
         {% include "news/_site_nav.html" %}
-
         {% include "news/_language_dropdown.html" %}
+
+        <div class="search-bar">
+            <input type="search" id="search-input" class="search-bar__input" placeholder="Cerca nelle notizie..." aria-label="Cerca notizie">
+        </div>
 
         <section class="category-panel" aria-label="{{ ui.categories_title }}">
             <h2 data-ui="categories_title">{{ ui.categories_title }}</h2>

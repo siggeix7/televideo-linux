@@ -1,62 +1,22 @@
-{% load static %}
-<!doctype html>
-<html lang="{{ ui.html_lang }}">
-<head>
-    {% include "news/_head.html" with title_og=section.title %}
-    <title>{{ section.title }} &mdash; Televideo News</title>
-    <link rel="stylesheet" href="{% static 'news/styles.css' %}">
-</head>
-<body>
-    <div class="page-shell">
-        <header class="hero hero--compact">
-            <div class="hero__copy">
-                <p class="eyebrow">{{ section.eyebrow }}</p>
-                <h1>{{ section.title }}</h1>
-                <p class="lede">{{ section.lede }}</p>
-            </div>
-            <div class="seal" aria-hidden="true">{{ section.seal }}</div>
-        </header>
+{% extends "news/_section_base.html" %}
 
-        {% include "news/_site_nav.html" %}
-        {% include "news/_language_dropdown.html" %}
-
-        <section class="status-panel" aria-live="polite">
-            <div>
-                <span class="status-label">Fonte</span>
-                <strong>Rai Televideo</strong>
-            </div>
-            <div>
-                <span class="status-label">Ultimo aggiornamento</span>
-                <strong>{% if latest %}{{ latest|date:"d/m/Y H:i" }}{% else %}in attesa{% endif %}</strong>
-            </div>
-        </section>
-
-        <main>
-            {% if cards %}
-                <section id="section-grid" class="news-grid" aria-label="{{ section.title }}">
-                    {% for card in cards %}
-                        <article class="news-card">
-                            <div class="news-card__ribbon">Pagina {{ card.page }}/{{ card.subpage }}</div>
-                            <h2>{{ card.title }}</h2>
-                            <p class="news-card__category">{{ card.label }}</p>
-                            {% if card.render_pre %}
-                                <pre class="section-card__pre">{{ card.raw_text }}</pre>
-                            {% else %}
-                                <p class="news-card__summary">{{ card.raw_text|linebreaksbr }}</p>
-                            {% endif %}
-                            <a class="news-card__link" href="{{ card.source_url }}" rel="noopener noreferrer" target="_blank">Apri pagina Televideo &nearr;</a>
-                        </article>
-                    {% endfor %}
-                </section>
-            {% else %}
-                <div class="empty-state">
-                    <h2>Nessun contenuto disponibile</h2>
-                    <p>La sezione non ha ancora risposto oppure la cache non &egrave; stata popolata.</p>
-                </div>
-            {% endif %}
-        </main>
-
-        {% include "news/_footer.html" %}
+{% block section_content %}
+<main>
+    {% if data.merged %}
+        {% for snap in data.merged %}
+        <article class="news-card" style="margin-bottom:14px">
+            <div class="news-card__ribbon">Pagina {{ snap.page }}{% if snap.subpage %}/{{ snap.subpage|join:", " }}{% endif %}</div>
+            <h2>{{ snap.title }}</h2>
+            <p class="news-card__category">{{ snap.label }}</p>
+            <pre style="font:.82rem/1.4 var(--font-mono);color:var(--ink-soft);white-space:pre-wrap;background:var(--surface-deep);padding:12px;border-radius:8px;border:1px dashed var(--border-light);margin:10px 0">{{ snap.all_text }}</pre>
+            <a class="news-card__link" href="{{ snap.source_url }}" rel="noopener noreferrer" target="_blank">Apri su Televideo &nearr;</a>
+        </article>
+        {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <h2>Nessun contenuto disponibile</h2>
+        <p>La sezione non ha ancora risposto oppure la cache non e stata popolata.</p>
     </div>
-</body>
-</html>
+    {% endif %}
+</main>
+{% endblock %}

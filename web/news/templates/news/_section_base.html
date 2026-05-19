@@ -1,0 +1,41 @@
+{% load static %}
+<!doctype html>
+<html lang="{{ ui.html_lang }}">
+<head>
+    {% include "news/_head.html" with title_og=section.title %}
+    <title>{{ section.title }} &mdash; Televideo News</title>
+    <link rel="stylesheet" href="{% static 'news/styles.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <div class="page-shell">
+        <header class="hero hero--compact">
+            <div class="hero__copy">
+                <p class="eyebrow">{{ section.eyebrow }}</p>
+                <h1>{{ section.title }}</h1>
+                <p class="lede">{{ section.lede }}</p>
+            </div>
+            <div class="seal" aria-hidden="true">{{ section.seal }}</div>
+        </header>
+
+        {% include "news/_site_nav.html" %}
+        {% include "news/_language_dropdown.html" %}
+
+        <section class="status-panel" aria-live="polite">
+            <div>
+                <span class="status-label">Fonte</span>
+                <strong>Rai Televideo</strong>
+            </div>
+            <div>
+                <span class="status-label">Ultimo aggiornamento</span>
+                <strong>{% if latest %}{{ latest|date:"d/m/Y H:i" }}{% else %}in attesa{% endif %}</strong>
+            </div>
+        </section>
+
+        {% block section_content %}{% endblock %}
+
+        {% include "news/_footer.html" %}
+    </div>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
