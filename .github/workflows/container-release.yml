@@ -44,6 +44,8 @@ jobs:
         shell: bash
         run: |
           docker build \
+            --provenance=false \
+            --sbom=false \
             -t "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}" \
             -t "${{ steps.meta.outputs.image }}:latest" \
             .
