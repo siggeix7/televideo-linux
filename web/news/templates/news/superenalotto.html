@@ -8,6 +8,7 @@
     <script defer src="{% static 'news/superenalotto.js' %}"></script>
 </head>
 <body data-api-url="{% url 'news:superenalotto_api' %}" data-initial-language="{{ language }}" data-refresh-seconds="{{ refresh_seconds }}" data-timeout-error="{{ ui.timeout_error }}" data-unknown-error="{{ ui.unknown_error }}">
+    <a href="#main" class="skip-link">{{ ui.back_home }}</a>
     <div class="page-shell">
         <header class="site-header">
             <div class="hero hero--compact">
@@ -21,7 +22,6 @@
 
             <div class="topbar">
                 {% include "news/_site_nav.html" %}
-                {% include "news/_language_dropdown.html" %}
             </div>
         </header>
 

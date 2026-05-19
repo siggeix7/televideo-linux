@@ -1,7 +1,7 @@
 {% extends "news/_section_base.html" %}
 
 {% block section_content %}
-<main class="section-stack">
+<main class="section-stack" id="main">
     {% if data.articles %}
     {% for article in data.articles %}
     <article class="content-card content-card--article">

@@ -1,7 +1,7 @@
 {% extends "news/_section_base.html" %}
 
 {% block section_content %}
-<main class="section-stack">
+<main class="section-stack" id="main">
     {% if latest_superenalotto %}
     <section class="lottery-layout">
         <article class="lottery-card">
@@ -19,7 +19,7 @@
                 <div><dt>{{ ui.jackpot_label }}</dt><dd>{% if latest_superenalotto.jackpot %}EUR {{ latest_superenalotto.jackpot }}{% else %}&mdash;{% endif %}</dd></div>
                 <div><dt>{{ ui.prize_pool_label }}</dt><dd>{% if latest_superenalotto.prize_pool %}EUR {{ latest_superenalotto.prize_pool }}{% else %}&mdash;{% endif %}</dd></div>
             </dl>
-            <a class="action-link" href="{% url 'news:superenalotto' %}?lang={{ language }}">{{ ui.archive_super }} &nearr;</a>
+            <a class="action-link" href="{% url 'news:superenalotto' %}">{{ ui.archive_super }} &raquo;</a>
         </article>
 
         <article class="trend-card">

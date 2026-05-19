@@ -30,17 +30,53 @@ from .services import (
     refresh_section_if_stale,
     region_slug,
     section_definition,
-    translate_lines,
-    translate_text,
-    medieval_latin_style,
 )
 
 
 LANGUAGES = {
-    "la": "Latino",
     "it": "Italiano",
-    "en": "English",
 }
+
+_MAP_DATA = {
+    "aosta": ("Valle d'Aosta", "VdA", "6.5", 108, 35, "95,25 120,22 124,40 108,43 95,38"),
+    "piemonte": ("Piemonte", "PIE", "7", 132, 72, "95,38 109,45 125,50 140,55 155,62 172,82 176,102 160,115 135,112 112,98 95,85 87,62 94,48"),
+    "lombardia": ("Lombardia", "LOM", "7.5", 194, 56, "140,55 165,48 185,42 207,35 228,38 240,50 235,60 228,75 215,84 195,87 178,84 160,77 145,65"),
+    "altoadige": ("Alto Adige", "AA", "6.5", 260, 24, "236,12 268,8 282,18 280,35 264,42 242,38 235,24"),
+    "trentino": ("Trentino", "TNT", "6.5", 256, 48, "236,38 243,38 264,42 280,38 277,55 258,62 238,55 236,46"),
+    "veneto": ("Veneto", "VEN", "7.5", 270, 84, "236,60 260,58 280,65 296,82 306,96 300,105 280,108 258,102 244,92 236,78 236,68"),
+    "friuli": ("Friuli V.G.", "FVG", "6.5", 325, 60, "296,38 320,30 345,34 348,56 342,80 330,96 318,94 305,78 298,62"),
+    "liguria": ("Liguria", "LIG", "7", 138, 132, "105,108 120,98 140,105 155,112 165,125 168,138 155,142 138,142 120,138 110,122 105,115"),
+    "emilia": ("Emilia R.", "EMR", "7.5", 215, 102, "162,75 185,68 210,72 235,78 258,82 272,98 275,115 262,122 240,128 215,125 190,118 170,105 160,92"),
+    "toscana": ("Toscana", "TOS", "7.5", 185, 152, "152,118 170,112 185,118 200,125 215,132 220,148 218,168 210,180 198,182 182,175 168,168 158,148 152,130"),
+    "marche": ("Marche", "MAR", "7", 268, 145, "248,118 268,112 282,118 288,130 288,148 282,162 270,168 258,165 250,152 245,138 248,125"),
+    "umbria": ("Umbria", "UMB", "7", 218, 195, "200,168 220,165 232,170 238,185 236,200 228,208 218,210 208,205 200,192 198,178"),
+    "lazio": ("Lazio", "LAZ", "8", 232, 230, "205,200 222,198 238,205 248,215 255,225 259,242 252,255 238,258 222,255 212,245 205,232 202,218"),
+    "abruzzo": ("Abruzzo", "ABR", "7", 278, 192, "260,158 278,152 292,162 298,178 298,198 292,215 282,225 272,228 262,218 258,198 260,178"),
+    "molise": ("Molise", "MOL", "6.5", 282, 242, "272,218 288,215 298,225 300,240 295,250 285,255 275,248 270,235"),
+    "campania": ("Campania", "CAM", "7", 255, 278, "232,248 248,252 262,255 275,262 278,278 275,295 262,305 248,302 238,295 230,278 228,262 231,252"),
+    "puglia": ("Puglia", "PUG", "7.5", 318, 262, "282,222 302,218 318,225 332,235 342,248 350,258 348,275 338,288 322,298 308,300 295,295 288,282 282,262 282,240"),
+    "basilicata": ("Basilicata", "BAS", "6.5", 290, 310, "275,290 290,286 298,295 305,310 300,320 288,322 278,312 275,300"),
+    "calabria": ("Calabria", "CAL", "7", 270, 342, "252,300 272,298 282,310 288,325 288,345 285,362 278,372 268,378 260,368 255,350 252,332 250,312"),
+    "sicilia": ("Sicilia", "SIC", "9", 222, 412, "175,362 200,358 225,360 248,368 265,378 272,398 268,418 255,435 238,448 218,450 198,442 185,430 178,412 175,395"),
+    "sardegna": ("Sardegna", "SAR", "9", 100, 358, "65,318 82,312 102,315 118,322 132,332 140,348 142,365 138,382 128,392 112,398 95,395 78,388 68,372 62,352 63,332"),
+}
+
+
+def get_map_regions():
+    regions = []
+    for slug, data in _MAP_DATA.items():
+        label, label_short, font_size, cx, cy, points = data
+        regions.append({
+            "slug": slug,
+            "label": label,
+            "label_short": label_short,
+            "font_size": font_size,
+            "cx": cx,
+            "cy": cy,
+            "points": points,
+            "url": reverse("news:region", kwargs={"region_slug_value": slug}),
+        })
+    return regions
 
 HIDDEN_CATEGORY_CODES = {"p401", "p613", "p700", "p711"}
 
@@ -63,7 +99,7 @@ UI_TEXT = {
         "site_name": "Televideo News",
         "eyebrow": "Rai Televideo RSS 101 e pagina 104",
         "title": "Televideo News",
-        "lede": "Notizie reali da Rai Televideo, archiviate automaticamente e organizzate per categoria.",
+        "lede": "Notizie da Rai Televideo, archiviate automaticamente e organizzate per categoria.",
         "nav_home": "Cronaca",
         "nav_tv": "TV",
         "nav_culture": "Cultura",
@@ -74,29 +110,29 @@ UI_TEXT = {
         "nav_travel": "Viaggi",
         "nav_games": "Giochi",
         "nav_regions": "Regioni",
-        "language_nav_label": "Lingua dell'interfaccia e delle notizie",
+        "language_nav_label": "Lingua",
         "categories_title": "Categorie",
         "news_link": "Cronaca",
         "super_link": "SuperEnalotto",
         "all_categories": "Tutte",
         "search_placeholder": "Cerca in titoli, testi e categorie...",
-        "status_label": "Stato aggiornamento",
-        "loading": "Carico le ultime notizie...",
+        "status_label": "Stato",
+        "loading": "Carico notizie...",
         "last_reading": "Ultima lettura",
         "waiting": "in attesa",
         "source_label": "Fonte",
         "data_provider": "Rai Televideo",
         "last_update_label": "Ultimo aggiornamento",
-        "empty_title": "Le pergamene sono ancora vuote",
-        "empty_message": "Il feed Rai non ha risposto oppure il job di aggiornamento non ha ancora popolato il database.",
-        "section_empty_title": "Nessun contenuto disponibile",
-        "section_empty_message": "La sezione non ha ancora risposto oppure la cache non e' stata popolata.",
-        "load_error_title": "Errore di caricamento",
+        "empty_title": "Nessuna notizia",
+        "empty_message": "Il feed Rai non ha risposto o il database non e' stato popolato.",
+        "section_empty_title": "Nessun contenuto",
+        "section_empty_message": "La sezione non ha ancora risposto o la cache non e' stata popolata.",
+        "load_error_title": "Errore caricamento",
         "unknown_error": "Errore sconosciuto",
-        "timeout_error": "Timeout: il server non risponde. Nuovo tentativo in corso...",
+        "timeout_error": "Timeout: server non risponde. Riprovo...",
         "no_search_results_title": "Nessun risultato",
         "no_search_results_message": "Nessuna notizia contiene \"{query}\".",
-        "card_ribbon": "Notizia",
+        "card_ribbon": "NOTIZIA",
         "source_prefix": "Titolo originale:",
         "category_prefix": "Categoria:",
         "source_link": "Fonte Rai",
@@ -108,7 +144,7 @@ UI_TEXT = {
         "next_page": "Successive",
         "page_status": "Pagina {page} di {pages}",
         "super_title": "Archivio SuperEnalotto",
-        "super_lede": "Ultima combinazione dalla pagina 696 di Rai Televideo, salvata nello storico SQLite.",
+        "super_lede": "Ultima combinazione dalla pagina 696 di Rai Televideo, salvata nello storico.",
         "draw_label": "Concorso",
         "draw_date_label": "Data estrazione",
         "numbers_label": "Combinazione vincente",
@@ -116,11 +152,11 @@ UI_TEXT = {
         "superstar_label": "Numero SuperStar",
         "jackpot_label": "Jackpot",
         "prize_pool_label": "Montepremi",
-        "history_label": "Storico disponibile",
+        "history_label": "Storico",
         "trend_label": "Andamento Jackpot e Montepremi",
         "select_date": "Seleziona data",
-        "no_draws": "Nessuna estrazione salvata nello storico.",
-        "super_latest_title": "Ultima estrazione SuperEnalotto",
+        "no_draws": "Nessuna estrazione salvata.",
+        "super_latest_title": "Ultima estrazione",
         "latest_news": "Ultime notizie",
         "archive_super": "Archivio SuperEnalotto",
         "lotto_title": "Lotto",
@@ -146,262 +182,43 @@ UI_TEXT = {
         "visibility_label": "Visibilita",
         "region_select_label": "Seleziona regione",
         "footer_prefix": "Televideo News",
-        "footer_license": "MIT License",
-        "footer_data_prefix": "Dati forniti da",
+        "footer_license": "Licenza MIT",
+        "footer_data_prefix": "Dati da",
         "back_home": "Torna alla cronaca",
         "error_eyebrow": "Errore {code}",
         "error_404_title": "Pagina non trovata",
         "error_404_message": "La pagina che cerchi non esiste o e' stata spostata.",
         "error_500_title": "Errore del server",
         "error_500_message": "Un imprevisto ha interrotto la lettura dei dati. Riprova tra poco.",
-        "updated": "Notizie aggiornate in {language}",
+        "updated": "Notizie aggiornate",
         "date_unavailable": "data non disponibile",
-        "error_prefix": "Errore durante l'aggiornamento:",
-    },
-    "en": {
-        "html_lang": "en",
-        "site_name": "Televideo News",
-        "eyebrow": "Rai Televideo RSS 101 and page 104",
-        "title": "Televideo News",
-        "lede": "Real Rai Televideo news, automatically archived and grouped by category.",
-        "nav_home": "Chronicle",
-        "nav_tv": "TV",
-        "nav_culture": "Culture",
-        "nav_environment": "Environment",
-        "nav_work": "Work",
-        "nav_sport": "Sport",
-        "nav_weather": "Weather",
-        "nav_travel": "Travel",
-        "nav_games": "Games",
-        "nav_regions": "Regions",
-        "language_nav_label": "Interface and news language",
-        "categories_title": "Categories",
-        "news_link": "Chronicle",
-        "super_link": "SuperEnalotto",
-        "all_categories": "All",
-        "search_placeholder": "Search titles, text and categories...",
-        "status_label": "Update status",
-        "loading": "Loading the latest news...",
-        "last_reading": "Last reading",
-        "waiting": "waiting",
-        "source_label": "Source",
-        "data_provider": "Rai Televideo",
-        "last_update_label": "Last update",
-        "empty_title": "The parchments are still empty",
-        "empty_message": "The Rai feed did not answer yet, or the updater has not populated the database.",
-        "section_empty_title": "No content available",
-        "section_empty_message": "This section has not answered yet, or the cache has not been populated.",
-        "load_error_title": "Loading error",
-        "unknown_error": "Unknown error",
-        "timeout_error": "Timeout: the server is not responding. Retrying...",
-        "no_search_results_title": "No results",
-        "no_search_results_message": "No news item contains \"{query}\".",
-        "card_ribbon": "News",
-        "source_prefix": "Original title:",
-        "category_prefix": "Category:",
-        "source_link": "Rai source",
-        "open_televideo": "Open on Televideo",
-        "open_archive": "Open archive",
-        "page_label": "Page",
-        "subpages_label": "subpages",
-        "previous_page": "Previous",
-        "next_page": "Next",
-        "page_status": "Page {page} of {pages}",
-        "super_title": "SuperEnalotto Archive",
-        "super_lede": "Latest draw from Rai Televideo page 696, stored in the SQLite history.",
-        "draw_label": "Draw",
-        "draw_date_label": "Draw date",
-        "numbers_label": "Winning numbers",
-        "jolly_label": "Jolly number",
-        "superstar_label": "SuperStar number",
-        "jackpot_label": "Jackpot",
-        "prize_pool_label": "Prize pool",
-        "history_label": "Available history",
-        "trend_label": "Jackpot and prize pool trend",
-        "select_date": "Select date",
-        "no_draws": "No draws saved in history yet.",
-        "super_latest_title": "Latest SuperEnalotto draw",
-        "latest_news": "Latest news",
-        "archive_super": "SuperEnalotto archive",
-        "lotto_title": "Lotto",
-        "extraction_date_label": "Draw of",
-        "film_schedule_title": "Scheduled films",
-        "auditel_title": "Auditel data",
-        "channel_program_label": "Channel/Program",
-        "share_label": "Share %",
-        "viewers_label": "Viewers",
-        "director_prefix": "by",
-        "cast_prefix": "with",
-        "standings_title": "Serie A standings",
-        "latest_results_title": "Latest results",
-        "position_label": "#",
-        "team_label": "Team",
-        "points_label": "Pts",
-        "wins_label": "W",
-        "draws_label": "D",
-        "losses_label": "L",
-        "goals_for_label": "GF",
-        "goals_against_label": "GA",
-        "wind_label": "Wind",
-        "visibility_label": "Visibility",
-        "region_select_label": "Select region",
-        "footer_prefix": "Televideo News",
-        "footer_license": "MIT License",
-        "footer_data_prefix": "Data provided by",
-        "back_home": "Back to the chronicle",
-        "error_eyebrow": "Error {code}",
-        "error_404_title": "Page not found",
-        "error_404_message": "The page you are looking for does not exist or has been moved.",
-        "error_500_title": "Server error",
-        "error_500_message": "An unexpected problem interrupted the data reading. Try again shortly.",
-        "updated": "News updated in {language}",
-        "date_unavailable": "date unavailable",
-        "error_prefix": "Update error:",
-    },
-    "la": {
-        "html_lang": "la",
-        "site_name": "Nuntia Televidei",
-        "eyebrow": "Rai Televideo RSS CI et pagina CIV",
-        "title": "Nuntia Televidei",
-        "lede": "Notitiae verae ex Rai Televideo, in archivio servatae et per categorias dispositae.",
-        "nav_home": "Chronica",
-        "nav_tv": "TV",
-        "nav_culture": "Cultura",
-        "nav_environment": "Ambitus",
-        "nav_work": "Labor",
-        "nav_sport": "Ludi",
-        "nav_weather": "Tempestas",
-        "nav_travel": "Itinera",
-        "nav_games": "Sortes",
-        "nav_regions": "Regiones",
-        "language_nav_label": "Lingua interfaciei et nuntiorum",
-        "categories_title": "Categoriae",
-        "news_link": "Chronica",
-        "super_link": "SuperEnalotto",
-        "all_categories": "Omnes",
-        "search_placeholder": "Quaere in titulis, textibus et categoriis...",
-        "status_label": "Status renovationis",
-        "loading": "Novissima nuntia colligo...",
-        "last_reading": "Ultima lectio",
-        "waiting": "exspectatur",
-        "source_label": "Fons",
-        "data_provider": "Rai Televideo",
-        "last_update_label": "Ultima renovatio",
-        "empty_title": "Pergamenae adhuc vacuae sunt",
-        "empty_message": "Fons Rai nondum respondit aut minister renovandi datorum tabulam nondum implevit.",
-        "section_empty_title": "Nullum contentum praesto est",
-        "section_empty_message": "Haec sectio nondum respondit aut memoria temporaria nondum impleta est.",
-        "load_error_title": "Error onerandi",
-        "unknown_error": "Error ignotus",
-        "timeout_error": "Tempus exactum est: minister non respondet. Iterum temptatur...",
-        "no_search_results_title": "Nullus exitus",
-        "no_search_results_message": "Nullum nuntium continet \"{query}\".",
-        "card_ribbon": "Nuntium",
-        "source_prefix": "Titulus primus:",
-        "category_prefix": "Categoria:",
-        "source_link": "Fons Rai",
-        "open_televideo": "Aperi in Televideo",
-        "open_archive": "Aperi archivum",
-        "page_label": "Pagina",
-        "subpages_label": "subpaginae",
-        "previous_page": "Priora",
-        "next_page": "Sequentia",
-        "page_status": "Pagina {page} ex {pages}",
-        "super_title": "Archivum SuperEnalotto",
-        "super_lede": "Ultima sortitio ex pagina DCXCVI Rai Televideo, in memoria SQLite servata.",
-        "draw_label": "Concursus",
-        "draw_date_label": "Dies sortitionis",
-        "numbers_label": "Numeri victores",
-        "jolly_label": "Numerus Jolly",
-        "superstar_label": "Numerus SuperStar",
-        "jackpot_label": "Praemium maximum",
-        "prize_pool_label": "Mons praemiorum",
-        "history_label": "Historia servata",
-        "trend_label": "Cursus praemii maximi et montis praemiorum",
-        "select_date": "Diem elige",
-        "no_draws": "Nulla sortitio adhuc servata est.",
-        "super_latest_title": "Ultima sortitio SuperEnalotto",
-        "latest_news": "Novissima",
-        "archive_super": "Archivum SuperEnalotto",
-        "lotto_title": "Lotto",
-        "extraction_date_label": "Sortitio diei",
-        "film_schedule_title": "Pelliculae in ordine",
-        "auditel_title": "Data Auditel",
-        "channel_program_label": "Canalis/programma",
-        "share_label": "Pars %",
-        "viewers_label": "Spectatores",
-        "director_prefix": "a",
-        "cast_prefix": "cum",
-        "standings_title": "Tabula Serie A",
-        "latest_results_title": "Exitus novissimi",
-        "position_label": "#",
-        "team_label": "Grex",
-        "points_label": "Pt",
-        "wins_label": "V",
-        "draws_label": "P",
-        "losses_label": "S",
-        "goals_for_label": "GF",
-        "goals_against_label": "GS",
-        "wind_label": "Ventus",
-        "visibility_label": "Visibilitas",
-        "region_select_label": "Regionem elige",
-        "footer_prefix": "Nuntia Televidei",
-        "footer_license": "Licentia MIT",
-        "footer_data_prefix": "Data praebet",
-        "back_home": "Redi ad chronicam",
-        "error_eyebrow": "Error {code}",
-        "error_404_title": "Pagina non inventa",
-        "error_404_message": "Pagina quam quaeris non exstat aut mota est.",
-        "error_500_title": "Error ministri",
-        "error_500_message": "Casus improvisus lectionem datorum interrupit. Mox iterum tenta.",
-        "updated": "Nuntia renovata lingua {language}",
-        "date_unavailable": "dies ignotus",
-        "error_prefix": "Error renovationis:",
+        "error_prefix": "Errore:",
+        "italy_map_title": "Mappa meteo",
+        "italy_map_subtitle": "Clicca una regione per il dettaglio",
+        "italy_map_label": "Mappa interattiva dell'Italia",
     },
 }
 
 
-def normalize_language(value: str | None) -> str:
-    return value if value in LANGUAGES else "la"
+def normalize_language(_value: str | None = None) -> str:
+    return "it"
 
 
-def ui_for(language: str) -> dict[str, str]:
-    return UI_TEXT[normalize_language(language)]
+def ui_for(_language: str = "it") -> dict[str, str]:
+    return UI_TEXT["it"]
 
 
 SECTION_TEXT = {
     "it": {
         "tv": ("Guida TV", "Programmi TV, prima serata, film del giorno, RaiPlay, Rai Sport, radio e dati Auditel."),
-        "cultura": ("Cultura, Libri, Cinema e Teatro", "Recensioni, libri, film, teatro, concerti, eventi e mostre recuperati dalle rubriche culturali."),
-        "ambiente": ("Ambiente, Scienza e Salute", "Energie rinnovabili, sostenibilita, agenda verde, ricerca, scienza, salute e istituti scientifici."),
-        "lavoro": ("Lavoro e Concorsi", "Concorsi, Gazzetta Ufficiale, sicurezza sul lavoro, formazione, agenzie ed eventi occupazionali."),
+        "cultura": ("Cultura, Libri, Cinema e Teatro", "Recensioni, libri, film, teatro, concerti, eventi e mostre."),
+        "ambiente": ("Ambiente, Scienza e Salute", "Energie rinnovabili, sostenibilita, agenda verde, ricerca, scienza, salute."),
+        "lavoro": ("Lavoro e Concorsi", "Concorsi, Gazzetta Ufficiale, sicurezza sul lavoro, formazione ed eventi occupazionali."),
         "sport": ("Sport e Risultati", "Risultati, classifiche, calendari, club di Serie A e B, altri sport e brevi sportive."),
         "meteo": ("Meteo, Mari e Venti", "Previsioni per versanti, temperature, aeroporti, mari, venti e sicurezza in mare."),
-        "viaggi": ("Viaggi, Turismo e Sicurezza", "Avvisi per viaggiare sicuri, itinerari, FAI, Touring Club, borghi e informazioni utili."),
+        "viaggi": ("Viaggi, Turismo e Sicurezza", "Avvisi per viaggiare sicuri, itinerari, FAI, Touring Club, borghi e info utili."),
         "giochi": ("Giochi e Estrazioni", "SuperEnalotto, Lotto e archivio delle ultime estrazioni salvate nel database."),
         "regioni": ("Televideo Regionale", "Notizie, eventi, cinema, teatri, gusto, viaggi, societa e servizi dalle pagine regionali Rai."),
-    },
-    "en": {
-        "tv": ("TV Guide", "TV programs, prime time, films of the day, RaiPlay, Rai Sport, radio and Auditel data."),
-        "cultura": ("Culture, Books, Cinema and Theatre", "Reviews, books, films, theatre, concerts, events and exhibitions from the cultural columns."),
-        "ambiente": ("Environment, Science and Health", "Renewable energy, sustainability, green agenda, research, science, health and scientific institutes."),
-        "lavoro": ("Work and Public Competitions", "Public competitions, official notices, workplace safety, training, agencies and employment events."),
-        "sport": ("Sport and Results", "Results, standings, calendars, Serie A and B clubs, other sports and sports briefs."),
-        "meteo": ("Weather, Seas and Winds", "Forecasts by area, temperatures, airports, seas, winds and sea safety."),
-        "viaggi": ("Travel, Tourism and Safety", "Safe travel alerts, itineraries, FAI, Touring Club, villages and useful information."),
-        "giochi": ("Games and Draws", "SuperEnalotto, Lotto and the archive of the latest draws saved in the database."),
-        "regioni": ("Regional Televideo", "News, events, cinema, theatres, food, travel, society and services from Rai regional pages."),
-    },
-    "la": {
-        "tv": ("Index Televisificus", "Programmata televisifica, prima vespera, pelliculae diei, RaiPlay, Rai Sport, radio et data Auditel."),
-        "cultura": ("Cultura, Libri, Cinema et Theatrum", "Recensiones, libri, pelliculae, theatrum, concentus, eventus et exhibitiones e rubricis culturalibus."),
-        "ambiente": ("Ambitus, Scientia et Salus", "Energia renovabilis, sustinabilitas, agenda viridis, investigatio, scientia, salus et instituta scientifica."),
-        "lavoro": ("Labor et Certamina", "Certamina publica, acta publica, securitas laboris, institutio, agentiae et eventus occupationis."),
-        "sport": ("Ludi et Exitus", "Exitus, tabulae, calendaria, greges Serie A et B, alii ludi et brevia ludorum."),
-        "meteo": ("Tempestas, Maria et Venti", "Praedictiones per regiones, temperaturae, aeroportus, maria, venti et securitas marina."),
-        "viaggi": ("Itinera, Peregrinatio et Securitas", "Nuntii itinerum tutorum, itinera, FAI, Touring Club, oppida et indicia utilia."),
-        "giochi": ("Sortes et Extractiones", "SuperEnalotto, Lotto et archivum ultimarum sortitionum in datorum tabula servatarum."),
-        "regioni": ("Televideo Regionale", "Nuntia, eventus, cinema, theatra, cibus, itinera, societas et officia e paginis regionalibus Rai."),
     },
 }
 
@@ -414,29 +231,20 @@ STRUCTURED_PAGES = {
 }
 
 
-def localize_text(text: str, language: str, *, multiline: bool = False) -> str:
-    language = normalize_language(language)
-    if language == "it" or not text:
-        return text
-    translated = translate_lines(text, language) if multiline else translate_text(text, language)
-    if language == "la":
-        if multiline:
-            return "\n".join(medieval_latin_style(line) if line.strip() else "" for line in translated.splitlines())
-        translated = medieval_latin_style(translated)
-    return translated
+def localize_text(text: str, _language: str = "it", *, multiline: bool = False) -> str:
+    return text
 
 
-def localized_section_definition(section: str, language: str) -> dict[str, object]:
-    language = normalize_language(language)
+def localized_section_definition(section: str, _language: str = "it") -> dict[str, object]:
     definition = section_definition(section).copy()
-    title, lede = SECTION_TEXT[language].get(section, (definition["title"], definition["lede"]))
+    title, lede = SECTION_TEXT["it"].get(section, (definition["title"], definition["lede"]))
     definition["title"] = title
     definition["lede"] = lede
     return definition
 
 
-def nav_items(active: str, language: str) -> list[dict[str, object]]:
-    ui = ui_for(language)
+def nav_items(active: str, _language: str = "it") -> list[dict[str, object]]:
+    ui = UI_TEXT["it"]
     return [
         {"key": key, "label": ui[label_key], "url": reverse(route), "active": key == active}
         for key, label_key, route in NAVIGATION
@@ -459,17 +267,8 @@ def snapshot_payload(snapshot: TelevideoPageSnapshot) -> dict[str, object]:
     }
 
 
-def localize_snapshot_payload(snapshot: dict[str, object], language: str) -> dict[str, object]:
-    if normalize_language(language) == "it":
-        return snapshot.copy()
-    localized = snapshot.copy()
-    localized["source_label"] = snapshot.get("label", "")
-    localized["source_title"] = snapshot.get("title", "")
-    localized["label"] = localize_text(str(snapshot.get("label", "")), language)
-    localized["title"] = localize_text(str(snapshot.get("title", "")), language)
-    localized["raw_text"] = localize_text(str(snapshot.get("raw_text", "")), language, multiline=True)
-    localized["paragraphs"] = [line.strip() for line in str(localized["raw_text"]).splitlines() if line.strip()]
-    return localized
+def localize_snapshot_payload(snapshot: dict[str, object], _language: str = "it") -> dict[str, object]:
+    return snapshot.copy()
 
 
 def section_snapshots(section: str, region: str = "") -> list[dict[str, object]]:
@@ -490,44 +289,27 @@ def should_display_card(section: str, snap: dict[str, object]) -> bool:
     return True
 
 
-def localize_film(film: dict, language: str) -> dict:
-    localized = film.copy()
-    for key in ("title", "genre"):
-        if localized.get(key):
-            localized[key] = localize_text(str(localized[key]), language)
-    return localized
+def localize_film(film: dict, _language: str = "it") -> dict:
+    return film.copy()
 
 
-def localize_weather_station(station: dict, language: str) -> dict:
-    localized = station.copy()
-    for key in ("condition", "wind", "visibility"):
-        if localized.get(key):
-            localized[key] = localize_text(str(localized[key]), language)
-    return localized
+def localize_weather_station(station: dict, _language: str = "it") -> dict:
+    return station.copy()
 
 
-def localize_auditel_row(row: dict, language: str) -> dict:
-    localized = row.copy()
-    if localized.get("channel"):
-        localized["channel"] = localize_text(str(localized["channel"]), language)
-    return localized
+def localize_auditel_row(row: dict, _language: str = "it") -> dict:
+    return row.copy()
 
 
-def localize_article(article: dict, language: str) -> dict:
-    localized = article.copy()
-    for key in ("title", "label"):
-        if localized.get(key):
-            localized[key] = localize_text(str(localized[key]), language)
-    if localized.get("body"):
-        localized["body"] = localize_text(str(localized["body"]), language, multiline=True)
-    return localized
+def localize_article(article: dict, _language: str = "it") -> dict:
+    return article.copy()
 
 
-def formatted_section_data(section: str, language: str, region: str = "") -> dict:
+def formatted_section_data(section: str, region: str = "") -> dict:
     """Build structured/formatted data for a section using the formatters."""
     source_snapshots = section_snapshots(section, region)
     source_merged = merge_snapshot_pages(source_snapshots)
-    display_snapshots = [localize_snapshot_payload(snapshot, language) for snapshot in source_snapshots]
+    display_snapshots = [localize_snapshot_payload(snapshot) for snapshot in source_snapshots]
     display_merged = merge_snapshot_pages(display_snapshots)
     display_by_page = {snap.get("page"): snap for snap in display_merged}
 
@@ -564,13 +346,13 @@ def formatted_section_data(section: str, language: str, region: str = "") -> dic
                 data["results"] = r
             ri = parse_round_info(raw)
             if ri:
-                data["round_info"] = localize_text(ri, language)
+                data["round_info"] = localize_text(ri)
 
         # Film schedules
         if section == "tv" and page in (514, 515):
             films = parse_film_schedule(raw)
             if films:
-                data["films"].extend(localize_film(film, language) for film in films)
+                data["films"].extend(localize_film(film) for film in films)
 
         # Weather observations
         if section == "meteo" and page in (702, 703, 704, 705, 706, 707, 708, 709):
@@ -579,7 +361,7 @@ def formatted_section_data(section: str, language: str, region: str = "") -> dic
                 data["weather_stations"].append({
                     "page": page,
                     "label": display_snap.get("label", ""),
-                    "stations": [localize_weather_station(station, language) for station in stations],
+                    "stations": [localize_weather_station(station) for station in stations],
                 })
 
         # Temperatures
@@ -599,7 +381,7 @@ def formatted_section_data(section: str, language: str, region: str = "") -> dic
                 data["auditel"].append({
                     "page": page,
                     "label": display_snap.get("label", ""),
-                    "rows": [localize_auditel_row(row, language) for row in aud],
+                    "rows": [localize_auditel_row(row) for row in aud],
                 })
 
         # Lotto
@@ -619,7 +401,7 @@ def formatted_section_data(section: str, language: str, region: str = "") -> dic
                     article["page"] = page
                     article["label"] = snap.get("label", "")
                     article["title"] = article.get("title") or snap.get("title", "")
-                    data["articles"].append(localize_article(article, language))
+                    data["articles"].append(localize_article(article))
 
     return data
 
@@ -639,7 +421,6 @@ def parse_page(value: str | None) -> int:
 
 
 def home(request):
-    language = normalize_language(request.GET.get("lang"))
     if not NewsItem.objects.exists():
         try:
             refresh_if_stale()
@@ -649,17 +430,16 @@ def home(request):
         request,
         "news/home.html",
         {
-            "language": language,
+            "language": "it",
             "languages": LANGUAGES,
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
-            "ui": ui_for(language),
-            "nav_items": nav_items("home", language),
+            "ui": UI_TEXT["it"],
+            "nav_items": nav_items("home"),
         },
     )
 
 
 def superenalotto(request):
-    language = normalize_language(request.GET.get("lang"))
     if not SuperEnalottoDraw.objects.exists():
         try:
             refresh_if_stale()
@@ -669,32 +449,31 @@ def superenalotto(request):
         request,
         "news/superenalotto.html",
         {
-            "language": language,
+            "language": "it",
             "languages": LANGUAGES,
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
-            "ui": ui_for(language),
-            "nav_items": nav_items("giochi", language),
+            "ui": UI_TEXT["it"],
+            "nav_items": nav_items("giochi"),
         },
     )
 
 
 def televideo_section(request, section: str, active: str):
-    language = normalize_language(request.GET.get("lang"))
     if section not in SECTION_DEFINITIONS:
         raise Http404("Sezione non trovata")
-    definition = localized_section_definition(section, language)
+    definition = localized_section_definition(section)
     refresh_section_if_stale(section)
-    formatted = formatted_section_data(section, language)
+    formatted = formatted_section_data(section)
     latest = max((card["fetched_at"] for card in formatted["raw"]), default=None)
     ctx = {
         "section": {**definition, "key": section},
         "data": formatted,
         "latest": latest,
-        "nav_items": nav_items(active, language),
-        "language": language,
+        "nav_items": nav_items(active),
+        "language": "it",
         "languages": LANGUAGES,
         "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
-        "ui": ui_for(language),
+        "ui": UI_TEXT["it"],
     }
     specific = f"news/section_{section}.html"
     try:
@@ -726,7 +505,25 @@ def sport(request):
 
 
 def weather(request):
-    return televideo_section(request, "meteo", "meteo")
+    section = "meteo"
+    if section not in SECTION_DEFINITIONS:
+        raise Http404("Sezione non trovata")
+    definition = localized_section_definition(section)
+    refresh_section_if_stale(section)
+    formatted = formatted_section_data(section)
+    latest = max((card["fetched_at"] for card in formatted["raw"]), default=None)
+    ctx = {
+        "section": {**definition, "key": section},
+        "data": formatted,
+        "latest": latest,
+        "nav_items": nav_items("meteo"),
+        "language": "it",
+        "languages": LANGUAGES,
+        "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
+        "ui": UI_TEXT["it"],
+        "map_regions": get_map_regions(),
+    }
+    return render(request, "news/section_meteo.html", ctx)
 
 
 def travel(request):
@@ -734,9 +531,8 @@ def travel(request):
 
 
 def games(request):
-    language = normalize_language(request.GET.get("lang"))
     refresh_section_if_stale("giochi")
-    formatted = formatted_section_data("giochi", language)
+    formatted = formatted_section_data("giochi")
     latest = max((card["fetched_at"] for card in formatted["raw"]), default=None)
     latest_superenalotto = SuperEnalottoDraw.objects.first()
     latest_lotto = LottoDraw.objects.first()
@@ -744,25 +540,24 @@ def games(request):
         request,
         "news/section_giochi.html",
         {
-            "section": {**localized_section_definition("giochi", language), "key": "giochi"},
+            "section": {**localized_section_definition("giochi"), "key": "giochi"},
             "data": formatted,
             "latest": latest,
             "latest_superenalotto": latest_superenalotto,
             "latest_lotto": latest_lotto,
-            "nav_items": nav_items("giochi", language),
-            "language": language,
+            "nav_items": nav_items("giochi"),
+            "language": "it",
             "languages": LANGUAGES,
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
-            "ui": ui_for(language),
+            "ui": UI_TEXT["it"],
         },
     )
 
 
 def regions(request, region_slug_value: str | None = None):
-    language = normalize_language(request.GET.get("lang"))
     selected_region = normalize_region(region_slug_value or request.GET.get("regione"))
     refresh_section_if_stale("regioni", selected_region)
-    formatted = formatted_section_data("regioni", language, selected_region)
+    formatted = formatted_section_data("regioni", selected_region)
     latest = max((card["fetched_at"] for card in formatted["raw"]), default=None)
     regions_payload = [
         {
@@ -777,21 +572,21 @@ def regions(request, region_slug_value: str | None = None):
         request,
         "news/regions.html",
         {
-            "section": {**localized_section_definition("regioni", language), "key": "regioni", "title": f"{localized_section_definition('regioni', language)['title']} - {selected_region}"},
+            "section": {**localized_section_definition("regioni"), "key": "regioni", "title": f"{localized_section_definition('regioni')['title']} - {selected_region}"},
             "data": formatted,
             "latest": latest,
             "regions": regions_payload,
             "selected_region": selected_region,
-            "nav_items": nav_items("regioni", language),
-            "language": language,
+            "nav_items": nav_items("regioni"),
+            "language": "it",
             "languages": LANGUAGES,
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
-            "ui": ui_for(language),
+            "ui": UI_TEXT["it"],
         },
     )
 
 
-def serialized_categories(language: str) -> list[dict[str, object]]:
+def serialized_categories(language: str = "it") -> list[dict[str, object]]:
     categories = []
     queryset = (
         Category.objects.filter(active=True)
@@ -803,7 +598,7 @@ def serialized_categories(language: str) -> list[dict[str, object]]:
         categories.append(
             {
                 "code": category.code,
-                "name": category.name_for(language),
+                "name": category.name_it,
                 "page": category.page,
                 "count": category.news_count,
             }
@@ -811,30 +606,15 @@ def serialized_categories(language: str) -> list[dict[str, object]]:
     return categories
 
 
-def news_title_for(item: NewsItem, language: str) -> str:
-    language = normalize_language(language)
-    if language == "la" and item.title_la:
-        return item.title_la
-    if language == "en" and item.title_en:
-        return item.title_en
-    if language == "it":
-        return item.title_it
-    return localize_text(item.title_it, language)
+def news_title_for(item: NewsItem, _language: str = "it") -> str:
+    return item.title_it
 
 
-def news_summary_for(item: NewsItem, language: str) -> str:
-    language = normalize_language(language)
-    if language == "la" and item.summary_la:
-        return item.summary_for("la")
-    if language == "en" and item.summary_en:
-        return item.summary_for("en")
-    if language == "it":
-        return item.summary_for("it")
-    return localize_text(item.summary_it, language)
+def news_summary_for(item: NewsItem, _language: str = "it") -> str:
+    return item.summary_it
 
 
 def news_api(request):
-    language = normalize_language(request.GET.get("lang"))
     limit = parse_limit(request.GET.get("limit"), default=12)
     page = parse_page(request.GET.get("page"))
     category_code = request.GET.get("category") or "all"
@@ -875,11 +655,11 @@ def news_api(request):
         items.append(
             {
                 "id": item.source_id,
-                "title": news_title_for(item, language),
-                "summary": news_summary_for(item, language),
+                "title": item.title_it,
+                "summary": item.summary_it,
                 "source_title": item.title_it,
                 "category_code": category.code if category else "",
-                "category_name": category.name_for(language) if category else "",
+                "category_name": category.name_it if category else "",
                 "source_page": item.source_page,
                 "published": item.pub_date_text,
                 "published_iso": item.published_at.isoformat() if item.published_at else "",
@@ -888,13 +668,13 @@ def news_api(request):
 
     return JsonResponse(
         {
-            "language": language,
-            "language_label": LANGUAGES[language],
+            "language": "it",
+            "language_label": "Italiano",
             "generated_at": timezone.localtime().isoformat(),
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
             "selected_category": category_code,
-            "ui": ui_for(language),
-            "categories": serialized_categories(language),
+            "ui": UI_TEXT["it"],
+            "categories": serialized_categories(),
             "pagination": {
                 "page": page,
                 "pages": total_pages,
@@ -922,8 +702,7 @@ def displayable_category_filter() -> Q:
 
 
 def page_not_found(request, exception=None):
-    language = normalize_language(request.GET.get("lang"))
-    ui = ui_for(language)
+    ui = UI_TEXT["it"]
     return render(
         request,
         "news/error.html",
@@ -932,18 +711,17 @@ def page_not_found(request, exception=None):
             "eyebrow": ui["error_eyebrow"].replace("{code}", "404"),
             "title": ui["error_404_title"],
             "message": ui["error_404_message"],
-            "language": language,
+            "language": "it",
             "languages": LANGUAGES,
             "ui": ui,
-            "nav_items": nav_items("home", language),
+            "nav_items": nav_items("home"),
         },
         status=404,
     )
 
 
 def server_error(request):
-    language = normalize_language(request.GET.get("lang"))
-    ui = ui_for(language)
+    ui = UI_TEXT["it"]
     return render(
         request,
         "news/error.html",
@@ -952,10 +730,10 @@ def server_error(request):
             "eyebrow": ui["error_eyebrow"].replace("{code}", "500"),
             "title": ui["error_500_title"],
             "message": ui["error_500_message"],
-            "language": language,
+            "language": "it",
             "languages": LANGUAGES,
             "ui": ui,
-            "nav_items": nav_items("home", language),
+            "nav_items": nav_items("home"),
         },
         status=500,
     )
@@ -989,7 +767,6 @@ def draw_payload(draw: SuperEnalottoDraw | None) -> dict[str, object] | None:
 
 
 def superenalotto_api(request):
-    language = normalize_language(request.GET.get("lang"))
     selected_date = request.GET.get("date") or ""
     error = ""
     try:
@@ -1004,11 +781,11 @@ def superenalotto_api(request):
 
     return JsonResponse(
         {
-            "language": language,
-            "language_label": LANGUAGES[language],
+            "language": "it",
+            "language_label": "Italiano",
             "generated_at": timezone.localtime().isoformat(),
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
-            "ui": ui_for(language),
+            "ui": UI_TEXT["it"],
             "error": error,
             "dates": dates,
             "selected": draw_payload(selected),

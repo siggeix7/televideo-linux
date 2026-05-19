@@ -1,7 +1,7 @@
 {% extends "news/_section_base.html" %}
 
 {% block section_content %}
-<main class="section-stack">
+<main class="section-stack" id="main">
     {% if data.standings or data.results %}
     {% if data.round_info %}
     <p class="section-note">{{ data.round_info }}</p>

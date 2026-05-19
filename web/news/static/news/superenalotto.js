@@ -17,10 +17,7 @@
     const errorState = document.getElementById("error-state");
     const errorMessage = document.getElementById("error-message");
 
-    let language = body.dataset.initialLanguage || localStorage.getItem("chronica-language") || "la";
-    if (body.dataset.initialLanguage) {
-        localStorage.setItem("chronica-language", language);
-    }
+    let language = "it";
     let selectedDate = localStorage.getItem("superenalotto-date") || "";
     let ui = {
         timeout_error: body.dataset.timeoutError || "",
@@ -135,7 +132,7 @@
         hideError();
 
         var url = new URL(apiUrl, window.location.origin);
-        url.searchParams.set("lang", language);
+        url.searchParams.set("lang", "it");
         if (selectedDate) {
             url.searchParams.set("date", selectedDate);
         }

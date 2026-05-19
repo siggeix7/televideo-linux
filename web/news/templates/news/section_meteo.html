@@ -1,7 +1,11 @@
 {% extends "news/_section_base.html" %}
 
 {% block section_content %}
-<main class="section-stack">
+<main class="section-stack" id="main">
+    {% if map_regions %}
+    {% include "news/_meteo_map.html" %}
+    {% endif %}
+
     {% if data.weather_stations %}
     <div class="weather-zone-grid">
     {% for zone in data.weather_stations %}

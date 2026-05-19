@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{% static 'news/styles.css' %}">
 </head>
 <body>
+    <a href="#main" class="skip-link">{{ ui.back_home }}</a>
     <div class="page-shell">
         <header class="site-header">
             <div class="hero hero--compact">
@@ -17,15 +18,12 @@
                 </div>
                 <div class="seal" aria-hidden="true">{{ code }}</div>
             </div>
-
             <div class="topbar">
                 {% include "news/_site_nav.html" %}
-                {% include "news/_language_dropdown.html" %}
             </div>
         </header>
-
-        <div class="center-actions">
-            <a href="/?lang={{ language }}" class="action-link">{{ ui.back_home }}</a>
+        <div id="main" class="center-actions">
+            <a href="/" class="action-link">{{ ui.back_home }}</a>
         </div>
     </div>
     {% include "news/_footer.html" %}

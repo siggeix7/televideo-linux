@@ -19,10 +19,7 @@
     const seen = new Set();
     const DEFAULT_LIMIT = 12;
 
-    let language = body.dataset.initialLanguage || localStorage.getItem("chronica-language") || "la";
-    if (body.dataset.initialLanguage) {
-        localStorage.setItem("chronica-language", language);
-    }
+    let language = "it";
     let selectedCategory = localStorage.getItem("chronica-category") || "all";
     let page = Number(localStorage.getItem("chronica-page") || 1);
     let ui = {
@@ -61,7 +58,7 @@
         if (!value) return ui.date_unavailable || "data non disponibile";
         var parsed = new Date(value);
         if (isNaN(parsed.getTime())) return value;
-        return parsed.toLocaleString(language === "en" ? "en-GB" : "it-IT", {
+        return parsed.toLocaleString("it-IT", {
             dateStyle: "medium",
             timeStyle: "short",
         });
@@ -150,7 +147,7 @@
         emptyState.hidden = payload.items.length > 0;
 
         var statusPrefix = payload.error ? (ui.error_prefix || "Errore:") + " " : "";
-        statusText.textContent = statusPrefix + payload.error || (ui.updated || "Cronaca aggiornata in {language}").replace("{language}", payload.language_label);
+        statusText.textContent = statusPrefix + payload.error || ui.updated || "Notizie aggiornate";
         lastRefresh.textContent = formatDate(payload.generated_at);
 
         if (payload.error) {
@@ -231,7 +228,7 @@
         showSkeletons(DEFAULT_LIMIT);
 
         var url = new URL(apiUrl, window.location.origin);
-        url.searchParams.set("lang", language);
+        url.searchParams.set("lang", "it");
         url.searchParams.set("category", selectedCategory);
         url.searchParams.set("page", String(page));
 

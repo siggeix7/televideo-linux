@@ -3,11 +3,11 @@
 {% block section_content %}
 <nav class="toolbar" aria-label="{{ ui.region_select_label }}">
     {% for region in regions %}
-    <a href="{{ region.url }}?lang={{ language }}" class="site-nav__link{% if region.active %} is-active{% endif %}">{{ region.name }}</a>
+    <a href="{{ region.url }}" class="site-nav__link{% if region.active %} is-active{% endif %}">{{ region.name }}</a>
     {% endfor %}
 </nav>
 
-<main class="section-stack">
+<main class="section-stack" id="main">
     {% if data.cards %}
         <div class="content-grid content-grid--regional">
         {% for card in data.cards %}
