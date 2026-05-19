@@ -16,10 +16,10 @@ from email.utils import parsedate_to_datetime
 from functools import lru_cache
 
 from django.conf import settings
-from django.db import close_old_connections, transaction
+from django.db import close_old_connections
 from django.utils import timezone
 
-from .models import Category, NewsItem, SuperEnalottoDraw
+from .models import Category, LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
 
 
 BASE_URLS = (
@@ -30,6 +30,7 @@ RSS_PATH = "rss101.xml"
 TEXT_PATH = "solotesto.jsp"
 CATEGORY_INDEX_PAGE = "104"
 SUPERENALOTTO_PAGE = "696"
+LOTTO_PAGES = (691, 692)
 USER_AGENT = "televideo-linux-web/1.0"
 GOOGLE_TRANSLATE_URL = "https://translate.googleapis.com/translate_a/single"
 MYMEMORY_URL = "https://api.mymemory.translated.net/get"
@@ -58,6 +59,271 @@ CATEGORY_LABELS = {
 }
 COMPOSITE_CATEGORY_PAGES = {103, 105, 110, 170, 180, 190}
 EXTRA_CATEGORY_PAGES = (201, 260, 299)
+
+REGIONS = {
+    "abruzzo": "Abruzzo",
+    "altoadige": "Altoadige",
+    "alto-adige": "Altoadige",
+    "basilicata": "Basilicata",
+    "calabria": "Calabria",
+    "campania": "Campania",
+    "emilia": "Emilia",
+    "emilia-romagna": "Emilia",
+    "friuli": "Friuli",
+    "friuli-venezia-giulia": "Friuli",
+    "lazio": "Lazio",
+    "liguria": "Liguria",
+    "lombardia": "Lombardia",
+    "marche": "Marche",
+    "molise": "Molise",
+    "piemonte": "Piemonte",
+    "puglia": "Puglia",
+    "sardegna": "Sardegna",
+    "sicilia": "Sicilia",
+    "toscana": "Toscana",
+    "trentino": "Trentino",
+    "umbria": "Umbria",
+    "aosta": "Aosta",
+    "valle-aosta": "Aosta",
+    "veneto": "Veneto",
+}
+
+REGION_CHOICES = (
+    "Abruzzo",
+    "Altoadige",
+    "Basilicata",
+    "Calabria",
+    "Campania",
+    "Emilia",
+    "Friuli",
+    "Lazio",
+    "Liguria",
+    "Lombardia",
+    "Marche",
+    "Molise",
+    "Piemonte",
+    "Puglia",
+    "Sardegna",
+    "Sicilia",
+    "Toscana",
+    "Trentino",
+    "Umbria",
+    "Aosta",
+    "Veneto",
+)
+
+SECTION_DEFINITIONS = {
+    "tv": {
+        "title": "Guida TV",
+        "eyebrow": "Rai Televideo 501-535",
+        "lede": "Programmi TV, prima serata, film del giorno, RaiPlay, Rai Sport, radio e dati Auditel.",
+        "seal": "TV",
+        "pages": (
+            (501, "Indice guida TV", "index"),
+            (514, "Film oggi", "schedule"),
+            (515, "Prima serata", "schedule"),
+            (517, "Programmi criptati", "schedule"),
+            (518, "Rai Sport HD", "schedule"),
+            (519, "Rai Sport", "schedule"),
+            (520, "Rai Movie", "schedule"),
+            (521, "Rai Premium", "schedule"),
+            (522, "Rai Yoyo", "schedule"),
+            (523, "Rai 4", "schedule"),
+            (524, "Rai Gulp", "schedule"),
+            (525, "Rai 5", "schedule"),
+            (526, "Rai Storia", "schedule"),
+            (527, "Rai Scuola", "schedule"),
+            (528, "RaiPlay", "schedule"),
+            (530, "Auditel", "index"),
+            (531, "Auditel percentuali", "table"),
+            (532, "Auditel ascoltatori", "table"),
+            (533, "Programmi più visti", "table"),
+            (535, "Radio", "index"),
+            (546, "Magazine TV", "article"),
+        ),
+    },
+    "cultura": {
+        "title": "Cultura, Libri, Cinema e Teatro",
+        "eyebrow": "Rai Televideo 561-600",
+        "lede": "Recensioni, libri, film, teatro, concerti, eventi e mostre recuperati dalle rubriche culturali.",
+        "seal": "CU",
+        "pages": (
+            (561, "Indice libri e cultura", "index"),
+            (562, "Le pagine da leggere", "article"),
+            (564, "Lo scaffale", "article"),
+            (565, "All'ordine del giorno", "article"),
+            (566, "Centro libro e lettura", "article"),
+            (567, "Cinema", "index"),
+            (568, "Film in produzione", "article"),
+            (569, "Film più visti", "table"),
+            (570, "Film in sala - commedia", "article"),
+            (571, "Film in sala - drammatico", "article"),
+            (572, "Film in sala - documentario", "article"),
+            (573, "Film in sala - azione", "article"),
+            (574, "Film in sala - thriller", "article"),
+            (575, "Film in arrivo", "article"),
+            (576, "Teatri", "index"),
+            (577, "Teatri stabili", "schedule"),
+            (580, "Teatri lirici", "schedule"),
+            (583, "Concerti", "article"),
+            (595, "Eventi e mostre", "index"),
+            (596, "Capitale cultura eventi", "article"),
+            (597, "Capitale cultura luoghi", "article"),
+            (598, "Mostre d'arte", "article"),
+            (600, "Giulio Regeni", "article"),
+            (427, "A teatro questa settimana", "article"),
+            (428, "Film della settimana", "article"),
+        ),
+    },
+    "ambiente": {
+        "title": "Ambiente, Scienza e Salute",
+        "eyebrow": "Rai Televideo 450-483",
+        "lede": "Energie rinnovabili, sostenibilità, agenda verde, ricerca, scienza, salute e istituti scientifici.",
+        "seal": "EA",
+        "pages": (
+            (450, "Indice ambiente", "index"),
+            (451, "Energie rinnovabili", "article"),
+            (452, "Riduci, riusa, ricicla", "article"),
+            (453, "Sostenibilità ambientale", "article"),
+            (454, "Agenda verde", "article"),
+            (456, "Lo sapevate che", "article"),
+            (457, "ENEA", "article"),
+            (458, "INGV", "article"),
+            (459, "Stazione Zoologica", "article"),
+            (477, "Scienza e salute", "article"),
+            (481, "CNR", "article"),
+            (483, "INAF", "article"),
+            (635, "ASviS", "article"),
+        ),
+    },
+    "lavoro": {
+        "title": "Lavoro e Concorsi",
+        "eyebrow": "Rai Televideo 465-470",
+        "lede": "Concorsi, Gazzetta Ufficiale, sicurezza sul lavoro, formazione, agenzie ed eventi occupazionali.",
+        "seal": "LA",
+        "pages": (
+            (465, "Indice lavoro", "index"),
+            (466, "Gazzetta e concorsi", "article"),
+            (467, "Sicurezza sul lavoro", "article"),
+            (468, "Agenzie per il lavoro", "article"),
+            (469, "Formazione", "article"),
+            (470, "Eventi per il lavoro", "article"),
+        ),
+    },
+    "sport": {
+        "title": "Sport e Risultati",
+        "eyebrow": "Rai Televideo 200-299",
+        "lede": "Risultati, classifiche, calendari, club di Serie A e B, altri sport e brevi sportive.",
+        "seal": "SP",
+        "pages": (
+            (200, "Indice sport", "index"),
+            (202, "Serie A risultati", "table"),
+            (203, "Serie A classifica", "table"),
+            (204, "Serie A calendario", "schedule"),
+            (209, "Serie B playoff", "schedule"),
+            (229, "Brevi calcio", "article"),
+            (230, "Club Serie A", "article"),
+            (250, "Club Serie B", "article"),
+            (260, "Altri sport", "index"),
+            (261, "Tennis", "article"),
+            (263, "Ciclismo", "article"),
+            (266, "Basket", "article"),
+            (268, "Motori", "article"),
+            (299, "Brevi sport", "article"),
+        ),
+    },
+    "meteo": {
+        "title": "Meteo, Mari e Venti",
+        "eyebrow": "Rai Televideo 700-719",
+        "lede": "Previsioni per versanti, temperature, aeroporti, mari, venti e sicurezza in mare in una sezione separata dalle news.",
+        "seal": "MT",
+        "pages": (
+            (700, "Indice meteo", "index"),
+            (702, "Alpi e Valpadana oggi", "weather"),
+            (703, "Alpi e Valpadana domani", "weather"),
+            (704, "Ligure e Tirrenico oggi", "weather"),
+            (705, "Ligure e Tirrenico domani", "weather"),
+            (706, "Adriatico e Ionico oggi", "weather"),
+            (707, "Adriatico e Ionico domani", "weather"),
+            (708, "Tirreno meridionale e isole oggi", "weather"),
+            (709, "Tirreno meridionale e isole domani", "weather"),
+            (710, "Prossimi giorni", "weather"),
+            (711, "Temperature Italia", "table"),
+            (712, "Temperature estero", "table"),
+            (713, "Aeroporti nord-centro", "weather"),
+            (714, "Aeroporti sud-isole", "weather"),
+            (715, "Mari situazione", "weather"),
+            (716, "Mari previsione", "weather"),
+            (717, "Venti", "weather"),
+            (719, "Guardia Costiera", "article"),
+        ),
+    },
+    "viaggi": {
+        "title": "Viaggi, Turismo e Sicurezza",
+        "eyebrow": "Rai Televideo 433-448",
+        "lede": "Avvisi per viaggiare sicuri, itinerari, FAI, Touring Club, borghi e informazioni utili per spostarsi.",
+        "seal": "VI",
+        "pages": (
+            (433, "Indice in viaggio", "index"),
+            (434, "Viaggiare sicuri", "article"),
+            (435, "Avvisi viaggio", "article"),
+            (436, "Avvisi viaggio", "article"),
+            (437, "Avvisi viaggio", "article"),
+            (438, "Avvisi viaggio", "article"),
+            (439, "Regole di viaggio", "article"),
+            (443, "Strade d'Italia", "article"),
+            (444, "Belpaese", "article"),
+            (445, "FAI", "article"),
+            (446, "Beni FAI", "article"),
+            (447, "Touring Club", "article"),
+            (448, "Borghi Bandiera Arancione", "article"),
+            (596, "Capitale cultura eventi", "article"),
+            (597, "Capitale cultura luoghi", "article"),
+            (719, "Sicurezza in mare", "article"),
+        ),
+    },
+    "giochi": {
+        "title": "Giochi e Estrazioni",
+        "eyebrow": "Rai Televideo 690-696",
+        "lede": "SuperEnalotto, Lotto e archivio delle ultime estrazioni salvate nel database.",
+        "seal": "90",
+        "pages": (
+            (690, "Indice lotto e lotterie", "index"),
+            (691, "Lotto ultima estrazione", "table"),
+            (692, "Lotto estrazione precedente", "table"),
+            (696, "SuperEnalotto", "table"),
+        ),
+    },
+}
+
+REGIONAL_SECTION = {
+    "title": "Televideo Regionale",
+    "eyebrow": "Rai Televideo regionale 300",
+    "lede": "Notizie, eventi, cinema, teatri, gusto, viaggi, società e servizi dalle pagine regionali Rai.",
+    "seal": "R3",
+    "pages": (
+        (300, "Indice regionale", "index"),
+        (101, "Ultim'ora regionale", "article"),
+        (103, "Prima regionale", "article"),
+        (301, "Sport regione", "index"),
+        (407, "Carnet", "article"),
+        (408, "A spasso per", "article"),
+        (409, "Festival", "article"),
+        (411, "Musei", "article"),
+        (413, "A tavola", "article"),
+        (418, "Ricettario", "article"),
+        (420, "In viaggio", "index"),
+        (421, "Viabilità regionale", "table"),
+        (430, "Cinema", "index"),
+        (431, "Cinema locali", "schedule"),
+        (450, "Teatri", "index"),
+        (451, "Teatri locali", "schedule"),
+        (498, "Istituzioni", "article"),
+        (520, "Società", "article"),
+        (575, "Culturambiente", "article"),
+        (690, "Farmacie", "table"),
+    ),
+}
 
 
 def strip_html(value: str) -> str:
@@ -92,13 +358,23 @@ def build_rss_urls() -> list[str]:
     return [base_url + RSS_PATH for base_url in BASE_URLS]
 
 
-def build_text_urls(page: str) -> list[str]:
-    path = TEXT_PATH + "?" + urllib.parse.urlencode({"pagina": page})
+def build_text_urls(page: str, subpage: str | None = None, region: str = "") -> list[str]:
+    query = {"pagina": page}
+    if subpage:
+        query["sottopagina"] = subpage
+    if region:
+        query["regione"] = region
+    path = TEXT_PATH + "?" + urllib.parse.urlencode(query)
     return [base_url + path for base_url in BASE_URLS]
 
 
-def page_link(page: int | str) -> str:
-    return BASE_URLS[0] + TEXT_PATH + "?" + urllib.parse.urlencode({"pagina": str(page).zfill(3)})
+def page_link(page: int | str, subpage: str | None = None, region: str = "") -> str:
+    query = {"pagina": str(page).zfill(3)}
+    if subpage:
+        query["sottopagina"] = subpage
+    if region:
+        query["regione"] = region
+    return BASE_URLS[0] + TEXT_PATH + "?" + urllib.parse.urlencode(query)
 
 
 def extract_page_content(html_text: str) -> str:
@@ -115,8 +391,12 @@ def extract_page_content(html_text: str) -> str:
     return "\n".join(lines)
 
 
-def fetch_televideo_content(page: int | str) -> str:
-    source, _ = fetch_text(build_text_urls(str(page).zfill(3)), settings.TRANSLATION_TIMEOUT, settings.TRANSLATION_RETRIES)
+def fetch_televideo_content(page: int | str, subpage: str | None = None, region: str = "") -> str:
+    source, _ = fetch_text(
+        build_text_urls(str(page).zfill(3), subpage=subpage, region=region),
+        settings.TRANSLATION_TIMEOUT,
+        settings.TRANSLATION_RETRIES,
+    )
     return extract_page_content(source)
 
 
@@ -414,6 +694,149 @@ def parse_italian_decimal(value: str) -> Decimal | None:
         return None
 
 
+def normalize_region(value: str | None) -> str:
+    if not value:
+        return "Lombardia"
+    key = value.strip().lower().replace("_", "-").replace(" ", "-")
+    if key in REGIONS:
+        return REGIONS[key]
+    for region in REGION_CHOICES:
+        if region.lower() == value.strip().lower():
+            return region
+    return "Lombardia"
+
+
+def region_slug(region: str) -> str:
+    return region.lower().replace(" ", "-")
+
+
+def clean_snapshot_text(content: str) -> str:
+    content = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", content)
+    content = re.sub(r"[£òù]{3,}", "", content)
+    lines = [line.rstrip() for line in content.splitlines()]
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return "\n".join(lines)
+
+
+def empty_snapshot(content: str) -> bool:
+    compact = compact_text(content).lower()
+    return not compact or "pagina vuota" in compact or "servizio non disponibile" in compact
+
+
+def snapshot_total_subpages(content: str) -> int:
+    totals = [int(match.group(1)) for match in re.finditer(r"\b\d{1,2}/(\d{1,2})\b", content)]
+    return min(max(totals or [1]), 20)
+
+
+def snapshot_title(content: str, fallback: str) -> str:
+    for line in content.splitlines()[:10]:
+        candidate = compact_text(line).strip(" -")
+        if not candidate:
+            continue
+        if re.fullmatch(r"\d{1,2}/\d{1,2}", candidate):
+            continue
+        if re.match(r"^\d{1,2}/\d{1,2}/\d{2,4}\b", candidate):
+            continue
+        if "www." in candidate.lower() or "servizio non disponibile" in candidate.lower():
+            continue
+        return candidate[:180]
+    return fallback[:180]
+
+
+def section_definition(section: str) -> dict[str, object]:
+    if section == "regioni":
+        return REGIONAL_SECTION
+    if section not in SECTION_DEFINITIONS:
+        raise RuntimeError("sezione Televideo non configurata")
+    return SECTION_DEFINITIONS[section]
+
+
+def update_section_snapshots(section: str, region: str = "") -> int:
+    definition = section_definition(section)
+    saved = 0
+    normalized_region = normalize_region(region) if section == "regioni" else ""
+    pages = definition["pages"]
+    for index, spec in enumerate(pages):
+        page, label, content_kind = spec
+        try:
+            first_content = clean_snapshot_text(fetch_televideo_content(page, region=normalized_region))
+        except RuntimeError:
+            continue
+        if empty_snapshot(first_content):
+            continue
+
+        total_subpages = snapshot_total_subpages(first_content)
+        subpages: list[tuple[str, str]] = [("01", first_content)]
+        for subpage_number in range(2, total_subpages + 1):
+            subpage = str(subpage_number).zfill(2)
+            try:
+                subpage_content = clean_snapshot_text(fetch_televideo_content(page, subpage=subpage, region=normalized_region))
+            except RuntimeError:
+                continue
+            if not empty_snapshot(subpage_content):
+                subpages.append((subpage, subpage_content))
+
+        for subpage_index, (subpage, content) in enumerate(subpages):
+            TelevideoPageSnapshot.objects.update_or_create(
+                section=section,
+                page=page,
+                subpage=subpage,
+                region=normalized_region,
+                defaults={
+                    "label": label,
+                    "title": snapshot_title(content, label),
+                    "content_kind": content_kind,
+                    "sort_order": index * 100 + subpage_index,
+                    "source_url": page_link(page, subpage=subpage, region=normalized_region),
+                    "raw_text": content,
+                },
+            )
+            saved += 1
+    return saved
+
+
+def refresh_section_if_stale(section: str, region: str = "") -> None:
+    normalized_region = normalize_region(region) if section == "regioni" else ""
+    latest = TelevideoPageSnapshot.objects.filter(section=section, region=normalized_region).order_by("-fetched_at").first()
+    if latest and (timezone.now() - latest.fetched_at).total_seconds() < settings.TELETEXT_SECTION_REFRESH_SECONDS:
+        return
+    update_section_snapshots(section, normalized_region)
+
+
+def parse_lotto_content(content: str) -> dict[str, object]:
+    compact = compact_text(content)
+    date_match = re.search(r"\b(\d{2})/(\d{2})/(\d{4})\b", compact)
+    if not date_match:
+        raise RuntimeError("formato Lotto non riconosciuto")
+    day, month, year = (int(date_match.group(1)), int(date_match.group(2)), int(date_match.group(3)))
+    wheels: dict[str, list[int]] = {}
+    for line in content.splitlines():
+        match = re.match(r"^\s*([A-Z. ]{3,12})\s+((?:\d{1,2}\s+){4}\d{1,2})\b", line)
+        if not match:
+            continue
+        wheel = compact_text(match.group(1)).title()
+        wheels[wheel] = [int(value) for value in match.group(2).split()]
+    if not wheels:
+        raise RuntimeError("ruote Lotto non riconosciute")
+    return {"draw_date": date(year, month, day), "wheels": wheels, "raw_text": content}
+
+
+def update_lotto() -> int:
+    saved = 0
+    for page in LOTTO_PAGES:
+        try:
+            defaults = parse_lotto_content(fetch_televideo_content(page))
+        except RuntimeError:
+            continue
+        draw_date = defaults.pop("draw_date")
+        LottoDraw.objects.update_or_create(draw_date=draw_date, defaults=defaults)
+        saved += 1
+    return saved
+
+
 def parse_superenalotto_content(content: str) -> dict[str, object]:
     compact = compact_text(content)
     draw_match = re.search(r"CONCORSO\s+N\.(\d+)\s+(\d{2})/(\d{2})/(\d{4})", compact, flags=re.IGNORECASE)
@@ -507,14 +930,14 @@ def update_category_news(categories: list[Category], per_category_limit: int) ->
 
 def update_news(limit: int | None = None, category_limit: int | None = None) -> int:
     category_limit = settings.CATEGORY_FETCH_LIMIT if category_limit is None else category_limit
-    with transaction.atomic():
-        categories = sync_categories_from_page_104()
-        saved = update_rss_news(limit, categories[0])
-        saved += update_category_news(categories, category_limit)
-        try:
-            saved += update_superenalotto()
-        except RuntimeError:
-            pass
+    categories = sync_categories_from_page_104()
+    saved = update_rss_news(limit, categories[0])
+    saved += update_category_news(categories, category_limit)
+    try:
+        saved += update_superenalotto()
+    except RuntimeError:
+        pass
+    saved += update_lotto()
     return saved
 
 

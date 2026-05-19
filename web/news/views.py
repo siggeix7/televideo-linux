@@ -3,12 +3,23 @@ from __future__ import annotations
 from django.conf import settings
 from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.db import connection
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
 
-from .models import Category, NewsItem, SuperEnalottoDraw
-from .services import refresh_if_stale
+from .models import Category, LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
+from .services import (
+    REGION_CHOICES,
+    SECTION_DEFINITIONS,
+    normalize_region,
+    refresh_if_stale,
+    refresh_section_if_stale,
+    region_slug,
+    section_definition,
+    update_lotto,
+    update_superenalotto,
+)
 
 
 LANGUAGES = {
@@ -18,6 +29,19 @@ LANGUAGES = {
 }
 
 HIDDEN_CATEGORY_CODES = {"p401", "p613", "p700", "p711"}
+
+NAVIGATION = (
+    ("home", "Cronaca", "news:home"),
+    ("tv", "TV", "news:tv"),
+    ("cultura", "Cultura", "news:culture"),
+    ("ambiente", "Ambiente", "news:environment"),
+    ("lavoro", "Lavoro", "news:work"),
+    ("sport", "Sport", "news:sport"),
+    ("meteo", "Meteo", "news:weather"),
+    ("viaggi", "Viaggi", "news:travel"),
+    ("giochi", "Giochi", "news:games"),
+    ("regioni", "Regioni", "news:regions"),
+)
 
 UI_TEXT = {
     "it": {
@@ -151,6 +175,39 @@ def ui_for(language: str) -> dict[str, str]:
     return UI_TEXT[normalize_language(language)]
 
 
+def nav_items(active: str) -> list[dict[str, object]]:
+    return [
+        {"key": key, "label": label, "url": reverse(route), "active": key == active}
+        for key, label, route in NAVIGATION
+    ]
+
+
+def snapshot_payload(snapshot: TelevideoPageSnapshot) -> dict[str, object]:
+    lines = snapshot.raw_text.splitlines()
+    paragraphs = [line.strip() for line in lines if line.strip()]
+    return {
+        "page": snapshot.page,
+        "subpage": snapshot.subpage,
+        "label": snapshot.label,
+        "title": snapshot.title,
+        "content_kind": snapshot.content_kind,
+        "source_url": snapshot.source_url,
+        "raw_text": snapshot.raw_text,
+        "paragraphs": paragraphs,
+        "fetched_at": snapshot.fetched_at,
+        "render_pre": snapshot.content_kind in {"index", "schedule", "table", "weather"},
+    }
+
+
+def section_snapshots(section: str, region: str = "") -> list[dict[str, object]]:
+    queryset = TelevideoPageSnapshot.objects.filter(section=section, region=region).order_by(
+        "sort_order",
+        "page",
+        "subpage",
+    )
+    return [snapshot_payload(snapshot) for snapshot in queryset]
+
+
 def parse_limit(value: str | None, default: int = 18) -> int:
     try:
         return min(max(int(value or default), 1), 80)
@@ -180,6 +237,7 @@ def home(request):
             "languages": LANGUAGES,
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
             "ui": ui_for(language),
+            "nav_items": nav_items("home"),
         },
     )
 
@@ -199,6 +257,107 @@ def superenalotto(request):
             "languages": LANGUAGES,
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
             "ui": ui_for(language),
+            "nav_items": nav_items("giochi"),
+        },
+    )
+
+
+def televideo_section(request, section: str, active: str):
+    if section not in SECTION_DEFINITIONS:
+        raise Http404("Sezione non trovata")
+    definition = section_definition(section)
+    refresh_section_if_stale(section)
+    snapshots = section_snapshots(section)
+    latest = max((card["fetched_at"] for card in snapshots), default=None)
+    return render(
+        request,
+        "news/section.html",
+        {
+            "section": {**definition, "key": section},
+            "cards": snapshots,
+            "latest": latest,
+            "nav_items": nav_items(active),
+        },
+    )
+
+
+def tv(request):
+    return televideo_section(request, "tv", "tv")
+
+
+def culture(request):
+    return televideo_section(request, "cultura", "cultura")
+
+
+def environment(request):
+    return televideo_section(request, "ambiente", "ambiente")
+
+
+def work(request):
+    return televideo_section(request, "lavoro", "lavoro")
+
+
+def sport(request):
+    return televideo_section(request, "sport", "sport")
+
+
+def weather(request):
+    return televideo_section(request, "meteo", "meteo")
+
+
+def travel(request):
+    return televideo_section(request, "viaggi", "viaggi")
+
+
+def games(request):
+    refresh_section_if_stale("giochi")
+    try:
+        update_superenalotto()
+        update_lotto()
+    except RuntimeError:
+        pass
+    latest_superenalotto = SuperEnalottoDraw.objects.first()
+    latest_lotto = LottoDraw.objects.first()
+    snapshots = section_snapshots("giochi")
+    latest = max((card["fetched_at"] for card in snapshots), default=None)
+    return render(
+        request,
+        "news/games.html",
+        {
+            "section": {**section_definition("giochi"), "key": "giochi"},
+            "cards": snapshots,
+            "latest": latest,
+            "latest_superenalotto": latest_superenalotto,
+            "latest_lotto": latest_lotto,
+            "nav_items": nav_items("giochi"),
+        },
+    )
+
+
+def regions(request, region_slug_value: str | None = None):
+    selected_region = normalize_region(region_slug_value or request.GET.get("regione"))
+    refresh_section_if_stale("regioni", selected_region)
+    snapshots = section_snapshots("regioni", selected_region)
+    latest = max((card["fetched_at"] for card in snapshots), default=None)
+    regions_payload = [
+        {
+            "name": region,
+            "slug": region_slug(region),
+            "url": reverse("news:region", kwargs={"region_slug_value": region_slug(region)}),
+            "active": region == selected_region,
+        }
+        for region in REGION_CHOICES
+    ]
+    return render(
+        request,
+        "news/regions.html",
+        {
+            "section": {**section_definition("regioni"), "key": "regioni", "title": f"Televideo {selected_region}"},
+            "cards": snapshots,
+            "latest": latest,
+            "regions": regions_payload,
+            "selected_region": selected_region,
+            "nav_items": nav_items("regioni"),
         },
     )
 

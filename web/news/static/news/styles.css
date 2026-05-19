@@ -45,6 +45,7 @@ body::before {
 .hero,
 .status-panel,
 .news-card,
+.section-card,
 .lottery-card,
 .trend-card,
 .empty-state,
@@ -213,12 +214,85 @@ h1 {
     gap: 18px;
 }
 
+.section-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.section-grid--compact {
+    margin-top: 16px;
+}
+
 .news-card {
     position: relative;
     min-height: 260px;
     padding: 26px;
     border-radius: 18px 18px 10px 10px;
     overflow: hidden;
+}
+
+.section-card {
+    position: relative;
+    min-height: 260px;
+    padding: 24px;
+    border-radius: 18px 18px 10px 10px;
+    overflow: hidden;
+}
+
+.section-card h2,
+.lottery-card h2,
+.trend-card h2,
+.section-title {
+    margin: 12px 0 14px;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(1.35rem, 2vw, 1.9rem);
+    line-height: 1.14;
+}
+
+.section-card pre {
+    overflow-x: auto;
+    margin: 14px 0 18px;
+    border: 1px dashed rgba(111, 29, 27, 0.26);
+    border-radius: 12px;
+    padding: 16px;
+    color: #2f2118;
+    font: 0.92rem/1.42 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    white-space: pre-wrap;
+    background: rgba(255, 248, 224, 0.48);
+}
+
+.section-card__body {
+    margin: 14px 0 18px;
+    color: #352319;
+    font-size: 1rem;
+    line-height: 1.68;
+}
+
+.section-followup {
+    margin-top: 24px;
+}
+
+.lotto-table {
+    display: grid;
+    gap: 8px;
+    margin: 16px 0 0;
+}
+
+.lotto-row {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    gap: 12px;
+    align-items: center;
+    border: 1px dashed rgba(111, 29, 27, 0.26);
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: rgba(255, 248, 224, 0.42);
+}
+
+.lotto-row span {
+    font-weight: 900;
+    letter-spacing: 0.08em;
 }
 
 .news-card:hover {
@@ -415,7 +489,12 @@ h1 {
 
     .status-panel,
     .lottery-layout,
+    .section-grid,
     .news-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .lotto-row {
         grid-template-columns: 1fr;
     }
 
@@ -428,10 +507,18 @@ h1 {
     .news-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .section-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (min-width: 1121px) {
     .news-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .section-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }

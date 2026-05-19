@@ -19,10 +19,7 @@
             <div class="seal" aria-hidden="true">6</div>
         </header>
 
-        <nav class="site-nav" aria-label="Navigazione principale">
-            <a href="{% url 'news:home' %}" class="site-nav__link" data-ui="news_link">{{ ui.news_link }}</a>
-            <a href="{% url 'news:superenalotto' %}" class="site-nav__link is-active" data-ui="super_link">{{ ui.super_link }}</a>
-        </nav>
+        {% include "news/_site_nav.html" %}
 
         <nav class="toolbar" aria-label="{{ ui.language_nav_label }}">
             {% for code, label in languages.items %}

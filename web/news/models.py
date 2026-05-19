@@ -101,3 +101,44 @@ class SuperEnalottoDraw(models.Model):
 
     def __str__(self) -> str:
         return f"Concorso {self.draw_number} del {self.draw_date.isoformat()}"
+
+
+class LottoDraw(models.Model):
+    draw_date = models.DateField(unique=True, db_index=True)
+    wheels = models.JSONField(default=dict)
+    raw_text = models.TextField(blank=True)
+    fetched_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("-draw_date",)
+
+    def __str__(self) -> str:
+        return f"Lotto del {self.draw_date.isoformat()}"
+
+
+class TelevideoPageSnapshot(models.Model):
+    section = models.SlugField(max_length=32, db_index=True)
+    page = models.PositiveSmallIntegerField(db_index=True)
+    subpage = models.CharField(max_length=8, blank=True)
+    region = models.CharField(max_length=32, blank=True, db_index=True)
+    label = models.CharField(max_length=120)
+    title = models.CharField(max_length=180)
+    content_kind = models.CharField(max_length=32, default="article")
+    sort_order = models.PositiveSmallIntegerField(default=0, db_index=True)
+    source_url = models.URLField(blank=True)
+    raw_text = models.TextField(blank=True)
+    fetched_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("section", "region", "sort_order", "page", "subpage")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("section", "page", "subpage", "region"),
+                name="unique_televideo_page_snapshot",
+            )
+        ]
+
+    def __str__(self) -> str:
+        suffix = f"/{self.subpage}" if self.subpage else ""
+        region = f" {self.region}" if self.region else ""
+        return f"{self.section}{region} {self.page}{suffix}"

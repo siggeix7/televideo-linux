@@ -1,0 +1,59 @@
+{% load static %}
+<!doctype html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ section.title }} - Televideo News</title>
+    <link rel="stylesheet" href="{% static 'news/styles.css' %}">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="hero hero--compact">
+            <div class="hero__copy">
+                <p class="eyebrow">{{ section.eyebrow }}</p>
+                <h1>{{ section.title }}</h1>
+                <p class="lede">{{ section.lede }}</p>
+            </div>
+            <div class="seal" aria-hidden="true">{{ section.seal }}</div>
+        </header>
+
+        {% include "news/_site_nav.html" %}
+
+        <section class="status-panel" aria-live="polite">
+            <div>
+                <span class="status-label">Fonte</span>
+                <strong>Rai Televideo</strong>
+            </div>
+            <div>
+                <span class="status-label">Ultima cache</span>
+                <strong>{% if latest %}{{ latest|date:"d/m/Y H:i" }}{% else %}in attesa{% endif %}</strong>
+            </div>
+        </section>
+
+        <main>
+            {% if cards %}
+                <section class="section-grid">
+                    {% for card in cards %}
+                        <article class="section-card section-card--{{ card.content_kind }}">
+                            <p class="eyebrow">Pagina {{ card.page }}/{{ card.subpage }} · {{ card.label }}</p>
+                            <h2>{{ card.title }}</h2>
+                            {% if card.render_pre %}
+                                <pre>{{ card.raw_text }}</pre>
+                            {% else %}
+                                <p class="section-card__body">{{ card.raw_text|linebreaksbr }}</p>
+                            {% endif %}
+                            <a class="news-card__link" href="{{ card.source_url }}" rel="noopener noreferrer">Apri pagina Televideo</a>
+                        </article>
+                    {% endfor %}
+                </section>
+            {% else %}
+                <div class="empty-state">
+                    <h2>Nessun contenuto disponibile</h2>
+                    <p>La sezione non ha ancora risposto oppure la cache non e' stata popolata.</p>
+                </div>
+            {% endif %}
+        </main>
+    </div>
+</body>
+</html>

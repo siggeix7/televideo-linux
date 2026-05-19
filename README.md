@@ -15,6 +15,9 @@ notizie. Le lingue disponibili nella UI sono latino, italiano e inglese.
 - Storico notizie persistente: le notizie restano salvate anche dopo che spariscono da Televideo.
 - Paginazione automatica quando lo storico contiene molte notizie.
 - Pagina dedicata al SuperEnalotto da pagina 696, con storico estrazioni e andamento montepremi.
+- Sezioni Televideo dedicate per TV, cultura, ambiente/scienza, lavoro, sport, meteo, viaggi, giochi e regioni.
+- Cache SQLite delle pagine Televideo non-news, separata dallo storico notizie.
+- Lotto da pagina 691 con parsing delle ruote e SuperEnalotto nella pagina giochi.
 - Database SQLite persistente su volume esterno `/data`.
 - Job di aggiornamento automatico eseguibile in loop.
 - API JSON usata dalla pagina per aggiornarsi senza refresh manuale.
@@ -60,6 +63,7 @@ services:
       NEWS_REFRESH_SECONDS: "${NEWS_REFRESH_SECONDS:-60}"
       NEWS_FETCH_LIMIT: "${NEWS_FETCH_LIMIT:-12}"
       CATEGORY_FETCH_LIMIT: "${CATEGORY_FETCH_LIMIT:-2}"
+      TELETEXT_SECTION_REFRESH_SECONDS: "${TELETEXT_SECTION_REFRESH_SECONDS:-1800}"
       TRANSLATION_TIMEOUT: "${TRANSLATION_TIMEOUT:-8}"
       TRANSLATION_RETRIES: "${TRANSLATION_RETRIES:-1}"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-false}"
@@ -86,6 +90,7 @@ SQLITE_TIMEOUT=30
 NEWS_REFRESH_SECONDS=60
 NEWS_FETCH_LIMIT=12
 CATEGORY_FETCH_LIMIT=2
+TELETEXT_SECTION_REFRESH_SECONDS=1800
 TRANSLATION_TIMEOUT=8
 TRANSLATION_RETRIES=1
 
@@ -240,6 +245,7 @@ SQLITE_TIMEOUT        timeout lock SQLite in secondi, default 30
 NEWS_REFRESH_SECONDS  frequenza aggiornamento notizie, default 60
 NEWS_FETCH_LIMIT      quante notizie conservare a ogni giro, default 12
 CATEGORY_FETCH_LIMIT  quante notizie importare per ogni categoria Televideo, default 2
+TELETEXT_SECTION_REFRESH_SECONDS frequenza cache sezioni Televideo dedicate, default 1800
 TRANSLATION_TIMEOUT   timeout traduttori online, default 8
 TRANSLATION_RETRIES   retry traduttori/feed, default 1
 DJANGO_DEBUG          debug Django, default false
@@ -309,6 +315,27 @@ troppo diversi dagli articoli editoriali e generavano schede poco leggibili.
 Le notizie non vengono eliminate quando non compaiono piu' su Televideo: restano
 nello storico SQLite e la pagina principale usa una paginazione lato API/UI per
 non caricare troppe schede insieme.
+
+## Sezioni Dedicate
+
+Le pagine Televideo non adatte a diventare notizie sono integrate in sezioni
+separate, con cache SQLite propria e layout dedicato:
+
+```text
+/tv/          guida TV, prima serata, film, canali Rai, Auditel, radio
+/cultura/     libri, cinema, teatro, concerti, eventi, mostre
+/ambiente/    ambiente, scienza, salute, CNR, INAF, ASviS
+/lavoro/      concorsi, Gazzetta, formazione, agenzie, eventi lavoro
+/sport/       risultati, classifiche, calendari, club, altri sport
+/meteo/       previsioni, temperature, aeroporti, mari, venti
+/viaggi/      viaggiare sicuri, FAI, Touring Club, itinerari, mare
+/giochi/      SuperEnalotto, Lotto e pagine giochi Televideo
+/regioni/     Televideo regionale con selettore regione
+```
+
+Queste sezioni non vengono mischiate con la cronaca principale. Le pagine
+tabellari, come meteo o classifiche sportive, sono mostrate preservando il
+layout monospace originale; le rubriche testuali sono mostrate come schede.
 
 ## SuperEnalotto
 
@@ -423,9 +450,12 @@ televideo                         CLI Python
 web/manage.py                     entrypoint Django
 web/chronica/                     progetto Django
 web/news/                         app notizie, API, job e template
-web/news/services.py              fetch RSS, traduzioni, persistenza SQLite
+web/news/services.py              fetch RSS, sezioni Televideo, traduzioni, persistenza SQLite
 web/news/templates/news/home.html pagina web
 web/news/templates/news/superenalotto.html pagina SuperEnalotto
+web/news/templates/news/section.html sezioni dedicate Televideo
+web/news/templates/news/regions.html Televideo regionale
+web/news/templates/news/games.html Lotto e giochi
 web/news/static/news/             CSS e JavaScript
 Dockerfile                        immagine applicativa
 docker-compose.yml                compose consigliato con /opt/televideo-docker
