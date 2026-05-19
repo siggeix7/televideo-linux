@@ -7,28 +7,32 @@
     <link rel="stylesheet" href="{% static 'news/styles.css' %}">
     <script defer src="{% static 'news/app.js' %}"></script>
 </head>
-<body data-api-url="{% url 'news:news_api' %}" data-initial-language="{{ language }}" data-refresh-seconds="{{ refresh_seconds }}">
+<body data-api-url="{% url 'news:news_api' %}" data-initial-language="{{ language }}" data-refresh-seconds="{{ refresh_seconds }}" data-error-prefix="{{ ui.error_prefix }}" data-timeout-error="{{ ui.timeout_error }}" data-unknown-error="{{ ui.unknown_error }}" data-no-search-results-title="{{ ui.no_search_results_title }}" data-no-search-results-message="{{ ui.no_search_results_message }}">
     <div class="page-shell">
-        <header class="hero">
-            <div class="hero__copy">
-                <p class="eyebrow" data-ui="eyebrow">{{ ui.eyebrow }}</p>
-                <h1 data-ui="title">{{ ui.title }}</h1>
-                <p class="lede" data-ui="lede">{{ ui.lede }}</p>
+        <header class="site-header">
+            <div class="hero">
+                <div class="hero__copy">
+                    <p class="eyebrow" data-ui="eyebrow">{{ ui.eyebrow }}</p>
+                    <h1 data-ui="title">{{ ui.title }}</h1>
+                    <p class="lede" data-ui="lede">{{ ui.lede }}</p>
+                </div>
+                <div class="seal" aria-hidden="true">CT</div>
             </div>
-            <div class="seal" aria-hidden="true">CT</div>
+
+            <div class="topbar">
+                {% include "news/_site_nav.html" %}
+                {% include "news/_language_dropdown.html" %}
+            </div>
         </header>
 
-        {% include "news/_site_nav.html" %}
-        {% include "news/_language_dropdown.html" %}
-
         <div class="search-bar">
-            <input type="search" id="search-input" class="search-bar__input" placeholder="Cerca nelle notizie..." aria-label="Cerca notizie">
+            <input type="search" id="search-input" class="search-bar__input" placeholder="{{ ui.search_placeholder }}" aria-label="{{ ui.search_placeholder }}" data-ui-placeholder="search_placeholder">
         </div>
 
         <section class="category-panel" aria-label="{{ ui.categories_title }}">
             <h2 data-ui="categories_title">{{ ui.categories_title }}</h2>
             <div id="category-list" class="category-list">
-                <span class="skeleton skeleton--text" style="width:8em;height:2em;border-radius:999px;display:inline-block"></span>
+                <span class="skeleton skeleton--pill"></span>
             </div>
         </section>
 
@@ -46,15 +50,15 @@
         <main>
             <section id="news-grid" class="news-grid" aria-live="polite" aria-label="Notizie">
                 <article class="news-card skeleton skeleton--card" aria-hidden="true">
-                    <div class="skeleton skeleton--text" style="width:5em;height:0.72rem;margin-bottom:0.8em"></div>
+                    <div class="skeleton skeleton--text skeleton--short"></div>
                     <div class="skeleton skeleton--title"></div>
                     <div class="skeleton skeleton--text"></div>
                     <div class="skeleton skeleton--text"></div>
-                    <div class="skeleton skeleton--text" style="width:40%"></div>
+                    <div class="skeleton skeleton--text skeleton--half"></div>
                 </article>
             </section>
 
-            <nav class="pagination" aria-label="Paginazione notizie">
+            <nav class="pagination" aria-label="{{ ui.previous_page }} / {{ ui.next_page }}">
                 <button id="previous-page" class="pagination__button" type="button" disabled></button>
                 <span id="page-status" class="pagination__status"></span>
                 <button id="next-page" class="pagination__button" type="button" disabled></button>
@@ -66,7 +70,7 @@
             </div>
 
             <div id="error-state" class="error-state" hidden>
-                <h2>Errore di caricamento</h2>
+                <h2 data-ui="load_error_title">{{ ui.load_error_title }}</h2>
                 <p id="error-message"></p>
             </div>
         </main>
@@ -87,11 +91,11 @@
 
     <template id="skeleton-card-template">
         <article class="news-card skeleton skeleton--card" aria-hidden="true">
-            <div class="skeleton skeleton--text" style="width:5em;height:0.72rem;margin-bottom:0.8em"></div>
+            <div class="skeleton skeleton--text skeleton--short"></div>
             <div class="skeleton skeleton--title"></div>
             <div class="skeleton skeleton--text"></div>
             <div class="skeleton skeleton--text"></div>
-            <div class="skeleton skeleton--text" style="width:40%"></div>
+            <div class="skeleton skeleton--text skeleton--half"></div>
         </article>
     </template>
 </body>

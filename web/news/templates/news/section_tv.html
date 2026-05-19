@@ -1,10 +1,10 @@
 {% extends "news/_section_base.html" %}
 
 {% block section_content %}
-<main>
+<main class="section-stack">
     {% if data.films %}
     <section class="schedule-card">
-        <h2>Film in programmazione</h2>
+        <h2>{{ ui.film_schedule_title }}</h2>
         <div class="film-list">
             {% for film in data.films %}
             <div class="film-item">
@@ -15,9 +15,9 @@
                 </div>
                 <div class="film-item__title">{{ film.title }}</div>
                 <div class="film-item__meta">
-                    {% if film.genre %}{{ film.genre }} &middot; {% endif %}
-                    {% if film.director %}di {{ film.director }}{% endif %}
-                    {% if film.cast %} &middot; con {{ film.cast }}{% endif %}
+                    {% if film.genre %}<span>{{ film.genre }}</span>{% endif %}
+                    {% if film.director %}<span>{{ ui.director_prefix }} {{ film.director }}</span>{% endif %}
+                    {% if film.cast %}<span>{{ ui.cast_prefix }} {{ film.cast }}</span>{% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -27,11 +27,11 @@
 
     {% if data.auditel %}
     {% for aud in data.auditel %}
-    <section class="content-card" style="margin-top:12px">
+    <section class="content-card">
         <h2>{{ aud.label }}</h2>
         <div class="table-wrap">
             <table class="data-table">
-                <thead><tr><th>Canale/Programma</th><th class="right">Share %</th><th class="right">Spettatori</th></tr></thead>
+                <thead><tr><th>{{ ui.channel_program_label }}</th><th class="right">{{ ui.share_label }}</th><th class="right">{{ ui.viewers_label }}</th></tr></thead>
                 <tbody>
                     {% for row in aud.rows %}
                     <tr>
@@ -47,24 +47,14 @@
     {% endfor %}
     {% endif %}
 
-    {% for snap in data.merged %}
-    {% if snap.content_kind != "schedule" and snap.page not in "531 532 533" %}
-    <section class="content-card" style="margin-top:12px">
-        <h2>{{ snap.title }}</h2>
-        {% if snap.content_kind == "index" or snap.content_kind == "table" %}
-        <pre style="font:.82rem/1.4 var(--font-mono);color:var(--ink-soft);white-space:pre-wrap;background:var(--surface-deep);padding:12px;border-radius:8px;border:1px dashed var(--border-light);margin:0">{{ snap.all_text }}</pre>
-        {% else %}
-        <div class="article-card__body">{{ snap.all_text|linebreaksbr }}</div>
-        {% endif %}
-        <a class="news-card__link" href="{{ snap.source_url }}" rel="noopener noreferrer" target="_blank">Apri su Televideo &nearr;</a>
-    </section>
-    {% endif %}
+    {% for card in data.cards %}
+        {% include "news/_content_card.html" with card=card %}
     {% endfor %}
 
-    {% if not data.films and not data.auditel and not data.merged %}
+    {% if not data.films and not data.auditel and not data.cards %}
     <div class="empty-state">
-        <h2>Nessun palinsesto disponibile</h2>
-        <p>I dati non sono ancora stati recuperati da Rai Televideo.</p>
+        <h2>{{ ui.section_empty_title }}</h2>
+        <p>{{ ui.section_empty_message }}</p>
     </div>
     {% endif %}
 </main>

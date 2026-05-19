@@ -1,25 +1,25 @@
 {% extends "news/_section_base.html" %}
 
 {% block section_content %}
-<main>
+<main class="section-stack">
     {% if data.standings or data.results %}
     {% if data.round_info %}
-    <p class="eyebrow" style="margin-bottom:8px">{{ data.round_info }}</p>
+    <p class="section-note">{{ data.round_info }}</p>
     {% endif %}
 
     {% if data.standings %}
     <section class="standings-card">
         <div class="standings-header">
-            <h2>Classifica Serie A</h2>
-            {% if data.round_info %}<span style="color:var(--muted);font-size:.82rem">{{ data.round_info }}</span>{% endif %}
+            <h2>{{ ui.standings_title }}</h2>
+            {% if data.round_info %}<span>{{ data.round_info }}</span>{% endif %}
         </div>
         <div class="table-wrap">
             <table class="data-table">
                 <thead>
                     <tr>
-                        <th>#</th><th>Squadra</th><th class="right">Pt</th>
-                        <th class="right">V</th><th class="right">P</th><th class="right">S</th>
-                        <th class="right">GF</th><th class="right">GS</th>
+                        <th>{{ ui.position_label }}</th><th>{{ ui.team_label }}</th><th class="right">{{ ui.points_label }}</th>
+                        <th class="right">{{ ui.wins_label }}</th><th class="right">{{ ui.draws_label }}</th><th class="right">{{ ui.losses_label }}</th>
+                        <th class="right">{{ ui.goals_for_label }}</th><th class="right">{{ ui.goals_against_label }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -46,8 +46,8 @@
     {% endif %}
 
     {% if data.results %}
-    <section class="results-card" style="margin-top:12px">
-        <h2>Ultimi risultati</h2>
+    <section class="results-card">
+        <h2>{{ ui.latest_results_title }}</h2>
         <div class="results-list">
             {% for match in data.results %}
             <div class="result-item">
@@ -61,29 +61,14 @@
     {% endif %}
     {% endif %}
 
-    {% for snap in data.merged %}
-        {% if snap.content_kind == "article" and snap.page not in "200 202 203" %}
-        <article class="article-card" style="margin-top:12px">
-            <h2>{{ snap.title }}</h2>
-            <div class="article-card__body">{{ snap.all_text|linebreaksbr }}</div>
-            <div class="article-card__meta">Pagina {{ snap.page }}{% if snap.subpage %}/{{ snap.subpage|join:", " }}{% endif %}</div>
-            <a class="news-card__link" href="{{ snap.source_url }}" rel="noopener noreferrer" target="_blank">Apri su Televideo &nearr;</a>
-        </article>
-        {% elif snap.content_kind == "table" and snap.page not in "202 203" %}
-        <section class="content-card" style="margin-top:12px">
-            <h2>{{ snap.title }}</h2>
-            <div class="table-wrap">
-                <pre style="font:.82rem/1.4 var(--font-mono);color:var(--ink-soft);white-space:pre-wrap;background:var(--surface-deep);padding:12px;border-radius:8px;border:1px dashed var(--border-light);margin:0">{{ snap.all_text }}</pre>
-            </div>
-            <a class="news-card__link" href="{{ snap.source_url }}" rel="noopener noreferrer" target="_blank">Apri su Televideo &nearr;</a>
-        </section>
-        {% endif %}
+    {% for card in data.cards %}
+        {% include "news/_content_card.html" with card=card %}
     {% endfor %}
 
-    {% if not data.standings and not data.results and not data.merged %}
+    {% if not data.standings and not data.results and not data.cards %}
     <div class="empty-state">
-        <h2>Nessun dato sportivo disponibile</h2>
-        <p>I dati non sono ancora stati recuperati da Rai Televideo.</p>
+        <h2>{{ ui.section_empty_title }}</h2>
+        <p>{{ ui.section_empty_message }}</p>
     </div>
     {% endif %}
 </main>

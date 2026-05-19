@@ -14,6 +14,9 @@ from .fetcher import request_text
 from .parser import compact_text
 
 
+MAX_TRANSLATE_CHARS = 1300
+
+
 def google_translate(text: str, target_language: str, timeout: float) -> str:
     query = {"client": "gtx", "sl": "it", "tl": target_language, "dt": "t", "q": text}
     url = GOOGLE_TRANSLATE_URL + "?" + urllib.parse.urlencode(query)
@@ -44,18 +47,79 @@ def mymemory_translate(text: str, target_language: str, timeout: float) -> str:
     return translated
 
 
-@lru_cache(maxsize=1024)
-def translate_text(text: str, target_language: str) -> str:
-    if target_language == "it":
-        return text
+def split_translation_units(text: str, limit: int = MAX_TRANSLATE_CHARS) -> list[str]:
+    """Split long text into safe chunks for free translation endpoints."""
+    text = compact_text(text)
+    if not text:
+        return []
+    if len(text) <= limit:
+        return [text]
+
+    units = re.split(r"(?<=[.!?;:])\s+", text)
+    chunks: list[str] = []
+    current = ""
+    for unit in units:
+        if not unit:
+            continue
+        if len(unit) > limit:
+            if current:
+                chunks.append(current)
+                current = ""
+            for index in range(0, len(unit), limit):
+                chunks.append(unit[index:index + limit].strip())
+            continue
+        candidate = f"{current} {unit}".strip()
+        if len(candidate) > limit and current:
+            chunks.append(current)
+            current = unit
+        else:
+            current = candidate
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def translate_compact_once(text: str, target_language: str) -> str:
     timeout = settings.TRANSLATION_TIMEOUT
     providers = (google_translate, mymemory_translate)
-    for provider in providers:
-        try:
-            return provider(text, target_language, timeout)
-        except (RuntimeError, TimeoutError, urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError):
-            continue
+    retries = max(int(getattr(settings, "TRANSLATION_RETRIES", 1)), 0)
+    for _ in range(retries + 1):
+        for provider in providers:
+            try:
+                return provider(text, target_language, timeout)
+            except (RuntimeError, TimeoutError, urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError):
+                continue
     return text
+
+
+@lru_cache(maxsize=4096)
+def translate_text(text: str, target_language: str) -> str:
+    text = compact_text(text)
+    if target_language == "it":
+        return text
+    if not text:
+        return text
+    chunks = split_translation_units(text)
+    translated = [translate_compact_once(chunk, target_language) for chunk in chunks]
+    return compact_text(" ".join(translated))
+
+
+@lru_cache(maxsize=2048)
+def translate_lines(text: str, target_language: str) -> str:
+    if target_language == "it" or not text.strip():
+        return text
+    translated_lines = []
+    for line in strip_lines_for_translation(text):
+        if not line.strip():
+            translated_lines.append("")
+        else:
+            translated_lines.append(translate_text(line.strip(), target_language))
+    return "\n".join(translated_lines).strip()
+
+
+def strip_lines_for_translation(text: str) -> list[str]:
+    text = re.sub(r"\r\n?|\t", lambda match: "\n" if match.group(0).startswith("\r") else " ", text)
+    return [line.rstrip() for line in text.splitlines()]
 
 
 def medieval_latin_style(text: str) -> str:

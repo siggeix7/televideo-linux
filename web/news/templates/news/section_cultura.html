@@ -1,38 +1,29 @@
 {% extends "news/_section_base.html" %}
 
 {% block section_content %}
-<main>
+<main class="section-stack">
     {% if data.articles %}
     {% for article in data.articles %}
-    <article class="article-card" style="margin-bottom:14px">
+    <article class="content-card content-card--article">
+        <div class="content-card__meta">
+            <span>{{ ui.page_label }} {{ article.page }}</span>
+            <span>{{ article.pages }} {{ ui.subpages_label }}</span>
+            <span>{{ article.label }}</span>
+        </div>
         <h2>{{ article.title }}</h2>
-        <div class="article-card__body">{{ article.body }}</div>
-        <div class="article-card__meta">Pagina {{ article.page }} &middot; {{ article.pages }} sottopagine &middot; {{ article.label }}</div>
+        <div class="prose-block">{{ article.body|linebreaksbr }}</div>
     </article>
     {% endfor %}
     {% endif %}
 
-    {% for snap in data.merged %}
-    {% if snap.content_kind == "article" and snap.subpages|length == 1 %}
-    <article class="article-card" style="margin-bottom:14px">
-        <h2>{{ snap.title }}</h2>
-        <div class="article-card__body">{{ snap.all_text|linebreaksbr }}</div>
-        <div class="article-card__meta">Pagina {{ snap.page }} &middot; {{ snap.label }}</div>
-        <a class="news-card__link" href="{{ snap.source_url }}" rel="noopener noreferrer" target="_blank">Apri su Televideo &nearr;</a>
-    </article>
-    {% elif snap.content_kind == "table" or snap.content_kind == "index" %}
-    <section class="content-card" style="margin-bottom:12px">
-        <h2>{{ snap.title }}</h2>
-        <pre style="font:.82rem/1.4 var(--font-mono);color:var(--ink-soft);white-space:pre-wrap;background:var(--surface-deep);padding:12px;border-radius:8px;border:1px dashed var(--border-light);margin:0">{{ snap.all_text }}</pre>
-        <a class="news-card__link" href="{{ snap.source_url }}" rel="noopener noreferrer" target="_blank">Apri su Televideo &nearr;</a>
-    </section>
-    {% endif %}
+    {% for card in data.cards %}
+        {% include "news/_content_card.html" with card=card %}
     {% endfor %}
 
-    {% if not data.articles and not data.merged %}
+    {% if not data.articles and not data.cards %}
     <div class="empty-state">
-        <h2>Nessun contenuto culturale disponibile</h2>
-        <p>I dati non sono ancora stati recuperati da Rai Televideo.</p>
+        <h2>{{ ui.section_empty_title }}</h2>
+        <p>{{ ui.section_empty_message }}</p>
     </div>
     {% endif %}
 </main>

@@ -1,10 +1,10 @@
 {% extends "news/_section_base.html" %}
 
 {% block section_content %}
-<main>
+<main class="section-stack">
     {% if data.weather_stations %}
     {% for zone in data.weather_stations %}
-    <section class="weather-card" style="margin-bottom:12px">
+    <section class="weather-card">
         <h2>{{ zone.label }}</h2>
         <div class="weather-grid">
             {% for station in zone.stations %}
@@ -12,8 +12,8 @@
                 <div class="weather-station__name">{{ station.name }}</div>
                 {% if station.condition %}<div class="weather-station__cond">{{ station.condition }}</div>{% endif %}
                 {% if station.temp %}<div class="weather-station__temp">{{ station.temp }}</div>{% endif %}
-                {% if station.wind %}<div class="weather-station__detail">Vento: {{ station.wind }}</div>{% endif %}
-                {% if station.visibility %}<div class="weather-station__detail">Visibilita: {{ station.visibility }}</div>{% endif %}
+                {% if station.wind %}<div class="weather-station__detail">{{ ui.wind_label }}: {{ station.wind }}</div>{% endif %}
+                {% if station.visibility %}<div class="weather-station__detail">{{ ui.visibility_label }}: {{ station.visibility }}</div>{% endif %}
             </div>
             {% endfor %}
         </div>
@@ -23,12 +23,12 @@
 
     {% if data.temperatures %}
     {% for temp in data.temperatures %}
-    <section class="content-card" style="margin-top:12px">
+    <section class="content-card">
         <h2>{{ temp.label }}</h2>
         {% for city in temp.cities %}
         <div class="temp-bar">
             <span class="temp-bar__label">{{ city.city }}</span>
-            <div style="flex:1">
+            <div class="temp-bar__body">
                 <div class="temp-bar__track">
                     <div class="temp-bar__fill" style="left:{{ city.bar_left }}%;width:{{ city.bar_width }}%"></div>
                 </div>
@@ -43,24 +43,14 @@
     {% endfor %}
     {% endif %}
 
-    {% for snap in data.merged %}
-    {% if snap.content_kind != "weather" and snap.page not in "702 703 704 705 706 707 708 709 711 712" %}
-    <section class="content-card" style="margin-top:12px">
-        <h2>{{ snap.title }}</h2>
-        {% if snap.content_kind == "article" %}
-        <div class="article-card__body">{{ snap.all_text|linebreaksbr }}</div>
-        {% else %}
-        <pre style="font:.82rem/1.4 var(--font-mono);color:var(--ink-soft);white-space:pre-wrap;background:var(--surface-deep);padding:12px;border-radius:8px;border:1px dashed var(--border-light);margin:0">{{ snap.all_text }}</pre>
-        {% endif %}
-        <a class="news-card__link" href="{{ snap.source_url }}" rel="noopener noreferrer" target="_blank">Apri su Televideo &nearr;</a>
-    </section>
-    {% endif %}
+    {% for card in data.cards %}
+        {% include "news/_content_card.html" with card=card %}
     {% endfor %}
 
-    {% if not data.weather_stations and not data.temperatures and not data.merged %}
+    {% if not data.weather_stations and not data.temperatures and not data.cards %}
     <div class="empty-state">
-        <h2>Nessun dato meteo disponibile</h2>
-        <p>I dati non sono ancora stati recuperati da Rai Televideo.</p>
+        <h2>{{ ui.section_empty_title }}</h2>
+        <p>{{ ui.section_empty_message }}</p>
     </div>
     {% endif %}
 </main>

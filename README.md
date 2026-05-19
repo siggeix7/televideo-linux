@@ -24,6 +24,7 @@ notizie. Le lingue disponibili nella UI sono latino, italiano e inglese.
 - Database SQLite persistente su volume esterno `/data`.
 - Job di aggiornamento automatico con worker paralleli (news + sezioni).
 - API JSON usata dalla pagina per aggiornarsi senza refresh manuale.
+- Traduzione on-demand di UI, notizie, sezioni, label e contenuti Televideo in latino, italiano e inglese.
 - Skeleton loading, retry automatico (3 tentativi) e pagine di errore 404/500.
 - Meta tag Open Graph / Twitter Card e favicon SVG.
 - Selettore lingua: `Latino`, `Italiano`, `English`.
@@ -370,7 +371,7 @@ quando viene riavviato con lo stesso volume `/data`.
 
 ## Lingue E Traduzioni
 
-La pagina permette di cambiare lingua senza ricaricare:
+La pagina permette di cambiare lingua dal selettore globale:
 
 ```text
 Latino    resa medievale latina
@@ -378,7 +379,9 @@ Italiano  testo originale Televideo con cornice cronachistica
 English   traduzione inglese con cornice cronachistica
 ```
 
-Le traduzioni usano endpoint gratuiti senza API key:
+La traduzione copre UI, notizie, sezioni dedicate, label, tabelle e contenuti
+Televideo salvati nella cache. Le traduzioni usano endpoint gratuiti senza API
+key, con chunking dei testi lunghi e cache in-process:
 
 1. Google Translate endpoint non ufficiale.
 2. MyMemory.
@@ -470,7 +473,6 @@ web/news/services/translator.py            traduzioni latino/inglese
 web/news/services/updater.py               persistenza SQLite e logica aggiornamento
 web/news/templates/news/home.html          pagina principale
 web/news/templates/news/superenalotto.html pagina SuperEnalotto
-web/news/templates/news/games.html         Lotto e giochi
 web/news/templates/news/regions.html       Televideo regionale
 web/news/templates/news/section.html       base sezioni dedicate
 web/news/templates/news/section_*.html     layout specifici per TV, sport, meteo, cultura, giochi

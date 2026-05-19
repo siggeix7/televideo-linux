@@ -20,6 +20,7 @@ from .translator import (
     medieval_latin_style,
     mymemory_translate,
     translate_text,
+    translate_lines,
 )
 from .updater import (
     normalize_region,

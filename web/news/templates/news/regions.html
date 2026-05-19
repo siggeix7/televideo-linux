@@ -1,27 +1,21 @@
 {% extends "news/_section_base.html" %}
 
 {% block section_content %}
-<nav class="toolbar" aria-label="Seleziona regione">
+<nav class="toolbar" aria-label="{{ ui.region_select_label }}">
     {% for region in regions %}
     <a href="{{ region.url }}?lang={{ language }}" class="site-nav__link{% if region.active %} is-active{% endif %}">{{ region.name }}</a>
     {% endfor %}
 </nav>
 
-<main>
-    {% if data.merged %}
-        {% for snap in data.merged %}
-        <article class="news-card" style="margin-bottom:14px">
-            <div class="news-card__ribbon">Pagina {{ snap.page }}{% if snap.subpage %}/{{ snap.subpage|join:", " }}{% endif %}</div>
-            <h2>{{ snap.title }}</h2>
-            <p class="news-card__category">{{ snap.label }}</p>
-            <pre style="font:.82rem/1.4 var(--font-mono);color:var(--ink-soft);white-space:pre-wrap;background:var(--surface-deep);padding:12px;border-radius:8px;border:1px dashed var(--border-light);margin:10px 0">{{ snap.all_text }}</pre>
-            <a class="news-card__link" href="{{ snap.source_url }}" rel="noopener noreferrer" target="_blank">Apri su Televideo &nearr;</a>
-        </article>
+<main class="section-stack">
+    {% if data.cards %}
+        {% for card in data.cards %}
+            {% include "news/_content_card.html" with card=card %}
         {% endfor %}
     {% else %}
     <div class="empty-state">
-        <h2>Nessun contenuto regionale disponibile</h2>
-        <p>La regione selezionata non ha ancora risposto oppure la cache non e stata popolata.</p>
+        <h2>{{ ui.section_empty_title }}</h2>
+        <p>{{ ui.section_empty_message }}</p>
     </div>
     {% endif %}
 </main>

@@ -2,26 +2,32 @@
 <!doctype html>
 <html lang="{{ ui.html_lang }}">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#6f1d1b">
-    <title>{{ code }} &mdash; Televideo News</title>
+    {% include "news/_head.html" with title_og=title %}
+    <title>{{ code }} - {{ ui.site_name }}</title>
     <link rel="stylesheet" href="{% static 'news/styles.css' %}">
 </head>
 <body>
     <div class="page-shell">
-        <header class="hero hero--compact">
-            <div class="hero__copy">
-                <p class="eyebrow">Errore {{ code }}</p>
-                <h1>{{ title }}</h1>
-                <p class="lede">{{ message }}</p>
+        <header class="site-header">
+            <div class="hero hero--compact">
+                <div class="hero__copy">
+                    <p class="eyebrow">{{ eyebrow }}</p>
+                    <h1>{{ title }}</h1>
+                    <p class="lede">{{ message }}</p>
+                </div>
+                <div class="seal" aria-hidden="true">{{ code }}</div>
             </div>
-            <div class="seal" aria-hidden="true">{{ code }}</div>
+
+            <div class="topbar">
+                {% include "news/_site_nav.html" %}
+                {% include "news/_language_dropdown.html" %}
+            </div>
         </header>
 
-        <div style="text-align:center;margin-top:24px">
-            <a href="/" class="site-nav__link">Torna alla cronaca</a>
+        <div class="center-actions">
+            <a href="/?lang={{ language }}" class="action-link">{{ ui.back_home }}</a>
         </div>
     </div>
+    {% include "news/_footer.html" %}
 </body>
 </html>

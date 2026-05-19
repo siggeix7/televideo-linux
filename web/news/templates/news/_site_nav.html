@@ -1,4 +1,4 @@
-<nav class="site-nav" aria-label="Navigazione principale">
+<nav class="site-nav" aria-label="{{ ui.news_link }}">
     {% for item in nav_items %}
         <a href="{{ item.url }}{% if language %}?lang={{ language }}{% endif %}" class="site-nav__link{% if item.active %} is-active{% endif %}">{{ item.label }}</a>
     {% endfor %}

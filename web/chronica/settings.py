@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
 
@@ -17,6 +18,7 @@ def env_list(name: str, default: str = "") -> list[str]:
 
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "chronica-televidei-development-key")
 DEBUG = env_bool("DJANGO_DEBUG")
+RUNNING_TESTS = "test" in sys.argv
 ADMIN_ENABLED = env_bool("DJANGO_ADMIN_ENABLED")
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "*")
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")

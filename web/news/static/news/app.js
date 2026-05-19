@@ -16,7 +16,6 @@
     const previousPage = document.getElementById("previous-page");
     const nextPage = document.getElementById("next-page");
     const pageStatus = document.getElementById("page-status");
-    const buttons = Array.from(document.querySelectorAll("[data-language]"));
     const seen = new Set();
     const DEFAULT_LIMIT = 12;
 
@@ -26,17 +25,17 @@
     }
     let selectedCategory = localStorage.getItem("chronica-category") || "all";
     let page = Number(localStorage.getItem("chronica-page") || 1);
-    let ui = {};
+    let ui = {
+        error_prefix: body.dataset.errorPrefix || "",
+        timeout_error: body.dataset.timeoutError || "",
+        unknown_error: body.dataset.unknownError || "",
+        no_search_results_title: body.dataset.noSearchResultsTitle || "",
+        no_search_results_message: body.dataset.noSearchResultsMessage || "",
+    };
     let firstRender = true;
     let loading = false;
     let retryCount = 0;
     const MAX_RETRIES = 3;
-
-    function setActiveLanguage() {
-        buttons.forEach(function (button) {
-            button.classList.toggle("is-active", button.dataset.language === language);
-        });
-    }
 
     function applyUi(nextUi) {
         ui = nextUi || ui;
@@ -47,6 +46,13 @@
             var key = node.dataset.ui;
             if (ui[key]) {
                 node.textContent = ui[key];
+            }
+        });
+        document.querySelectorAll("[data-ui-placeholder]").forEach(function (node) {
+            var key = node.dataset.uiPlaceholder;
+            if (ui[key]) {
+                node.setAttribute("placeholder", ui[key]);
+                node.setAttribute("aria-label", ui[key]);
             }
         });
     }
@@ -76,7 +82,7 @@
     function showError(msg) {
         if (errorState && errorMessage) {
             errorState.hidden = false;
-            errorMessage.textContent = msg || "Errore sconosciuto";
+            errorMessage.textContent = msg || ui.unknown_error || "Errore sconosciuto";
         }
         if (statusText) {
             statusText.textContent = (ui.error_prefix || "Errore:") + " " + (msg || "");
@@ -201,7 +207,7 @@
             grid.replaceChildren();
             emptyState.hidden = true;
             if (error.name === "TimeoutError" || error.name === "AbortError") {
-                showError("Timeout: il server non risponde. Nuovo tentativo in corso...");
+                showError(ui.timeout_error || "Timeout: il server non risponde. Nuovo tentativo in corso...");
             } else {
                 showError(error.message);
             }
@@ -212,17 +218,6 @@
             }
         }
     }
-
-    buttons.forEach(function (button) {
-        button.addEventListener("click", function () {
-            language = button.dataset.language;
-            localStorage.setItem("chronica-language", language);
-            firstRender = true;
-            retryCount = 0;
-            setActiveLanguage();
-            loadNews();
-        });
-    });
 
     previousPage.addEventListener("click", function () {
         if (page > 1) {
@@ -253,8 +248,9 @@
                 });
                 if (query && visible === 0 && cards.length > 0) {
                     emptyState.hidden = false;
-                    emptyState.querySelector("h2").textContent = "Nessun risultato";
-                    emptyState.querySelector("p").textContent = 'Nessuna notizia contiene "' + query + '".';
+                    emptyState.querySelector("h2").textContent = ui.no_search_results_title || "Nessun risultato";
+                    emptyState.querySelector("p").textContent = (ui.no_search_results_message || 'Nessuna notizia contiene "{query}".')
+                        .replace("{query}", query);
                 } else if (!query) {
                     emptyState.hidden = true;
                 }
@@ -262,7 +258,6 @@
         });
     }
 
-    setActiveLanguage();
     loadNews();
     setInterval(function () {
         if (!loading) loadNews();

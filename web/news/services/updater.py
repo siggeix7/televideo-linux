@@ -242,6 +242,8 @@ def update_news(limit: int | None = None, category_limit: int | None = None) -> 
 
 
 def refresh_if_stale() -> None:
+    if getattr(settings, "RUNNING_TESTS", False):
+        return
     latest = NewsItem.objects.order_by("-fetched_at").first()
     if latest and (timezone.now() - latest.fetched_at).total_seconds() < settings.NEWS_REFRESH_SECONDS:
         return
@@ -261,6 +263,8 @@ def refresh_worker() -> None:
 
 
 def refresh_section_if_stale(section: str, region: str = "") -> None:
+    if getattr(settings, "RUNNING_TESTS", False):
+        return
     normalized_region = normalize_region(region) if section == "regioni" else ""
     latest = (
         TelevideoPageSnapshot.objects.filter(section=section, region=normalized_region)

@@ -4,7 +4,6 @@
     const body = document.body;
     const apiUrl = body.dataset.apiUrl;
     const refreshSeconds = Math.max(Number(body.dataset.refreshSeconds || 60), 15);
-    const buttons = Array.from(document.querySelectorAll("[data-language]"));
     const dateSelect = document.getElementById("draw-date");
     const heading = document.getElementById("draw-heading");
     const drawDateText = document.getElementById("draw-date-text");
@@ -23,16 +22,13 @@
         localStorage.setItem("chronica-language", language);
     }
     let selectedDate = localStorage.getItem("superenalotto-date") || "";
-    let ui = {};
+    let ui = {
+        timeout_error: body.dataset.timeoutError || "",
+        unknown_error: body.dataset.unknownError || "",
+    };
     let loading = false;
     let retryCount = 0;
     const MAX_RETRIES = 3;
-
-    function setActiveLanguage() {
-        buttons.forEach(function (button) {
-            button.classList.toggle("is-active", button.dataset.language === language);
-        });
-    }
 
     function applyUi(nextUi) {
         ui = nextUi || ui;
@@ -54,7 +50,7 @@
     function showError(msg) {
         if (errorState && errorMessage) {
             errorState.hidden = false;
-            errorMessage.textContent = msg || "Errore sconosciuto";
+            errorMessage.textContent = msg || ui.unknown_error || "Errore sconosciuto";
         }
     }
 
@@ -160,7 +156,7 @@
         } catch (error) {
             loading = false;
             if (error.name === "TimeoutError" || error.name === "AbortError") {
-                showError("Timeout: il server non risponde. Nuovo tentativo in corso...");
+                showError(ui.timeout_error || "Timeout: il server non risponde. Nuovo tentativo in corso...");
             } else {
                 showError(error.message);
             }
@@ -171,16 +167,6 @@
         }
     }
 
-    buttons.forEach(function (button) {
-        button.addEventListener("click", function () {
-            language = button.dataset.language;
-            localStorage.setItem("chronica-language", language);
-            retryCount = 0;
-            setActiveLanguage();
-            loadDraw();
-        });
-    });
-
     dateSelect.addEventListener("change", function () {
         selectedDate = dateSelect.value;
         localStorage.setItem("superenalotto-date", selectedDate);
@@ -188,7 +174,6 @@
         loadDraw();
     });
 
-    setActiveLanguage();
     loadDraw();
     setInterval(function () {
         if (!loading) loadDraw();

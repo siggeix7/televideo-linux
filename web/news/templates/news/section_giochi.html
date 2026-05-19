@@ -1,12 +1,12 @@
 {% extends "news/_section_base.html" %}
 
 {% block section_content %}
-<main>
+<main class="section-stack">
     {% if latest_superenalotto %}
     <section class="lottery-layout">
         <article class="lottery-card">
-            <p class="eyebrow">SuperEnalotto &middot; pagina 696</p>
-            <h2>Concorso N.{{ latest_superenalotto.draw_number }}</h2>
+            <p class="eyebrow">SuperEnalotto &middot; {{ ui.page_label }} 696</p>
+            <h2>{{ ui.draw_label }} N.{{ latest_superenalotto.draw_number }}</h2>
             <p class="news-card__meta">{{ latest_superenalotto.draw_date|date:"d/m/Y" }}</p>
             <div class="number-row">
                 {% for number in latest_superenalotto.winning_numbers %}
@@ -14,19 +14,19 @@
                 {% endfor %}
             </div>
             <dl class="lottery-stats">
-                <div><dt>Jolly</dt><dd>{{ latest_superenalotto.jolly_number|default:"&mdash;" }}</dd></div>
-                <div><dt>SuperStar</dt><dd>{{ latest_superenalotto.superstar_number|default:"&mdash;" }}</dd></div>
-                <div><dt>Jackpot</dt><dd>{% if latest_superenalotto.jackpot %}EUR {{ latest_superenalotto.jackpot }}{% else %}&mdash;{% endif %}</dd></div>
-                <div><dt>Montepremi</dt><dd>{% if latest_superenalotto.prize_pool %}EUR {{ latest_superenalotto.prize_pool }}{% else %}&mdash;{% endif %}</dd></div>
+                <div><dt>{{ ui.jolly_label }}</dt><dd>{{ latest_superenalotto.jolly_number|default:"&mdash;" }}</dd></div>
+                <div><dt>{{ ui.superstar_label }}</dt><dd>{{ latest_superenalotto.superstar_number|default:"&mdash;" }}</dd></div>
+                <div><dt>{{ ui.jackpot_label }}</dt><dd>{% if latest_superenalotto.jackpot %}EUR {{ latest_superenalotto.jackpot }}{% else %}&mdash;{% endif %}</dd></div>
+                <div><dt>{{ ui.prize_pool_label }}</dt><dd>{% if latest_superenalotto.prize_pool %}EUR {{ latest_superenalotto.prize_pool }}{% else %}&mdash;{% endif %}</dd></div>
             </dl>
-            <a class="news-card__link" href="{% url 'news:superenalotto' %}?lang={{ language }}">Archivio SuperEnalotto &nearr;</a>
+            <a class="action-link" href="{% url 'news:superenalotto' %}?lang={{ language }}">{{ ui.archive_super }} &nearr;</a>
         </article>
 
         <article class="trend-card">
-            <h2>Ultime notizie</h2>
+            <h2>{{ ui.latest_news }}</h2>
             {% for snap in data.merged %}
             {% if snap.page == 696 %}
-            <pre style="font:.76rem/1.35 var(--font-mono);color:var(--ink-soft);white-space:pre-wrap;background:var(--surface-deep);padding:10px;border-radius:8px;border:1px dashed var(--border-light);max-height:280px;overflow-y:auto">{{ snap.all_text }}</pre>
+            <pre class="raw-block raw-block--scroll">{{ snap.all_text }}</pre>
             {% endif %}
             {% endfor %}
         </article>
@@ -34,9 +34,9 @@
     {% endif %}
 
     {% if data.lotto %}
-    <section class="content-card" style="margin-top:16px">
-        <h2>Lotto &mdash; {{ data.lotto.label }}</h2>
-        {% if data.lotto.date %}<p class="news-card__meta">Estrazione del {{ data.lotto.date }}</p>{% endif %}
+    <section class="content-card">
+        <h2>{{ ui.lotto_title }} - {{ data.lotto.label }}</h2>
+        {% if data.lotto.date %}<p class="news-card__meta">{{ ui.extraction_date_label }} {{ data.lotto.date }}</p>{% endif %}
         <div class="lotto-grid">
             {% for wheel, numbers in data.lotto.wheels.items %}
             <div class="lotto-wheel">
@@ -47,8 +47,8 @@
         </div>
     </section>
     {% elif latest_lotto %}
-    <section class="content-card" style="margin-top:16px">
-        <h2>Lotto &mdash; {{ latest_lotto.draw_date|date:"d/m/Y" }}</h2>
+    <section class="content-card">
+        <h2>{{ ui.lotto_title }} - {{ latest_lotto.draw_date|date:"d/m/Y" }}</h2>
         <div class="lotto-grid">
             {% for wheel, numbers in latest_lotto.wheels.items %}
             <div class="lotto-wheel">
@@ -60,14 +60,15 @@
     </section>
     {% endif %}
 
-    {% for snap in data.merged %}
-    {% if snap.content_kind != "table" or snap.page not in "691 692 696" %}
-    <section class="content-card" style="margin-top:12px">
-        <h2>{{ snap.title }}</h2>
-        <pre style="font:.82rem/1.4 var(--font-mono);color:var(--ink-soft);white-space:pre-wrap;background:var(--surface-deep);padding:12px;border-radius:8px;border:1px dashed var(--border-light);margin:0">{{ snap.all_text }}</pre>
-        <a class="news-card__link" href="{{ snap.source_url }}" rel="noopener noreferrer" target="_blank">Apri su Televideo &nearr;</a>
-    </section>
-    {% endif %}
+    {% for card in data.cards %}
+        {% include "news/_content_card.html" with card=card %}
     {% endfor %}
+
+    {% if not latest_superenalotto and not data.lotto and not latest_lotto and not data.cards %}
+    <div class="empty-state">
+        <h2>{{ ui.section_empty_title }}</h2>
+        <p>{{ ui.section_empty_message }}</p>
+    </div>
+    {% endif %}
 </main>
 {% endblock %}
