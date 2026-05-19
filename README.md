@@ -270,12 +270,16 @@ Le categorie che Televideo pubblica vuote o senza pagine figlie vengono nascoste
 dall'interfaccia; se una categoria salvata nel browser non ha piu' notizie, il
 sito torna automaticamente a `Tutte`.
 
-Oltre alle categorie della pagina 104, il job importa anche sezioni utili e
-sportive quando sono disponibili, per esempio:
+Oltre alle categorie della pagina 104, il job importa anche sezioni sportive
+quando sono disponibili, per esempio:
 
 ```text
-Calcio, Altri Sport, Brevi Sport, Almanacco, Viabilita', Meteo, Temperature
+Calcio, Altri Sport, Brevi Sport
 ```
+
+Le pagine di servizio o tabellari, come Almanacco, Meteo, Temperature e
+Viabilita', non vengono mostrate come notizie: Televideo le espone in formati
+troppo diversi dagli articoli editoriali e generavano schede poco leggibili.
 
 Le notizie non vengono eliminate quando non compaiono piu' su Televideo: restano
 nello storico SQLite e la pagina principale usa una paginazione lato API/UI per

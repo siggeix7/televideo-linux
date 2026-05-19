@@ -55,13 +55,9 @@ CATEGORY_LABELS = {
     201: ("p201", "Calcio", "Pediludium", "Football"),
     260: ("p260", "Altri Sport", "Alii Ludi", "Other Sports"),
     299: ("p299", "Brevi Sport", "Breves Ludi", "Sports Briefs"),
-    401: ("p401", "Almanacco", "Almanach", "Almanac"),
-    613: ("p613", "Viabilita'", "Viae", "Traffic"),
-    700: ("p700", "Meteo", "Tempestas", "Weather"),
-    711: ("p711", "Temperature", "Temperaturae", "Temperatures"),
 }
 COMPOSITE_CATEGORY_PAGES = {103, 105, 110, 170, 180, 190}
-EXTRA_CATEGORY_PAGES = (201, 260, 299, 401, 613, 700, 711)
+EXTRA_CATEGORY_PAGES = (201, 260, 299)
 
 
 def strip_html(value: str) -> str:

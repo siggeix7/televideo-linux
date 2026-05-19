@@ -17,6 +17,8 @@ LANGUAGES = {
     "en": "English",
 }
 
+HIDDEN_CATEGORY_CODES = {"p401", "p613", "p700", "p711"}
+
 UI_TEXT = {
     "it": {
         "html_lang": "it",
@@ -203,7 +205,12 @@ def superenalotto(request):
 
 def serialized_categories(language: str) -> list[dict[str, object]]:
     categories = []
-    queryset = Category.objects.filter(active=True).annotate(news_count=Count("items", filter=displayable_category_filter())).filter(news_count__gt=0)
+    queryset = (
+        Category.objects.filter(active=True)
+        .exclude(code__in=HIDDEN_CATEGORY_CODES)
+        .annotate(news_count=Count("items", filter=displayable_category_filter()))
+        .filter(news_count__gt=0)
+    )
     for category in queryset.order_by("sort_order", "name_it"):
         categories.append(
             {
@@ -227,7 +234,11 @@ def news_api(request):
     except RuntimeError as exc:
         error = str(exc)
 
-    queryset = NewsItem.objects.select_related("category").filter(displayable_filter())
+    queryset = (
+        NewsItem.objects.select_related("category")
+        .filter(displayable_filter())
+        .exclude(category__code__in=HIDDEN_CATEGORY_CODES)
+    )
     if category_code != "all":
         filtered = queryset.filter(category__code=category_code)
         if filtered.exists():
@@ -293,7 +304,11 @@ def displayable_filter() -> Q:
 
 
 def displayable_category_filter() -> Q:
-    return ~Q(items__title_it__regex=r"^\d+/\d+$") & ~Q(items__summary_it__regex=r"^S\.?\s*S\.?$", items__title_it__regex=r"^\d+/\d+$")
+    return (
+        ~Q(items__category__code__in=HIDDEN_CATEGORY_CODES)
+        & ~Q(items__title_it__regex=r"^\d+/\d+$")
+        & ~Q(items__summary_it__regex=r"^S\.?\s*S\.?$", items__title_it__regex=r"^\d+/\d+$")
+    )
 
 
 def healthcheck(request):
