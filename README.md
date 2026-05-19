@@ -56,17 +56,23 @@ services:
       - "${PORT:-8000}:8000"
     environment:
       SQLITE_PATH: /data/chronica.sqlite3
+      SQLITE_TIMEOUT: "${SQLITE_TIMEOUT:-30}"
       NEWS_REFRESH_SECONDS: "${NEWS_REFRESH_SECONDS:-60}"
       NEWS_FETCH_LIMIT: "${NEWS_FETCH_LIMIT:-12}"
       CATEGORY_FETCH_LIMIT: "${CATEGORY_FETCH_LIMIT:-2}"
       TRANSLATION_TIMEOUT: "${TRANSLATION_TIMEOUT:-8}"
       TRANSLATION_RETRIES: "${TRANSLATION_RETRIES:-1}"
+      DJANGO_DEBUG: "${DJANGO_DEBUG:-false}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-*}"
       DJANGO_CSRF_TRUSTED_ORIGINS: "${DJANGO_CSRF_TRUSTED_ORIGINS:-}"
+      DJANGO_ADMIN_ENABLED: "${DJANGO_ADMIN_ENABLED:-false}"
       DJANGO_USE_X_FORWARDED_HOST: "${DJANGO_USE_X_FORWARDED_HOST:-true}"
       DJANGO_SECURE_PROXY_SSL_HEADER: "${DJANGO_SECURE_PROXY_SSL_HEADER:-true}"
       DJANGO_SECURE_SSL_REDIRECT: "${DJANGO_SECURE_SSL_REDIRECT:-false}"
       DJANGO_COOKIE_SECURE: "${DJANGO_COOKIE_SECURE:-false}"
+      DJANGO_SECURE_HSTS_SECONDS: "${DJANGO_SECURE_HSTS_SECONDS:-0}"
+      DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: "${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS:-false}"
+      DJANGO_SECURE_HSTS_PRELOAD: "${DJANGO_SECURE_HSTS_PRELOAD:-false}"
       DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:-televideo-compose-change-me}"
     volumes:
       - /opt/televideo-docker:/data
@@ -76,17 +82,30 @@ Per produzione dietro Nginx Proxy Manager, crea `/opt/televideo-docker/.env`:
 
 ```env
 PORT=8000
-DJANGO_ALLOWED_HOSTS=televideo.example.com,localhost,127.0.0.1
-DJANGO_CSRF_TRUSTED_ORIGINS=https://televideo.example.com
-DJANGO_SECRET_KEY=cambia-questa-stringa-lunga-e-casuale
-DJANGO_USE_X_FORWARDED_HOST=true
-DJANGO_SECURE_PROXY_SSL_HEADER=true
-DJANGO_SECURE_SSL_REDIRECT=false
-DJANGO_COOKIE_SECURE=true
+SQLITE_TIMEOUT=30
 NEWS_REFRESH_SECONDS=60
 NEWS_FETCH_LIMIT=12
 CATEGORY_FETCH_LIMIT=2
+TRANSLATION_TIMEOUT=8
+TRANSLATION_RETRIES=1
+
+DJANGO_DEBUG=false
+DJANGO_ADMIN_ENABLED=false
+DJANGO_ALLOWED_HOSTS=televideo.example.com,localhost,127.0.0.1
+DJANGO_CSRF_TRUSTED_ORIGINS=https://televideo.example.com
+DJANGO_USE_X_FORWARDED_HOST=true
+DJANGO_SECURE_PROXY_SSL_HEADER=true
+DJANGO_SECURE_SSL_REDIRECT=true
+DJANGO_COOKIE_SECURE=true
+DJANGO_SECURE_HSTS_SECONDS=86400
+DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=false
+DJANGO_SECURE_HSTS_PRELOAD=false
+DJANGO_SECRET_KEY=cambia-questa-stringa-lunga-e-casuale
 ```
+
+Nel deploy pubblico l'admin Django e' disabilitato di default. Riabilitalo solo
+se serve davvero impostando `DJANGO_ADMIN_ENABLED=true` e proteggendolo a monte
+con allowlist IP o autenticazione aggiuntiva nel reverse proxy.
 
 In Nginx Proxy Manager configura un Proxy Host verso:
 
@@ -217,17 +236,23 @@ Variabili d'ambiente principali:
 ```text
 PORT                  porta HTTP del container, default 8000
 SQLITE_PATH           path database, default /data/chronica.sqlite3 nel container
+SQLITE_TIMEOUT        timeout lock SQLite in secondi, default 30
 NEWS_REFRESH_SECONDS  frequenza aggiornamento notizie, default 60
 NEWS_FETCH_LIMIT      quante notizie conservare a ogni giro, default 12
 CATEGORY_FETCH_LIMIT  quante notizie importare per ogni categoria Televideo, default 2
 TRANSLATION_TIMEOUT   timeout traduttori online, default 8
 TRANSLATION_RETRIES   retry traduttori/feed, default 1
+DJANGO_DEBUG          debug Django, default false
 DJANGO_ALLOWED_HOSTS  host consentiti, default *
 DJANGO_CSRF_TRUSTED_ORIGINS origini HTTPS fidate per admin/form, es. https://dominio
+DJANGO_ADMIN_ENABLED  espone /admin/, default false
 DJANGO_USE_X_FORWARDED_HOST legge X-Forwarded-Host dal proxy, default true
 DJANGO_SECURE_PROXY_SSL_HEADER considera HTTPS se X-Forwarded-Proto=https, default true
-DJANGO_SECURE_SSL_REDIRECT redirect HTTPS lato Django, default false per NPM
+DJANGO_SECURE_SSL_REDIRECT redirect HTTPS lato Django, default false; usa true se il proxy invia X-Forwarded-Proto
 DJANGO_COOKIE_SECURE cookie solo HTTPS, consigliato true dietro NPM pubblico
+DJANGO_SECURE_HSTS_SECONDS abilita HSTS se maggiore di 0
+DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS include i sottodomini nell'HSTS
+DJANGO_SECURE_HSTS_PRELOAD abilita il flag preload HSTS
 DJANGO_SECRET_KEY     secret key Django per ambienti pubblici
 ```
 
