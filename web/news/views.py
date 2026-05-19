@@ -22,6 +22,7 @@ from .formatters import (
     parse_weather_observation,
 )
 from .models import Category, LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
+from .map_paths import get_map_regions
 from .services import (
     REGION_CHOICES,
     SECTION_DEFINITIONS,
@@ -36,68 +37,6 @@ from .services import (
 LANGUAGES = {
     "it": "Italiano",
 }
-
-_MAP_DATA = {
-    "aosta": ("Valle d'Aosta", "VdA", 7, 108, 32,
-     "M 88,20 L 106,16 L 122,18 L 128,28 L 128,42 L 120,48 L 102,50 L 90,46 L 86,34 Z"),
-    "piemonte": ("Piemonte", "PIE", 8, 130, 72,
-     "M 90,38 L 102,48 L 118,52 L 132,55 L 148,58 L 160,64 L 172,74 L 180,88 L 182,102 L 172,115 L 152,118 L 132,118 L 112,112 L 95,100 L 88,82 L 86,62 L 88,46 Z"),
-    "lombardia": ("Lombardia", "LOM", 8, 192, 55,
-     "M 132,42 L 155,38 L 178,35 L 200,32 L 218,32 L 232,36 L 242,44 L 242,56 L 236,66 L 228,78 L 215,86 L 198,88 L 180,86 L 162,82 L 148,72 L 138,58 Z"),
-    "altoadige": ("Alto Adige", "AA", 7, 252, 22,
-     "M 232,10 L 255,6 L 275,10 L 285,18 L 286,30 L 280,40 L 268,46 L 252,48 L 238,42 L 232,30 L 232,18 Z"),
-    "trentino": ("Trentino", "TNT", 7, 252, 50,
-     "M 232,38 L 238,42 L 252,48 L 268,48 L 280,42 L 282,52 L 276,60 L 262,66 L 246,65 L 236,60 L 232,48 Z"),
-    "veneto": ("Veneto", "VEN", 8, 270, 82,
-     "M 232,58 L 246,62 L 262,66 L 278,68 L 296,78 L 308,90 L 312,102 L 305,112 L 286,115 L 266,112 L 250,105 L 236,92 L 232,76 Z"),
-    "friuli": ("Friuli V.G.", "FVG", 7, 318, 62,
-     "M 296,38 L 315,28 L 335,28 L 348,35 L 352,48 L 350,65 L 342,80 L 332,92 L 318,95 L 306,88 L 298,75 L 294,58 Z"),
-    "liguria": ("Liguria", "LIG", 7, 138, 130,
-     "M 105,105 L 118,98 L 135,100 L 152,105 L 165,115 L 172,128 L 170,142 L 160,150 L 140,152 L 122,148 L 110,138 L 105,122 Z"),
-    "emilia": ("Emilia R.", "EMR", 8, 212, 100,
-     "M 140,58 L 162,68 L 185,72 L 210,76 L 235,80 L 256,88 L 275,98 L 280,112 L 276,125 L 265,132 L 242,135 L 215,132 L 188,125 L 168,115 L 152,100 L 142,82 Z"),
-    "toscana": ("Toscana", "TOS", 8, 182, 150,
-     "M 150,115 L 165,108 L 182,112 L 200,118 L 215,128 L 225,142 L 228,158 L 225,172 L 216,185 L 200,192 L 184,190 L 168,182 L 156,168 L 150,150 Z"),
-    "marche": ("Marche", "MAR", 7, 268, 142,
-     "M 242,115 L 260,108 L 278,110 L 290,118 L 295,132 L 295,148 L 292,162 L 284,170 L 272,172 L 258,168 L 248,158 L 242,142 L 242,128 Z"),
-    "umbria": ("Umbria", "UMB", 7, 216, 192,
-     "M 198,168 L 216,162 L 232,165 L 240,175 L 242,190 L 240,202 L 232,212 L 218,215 L 206,212 L 198,200 L 196,185 Z"),
-    "lazio": ("Lazio", "LAZ", 8, 228, 232,
-     "M 205,198 L 220,195 L 238,198 L 250,208 L 262,220 L 268,238 L 266,252 L 258,262 L 242,268 L 225,265 L 212,258 L 202,242 L 200,222 Z"),
-    "abruzzo": ("Abruzzo", "ABR", 7, 278, 190,
-     "M 256,158 L 275,150 L 292,155 L 302,168 L 305,182 L 305,198 L 300,212 L 292,225 L 280,232 L 268,230 L 258,222 L 254,208 L 254,190 L 256,172 Z"),
-    "molise": ("Molise", "MOL", 7, 282, 240,
-     "M 270,218 L 286,212 L 300,218 L 306,230 L 306,242 L 302,252 L 295,258 L 284,260 L 275,252 L 268,242 L 268,228 Z"),
-    "campania": ("Campania", "CAM", 7, 252, 276,
-     "M 228,248 L 245,248 L 262,252 L 275,258 L 282,268 L 285,282 L 282,296 L 272,308 L 255,312 L 238,308 L 228,298 L 225,280 L 226,262 Z"),
-    "puglia": ("Puglia", "PUG", 8, 318, 262,
-     "M 280,222 L 298,216 L 318,218 L 335,228 L 348,240 L 355,252 L 355,268 L 350,282 L 340,295 L 325,305 L 310,308 L 296,302 L 288,292 L 282,278 L 280,258 L 280,238 Z"),
-    "basilicata": ("Basilicata", "BAS", 7, 288, 308,
-     "M 272,290 L 288,285 L 302,288 L 310,300 L 310,312 L 304,322 L 292,326 L 280,322 L 272,312 L 270,300 Z"),
-    "calabria": ("Calabria", "CAL", 7, 266, 342,
-     "M 248,300 L 268,296 L 282,302 L 292,312 L 296,328 L 294,348 L 288,365 L 280,378 L 270,384 L 260,380 L 252,368 L 246,352 L 244,332 L 246,312 Z"),
-    "sicilia": ("Sicilia", "SIC", 9, 222, 412,
-     "M 182,355 L 198,348 L 218,345 L 238,348 L 258,355 L 272,368 L 278,385 L 275,405 L 266,422 L 252,438 L 235,445 L 216,446 L 198,442 L 185,430 L 176,412 L 172,392 L 174,372 L 180,360 Z"),
-    "sardegna": ("Sardegna", "SAR", 9, 102, 358,
-     "M 72,315 L 90,308 L 108,312 L 125,322 L 138,335 L 146,352 L 148,372 L 143,390 L 130,400 L 112,405 L 92,400 L 78,390 L 66,376 L 62,358 L 64,338 L 66,322 Z"),
-}
-
-
-def get_map_regions():
-    regions = []
-    for slug, data in _MAP_DATA.items():
-        label, label_short, font_size, cx, cy, path = data
-        regions.append({
-            "slug": slug,
-            "label": label,
-            "label_short": label_short,
-            "font_size": font_size,
-            "cx": cx,
-            "cy": cy,
-            "path": path,
-            "url": reverse("news:region", kwargs={"region_slug_value": slug}),
-        })
-    return regions
 
 HIDDEN_CATEGORY_CODES = {"p401", "p613", "p700", "p711"}
 
