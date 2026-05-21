@@ -24,6 +24,7 @@ def compact_text(value: str) -> str:
 
 
 MOJIBAKE_MARKERS = ("\u00c3", "\u00c2", "\u00e2\u20ac", "\u00e2\u20ac\u2122", "\u00e2\u20ac\u0153", "\u00e2\u20ac\u009d")
+SUBPAGE_MARKER_RE = re.compile(r"^\s*(?:\d{1,2}/\d{1,2}|-\d+-|[<>]{2})\s*$")
 
 
 def fix_mojibake(value: str) -> str:
@@ -36,6 +37,62 @@ def fix_mojibake(value: str) -> str:
     original_score = sum(value.count(marker) for marker in MOJIBAKE_MARKERS)
     fixed_score = sum(fixed.count(marker) for marker in MOJIBAKE_MARKERS)
     return fixed if fixed_score < original_score else value
+
+
+def is_subpage_marker(line: str) -> bool:
+    return bool(SUBPAGE_MARKER_RE.fullmatch(line.strip()))
+
+
+def is_navigation_line(line: str) -> bool:
+    compact = compact_text(line)
+    if not compact:
+        return False
+    if "www.servizitelevideo.rai.it" in compact or "RAI INFORMA" in compact:
+        return True
+    return len(re.findall(r"\b\d{3}\b", compact)) >= 2
+
+
+def display_snapshot_text(content: str) -> str:
+    lines: list[str] = []
+    for raw_line in clean_snapshot_text(content).splitlines():
+        line = raw_line.strip()
+        if is_subpage_marker(line) or is_navigation_line(line):
+            continue
+        lines.append(raw_line.rstrip())
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return "\n".join(lines)
+
+
+def prose_paragraphs(content: str) -> list[str]:
+    paragraphs: list[str] = []
+    current = ""
+
+    def flush() -> None:
+        nonlocal current
+        text = compact_text(current).strip()
+        if text:
+            paragraphs.append(text)
+        current = ""
+
+    for raw_line in display_snapshot_text(content).splitlines():
+        line = raw_line.strip()
+        if not line:
+            flush()
+            continue
+        if is_subpage_marker(line) or is_navigation_line(line):
+            flush()
+            continue
+        if current.endswith("-"):
+            current = current[:-1] + line
+        elif current:
+            current += " " + line
+        else:
+            current = line
+    flush()
+    return paragraphs
 
 
 def extract_page_content(html_text: str) -> str:

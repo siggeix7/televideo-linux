@@ -246,18 +246,7 @@
                 }
                 node.querySelector(".news-card__ribbon").textContent = ui.card_ribbon || "Novella";
                 var heading = node.querySelector("h2");
-                heading.replaceChildren();
-                if (item.link) {
-                    var titleLink = document.createElement("a");
-                    titleLink.className = "news-card__title-link";
-                    titleLink.href = item.link;
-                    titleLink.target = "_blank";
-                    titleLink.rel = "noopener noreferrer";
-                    titleLink.textContent = item.title;
-                    heading.appendChild(titleLink);
-                } else {
-                    heading.textContent = item.title;
-                }
+                heading.textContent = item.title;
                 node.querySelector(".news-card__meta").textContent = formatPublished(item);
                 node.querySelector(".news-card__category").textContent = item.category_name
                     ? (ui.category_prefix || "Categoria:") + " " + item.category_name
@@ -267,17 +256,6 @@
                         ? (ui.source_prefix || "Titolo originale:") + " " + item.source_title
                         : "";
                 node.querySelector(".news-card__summary").textContent = item.summary;
-                var actions = node.querySelector(".news-card__actions");
-                actions.replaceChildren();
-                if (item.link) {
-                    var action = document.createElement("a");
-                    action.className = "action-link";
-                    action.href = item.link;
-                    action.target = "_blank";
-                    action.rel = "noopener noreferrer";
-                    action.textContent = (ui.open_televideo || "Apri su Televideo") + " >";
-                    actions.appendChild(action);
-                }
                 if (!firstRender && !seen.has(item.id)) {
                     node.classList.add("is-new");
                 }

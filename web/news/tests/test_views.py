@@ -1,8 +1,10 @@
+from datetime import timedelta
+
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from news.models import Category, NewsItem
+from news.models import Category, NewsItem, TelevideoPageSnapshot
 
 
 class ViewTests(TestCase):
@@ -50,8 +52,26 @@ class ViewTests(TestCase):
         data = response.json()
         self.assertEqual(data["pagination"]["total"], 1)
         self.assertEqual(data["items"][0]["title"], "Titolo speciale")
-        self.assertTrue(data["items"][0]["link"].startswith("https://www.televideo.rai.it/"))
+        self.assertNotIn("link", data["items"][0])
         self.assertEqual(data["search_query"], "unica")
+
+    def test_news_api_deduplicates_items(self):
+        category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)
+        published_at = timezone.now()
+        for index in range(2):
+            NewsItem.objects.create(
+                source_id=f"duplicate-{index}",
+                category=category,
+                title_it="Titolo duplicato",
+                summary_it="Testo identico della notizia.",
+                published_at=published_at - timedelta(minutes=index),
+            )
+
+        response = self.client.get(reverse("news:news_api"))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["pagination"]["total"], 1)
+        self.assertEqual(len(data["items"]), 1)
 
     def test_home_renders_initial_news_and_filters(self):
         category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)
@@ -68,6 +88,53 @@ class ViewTests(TestCase):
         self.assertContains(response, "data-server-rendered")
         self.assertContains(response, "value=\"server\"")
         self.assertContains(response, "Cancella")
+
+    def test_home_does_not_render_televideo_links(self):
+        category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)
+        NewsItem.objects.create(
+            source_id="home-link",
+            category=category,
+            title_it="Titolo senza link",
+            summary_it="Testo renderizzato dal server",
+            link="http://www.televideo.rai.it/televideo/pub/view.jsp?id=1&p=101",
+            published_at=timezone.now(),
+        )
+
+        response = self.client.get(reverse("news:home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Titolo senza link")
+        self.assertNotContains(response, "www.televideo.rai.it/televideo/pub/view.jsp")
+        self.assertNotContains(response, "news-card__title-link")
+
+    def test_culture_section_formats_article_text(self):
+        TelevideoPageSnapshot.objects.create(
+            section="cultura",
+            page=540,
+            subpage="01",
+            label="Cultura",
+            title="Titolo articolo",
+            content_kind="article",
+            raw_text="1/2\nTitolo articolo\nPrima parte\ncontinua.\n101 Sommario 102 Esteri",
+            sort_order=1,
+        )
+        TelevideoPageSnapshot.objects.create(
+            section="cultura",
+            page=540,
+            subpage="02",
+            label="Cultura",
+            title="Titolo articolo",
+            content_kind="article",
+            raw_text="2/2\nSeconda parte.\nRAI INFORMA",
+            sort_order=2,
+        )
+
+        response = self.client.get(reverse("news:culture"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Prima parte continua.")
+        self.assertContains(response, "Seconda parte.")
+        self.assertNotContains(response, "1/2")
+        self.assertNotContains(response, "2/2")
+        self.assertNotContains(response, "101 Sommario 102 Esteri")
 
     def test_robots_and_sitemap(self):
         robots = self.client.get(reverse("news:robots"))

@@ -75,11 +75,10 @@
                         {% for item in fallback_items %}
                         <article class="news-card{% if forloop.first %} news-card--lead{% endif %}">
                             <div class="news-card__ribbon">{{ ui.card_ribbon }}</div>
-                            <h2>{% if item.link %}<a class="news-card__title-link" href="{{ item.link }}" rel="noopener noreferrer" target="_blank">{{ item.title }}</a>{% else %}{{ item.title }}{% endif %}</h2>
+                            <h2>{{ item.title }}</h2>
                             <p class="news-card__meta">{{ item.published_display }}</p>
                             {% if item.category_name %}<p class="news-card__category">{{ ui.category_prefix }} {{ item.category_name }}</p>{% endif %}
                             <p class="news-card__summary">{{ item.summary }}</p>
-                            {% if item.link %}<p class="news-card__actions"><a class="action-link" href="{{ item.link }}" rel="noopener noreferrer" target="_blank">{{ ui.open_televideo }} &nearr;</a></p>{% endif %}
                         </article>
                         {% endfor %}
                     </div>
@@ -123,7 +122,6 @@
             <p class="news-card__category"></p>
             <p class="news-card__source"></p>
             <p class="news-card__summary"></p>
-            <p class="news-card__actions"></p>
         </article>
     </template>
 

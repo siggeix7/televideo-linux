@@ -5,11 +5,14 @@
     </div>
     <h2>{{ card.title }}</h2>
     {% if card.content_kind == "article" %}
-        <div class="prose-block">{{ card.all_text|default:card.raw_text|linebreaksbr }}</div>
+        <div class="prose-block">
+            {% if card.paragraphs %}
+                {% for paragraph in card.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+            {% else %}
+                {{ card.all_text|default:card.raw_text|linebreaksbr }}
+            {% endif %}
+        </div>
     {% else %}
         <pre class="raw-block">{{ card.all_text|default:card.raw_text }}</pre>
-    {% endif %}
-    {% if card.source_url %}
-        <a class="action-link" href="{{ card.source_url }}" rel="noopener noreferrer" target="_blank">{{ ui.open_televideo }} &nearr;</a>
     {% endif %}
 </article>

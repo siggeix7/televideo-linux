@@ -6,6 +6,8 @@ from __future__ import annotations
 import re
 from datetime import date as date_type
 
+from .services.parser import compact_text, display_snapshot_text, prose_paragraphs
+
 
 def parse_serie_a_standings(raw_text: str) -> list[dict] | None:
     """Parse Serie A standings table from raw Televideo text."""
@@ -219,22 +221,26 @@ def parse_article_multipage(snapshots: list) -> dict | None:
     """Merge multi-page articles into a single structured article."""
     if not snapshots:
         return None
-    raw_parts = []
+    paragraphs = []
     title = snapshots[0].get("title", "")
-    for snap in snapshots:
+    normalized_title = compact_text(title).casefold()
+    for index, snap in enumerate(snapshots):
         text = snap.get("raw_text", "")
-        # Remove page numbering like "1/5", "2/5"
-        text = re.sub(r"^\s*\d+/\d+\s*$", "", text, flags=re.MULTILINE)
-        text = re.sub(r"^\d+/\d+\s*", "", text, flags=re.MULTILINE)
-        # Remove cross-reference footers
-        text = re.sub(r"Almanacco \d+.*?(?=\n|$)", "", text)
-        text = re.sub(r"In viaggio \d+.*?(?=\n|$)", "", text)
-        text = re.sub(r"\d{3}\s+\w+.*?(?=\n|$)", "", text)
-        raw_parts.append(text.strip())
-    full_text = "\n\n".join(p for p in raw_parts if p)
+        if index == 0 and normalized_title:
+            lines = display_snapshot_text(text).splitlines()
+            for line_index, line in enumerate(lines):
+                if not line.strip():
+                    continue
+                if compact_text(line).casefold() == normalized_title:
+                    lines.pop(line_index)
+                break
+            text = "\n".join(lines)
+        paragraphs.extend(prose_paragraphs(text))
+    full_text = "\n\n".join(paragraphs)
     return {
         "title": title,
         "body": full_text,
+        "paragraphs": paragraphs,
         "pages": len(snapshots),
     }
 
@@ -268,9 +274,13 @@ def merge_snapshot_pages(snapshots: list) -> list:
         page = snap.get("page", 0)
         if page not in merged:
             merged[page] = snap.copy()
+            if "paragraphs" in merged[page]:
+                merged[page]["paragraphs"] = list(merged[page].get("paragraphs") or [])
             merged[page]["all_text"] = snap.get("raw_text", "")
             merged[page]["subpages"] = [snap.get("subpage", "01")]
         else:
             merged[page]["all_text"] += "\n" + snap.get("raw_text", "")
+            merged[page].setdefault("paragraphs", [])
+            merged[page]["paragraphs"].extend(snap.get("paragraphs") or [])
             merged[page]["subpages"].append(snap.get("subpage", ""))
     return sorted(merged.values(), key=lambda s: s.get("sort_order", 0))

@@ -11,7 +11,13 @@
             <span>{{ article.label }}</span>
         </div>
         <h2>{{ article.title }}</h2>
-        <div class="prose-block">{{ article.body|linebreaksbr }}</div>
+        <div class="prose-block">
+            {% if article.paragraphs %}
+                {% for paragraph in article.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+            {% else %}
+                {{ article.body|linebreaksbr }}
+            {% endif %}
+        </div>
     </article>
     {% endfor %}
     {% endif %}

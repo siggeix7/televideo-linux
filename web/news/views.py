@@ -26,7 +26,7 @@ from .formatters import (
 from .models import Category, LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
 from .map_paths import get_map_regions
 from .site_urls import public_absolute_url
-from .services.parser import clean_snapshot_text, fix_mojibake
+from .services.parser import compact_text, display_snapshot_text, fix_mojibake, prose_paragraphs
 from .services import (
     REGION_CHOICES,
     SECTION_DEFINITIONS,
@@ -222,9 +222,8 @@ def nav_items(active: str, _language: str = "it") -> list[dict[str, object]]:
 
 
 def snapshot_payload(snapshot: TelevideoPageSnapshot) -> dict[str, object]:
-    raw_text = clean_snapshot_text(snapshot.raw_text)
-    lines = raw_text.splitlines()
-    paragraphs = [line.strip() for line in lines if line.strip()]
+    raw_text = display_snapshot_text(snapshot.raw_text)
+    paragraphs = prose_paragraphs(snapshot.raw_text)
     return {
         "page": snapshot.page,
         "subpage": snapshot.subpage,
@@ -391,12 +390,6 @@ def parse_page(value: str | None) -> int:
         return 1
 
 
-def secure_external_url(url: str) -> str:
-    if url.startswith("http://www.televideo.rai.it/"):
-        return "https://" + url[len("http://") :]
-    return url
-
-
 def is_stale_timestamp(value, seconds: int) -> bool:
     if not value:
         return False
@@ -437,6 +430,28 @@ def ordered_news_queryset(queryset):
     ).order_by("source_rank", "-published_at", "-created_at")
 
 
+def normalized_news_text(value: str) -> str:
+    return compact_text(value or "").casefold()
+
+
+def dedupe_news_key(item: NewsItem) -> str:
+    title = normalized_news_text(item.title_it)
+    summary = normalized_news_text(item.summary_it)
+    return "\0".join(part for part in (title, summary) if part) or item.source_id
+
+
+def deduplicated_news_items(queryset) -> list[NewsItem]:
+    items: list[NewsItem] = []
+    seen: set[str] = set()
+    for item in queryset:
+        key = dedupe_news_key(item)
+        if key in seen:
+            continue
+        seen.add(key)
+        items.append(item)
+    return items
+
+
 def serialized_news_item(item: NewsItem) -> dict[str, object]:
     category = item.category
     return {
@@ -447,7 +462,6 @@ def serialized_news_item(item: NewsItem) -> dict[str, object]:
         "category_code": category.code if category else "",
         "category_name": category.name_it if category else "",
         "source_page": item.source_page,
-        "link": secure_external_url(item.link),
         "published": item.pub_date_text,
         "published_display": timezone.localtime(item.published_at).strftime("%d/%m/%Y %H:%M") if item.published_at else item.pub_date_text,
         "published_iso": item.published_at.isoformat() if item.published_at else "",
@@ -457,7 +471,8 @@ def serialized_news_item(item: NewsItem) -> dict[str, object]:
 def news_listing(category_code: str, search_query: str, page: int, limit: int) -> dict[str, object]:
     queryset, category_code = apply_news_filters(base_news_queryset(), category_code, search_query)
     queryset = ordered_news_queryset(queryset)
-    total_items = queryset.count()
+    items = deduplicated_news_items(queryset)
+    total_items = len(items)
     total_pages = max((total_items + limit - 1) // limit, 1)
     page = min(page, total_pages)
     start = (page - 1) * limit
@@ -473,7 +488,7 @@ def news_listing(category_code: str, search_query: str, page: int, limit: int) -
             "has_previous": page > 1,
             "has_next": page < total_pages,
         },
-        "items": [serialized_news_item(item) for item in queryset[start:end]],
+        "items": [serialized_news_item(item) for item in items[start:end]],
     }
 
 
