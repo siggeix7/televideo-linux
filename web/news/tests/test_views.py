@@ -177,7 +177,7 @@ class ViewTests(TestCase):
         self.assertEqual(data["status"], "ok")
 
     def test_section_pages(self):
-        sections = ["tv", "cultura", "ambiente", "lavoro", "sport", "meteo", "viaggi", "giochi"]
+        sections = ["tv", "culture", "environment", "work", "sport", "weather", "travel", "games"]
         for section in sections:
             response = self.client.get(reverse(f"news:{section}"))
             self.assertEqual(response.status_code, 200, f"Section {section} failed")

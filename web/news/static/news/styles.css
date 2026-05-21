@@ -425,17 +425,6 @@ h1 {
 .section-stack { display: grid; gap: 12px; }
 .section-note { color: var(--white); font-weight: bold; }
 
-.breadcrumb {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px 4px;
-    padding: 0 4px;
-    font-size: var(--font-size-sm);
-}
-.breadcrumb__item { color: var(--cyan); }
-.breadcrumb__item:hover { color: var(--yellow); }
-.breadcrumb__sep { color: var(--text-dim); user-select: none; }
-
 .content-grid,
 .temperature-grid,
 .weather-zone-grid {
@@ -491,8 +480,6 @@ h1 {
     background: #000;
 }
 .raw-block--scroll { max-height: 280px; overflow-y: auto; }
-.content-card .action-link { margin-top: 10px; }
-
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-height: 60vh; overflow-y: auto; }
 table.data-table {
     width: 100%;
