@@ -156,6 +156,7 @@ UI_TEXT = {
         "footer_data_prefix": "Dati da",
         "back_home": "Torna alla cronaca",
         "skip_to_content": "Vai al contenuto",
+        "nav_label": "Navigazione principale",
         "error_eyebrow": "Errore {code}",
         "error_404_title": "Pagina non trovata",
         "error_404_message": "La pagina che cerchi non esiste o e' stata spostata.",

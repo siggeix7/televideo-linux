@@ -202,10 +202,9 @@ h1 {
 .site-nav a,
 .site-nav__link {
     color: var(--cyan);
-    padding: 4px 10px;
+    padding: 4px 12px;
     text-decoration: none;
 }
-.site-nav a:not(:last-child)::after { content: " |"; color: var(--border-dim); margin-right: -10px; }
 .site-nav a:hover,
 .site-nav__link:hover { color: var(--yellow); text-decoration: underline; }
 .site-nav a.is-active,
@@ -213,7 +212,7 @@ h1 {
 
 .site-nav__link {
     display: inline;
-    padding: 4px 10px;
+    padding: 4px 12px;
 }
 
 .home-controls {
@@ -387,15 +386,12 @@ h1 {
 }
 
 .news-card h2 { margin: 8px 0 6px; }
-.news-card__title-link { color: inherit; text-decoration: none; }
-.news-card__title-link:hover { color: var(--yellow); text-decoration: underline; }
 .news-card--lead h2 { max-width: 20ch; font-size: clamp(1.4rem, 3vw, 2rem); }
 .news-card__meta,
 .news-card__category,
 .news-card__source { color: var(--text-dim); font-size: var(--font-size-sm); }
 
 .news-card__summary { margin-top: 10px; color: var(--text); font-size: var(--font-size-md); }
-.news-card__actions { margin-top: 12px; }
 
 .news-card.is-new { animation: flash-in 600ms var(--ease); }
 @keyframes flash-in { 0% { border-color: var(--yellow); background: #002200; } 100% { border-color: var(--border-dim); background: var(--bg-panel); } }
