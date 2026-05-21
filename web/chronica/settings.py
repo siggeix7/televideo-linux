@@ -20,6 +20,7 @@ SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "chronica-televidei-development
 DEBUG = env_bool("DJANGO_DEBUG")
 RUNNING_TESTS = "test" in sys.argv
 ADMIN_ENABLED = env_bool("DJANGO_ADMIN_ENABLED")
+PUBLIC_SITE_URL = os.environ.get("PUBLIC_SITE_URL", "").rstrip("/")
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "*")
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 USE_X_FORWARDED_HOST = env_bool("DJANGO_USE_X_FORWARDED_HOST", True)
@@ -72,6 +73,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "news.site_urls.seo_context",
             ],
         },
     },

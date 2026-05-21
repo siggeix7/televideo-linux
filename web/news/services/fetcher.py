@@ -5,12 +5,28 @@ import urllib.parse
 import urllib.request
 
 from .constants import BASE_URLS, RSS_PATH, TEXT_PATH, USER_AGENT
+from .parser import fix_mojibake
+
+
+def decode_response(data: bytes, charset: str | None) -> str:
+    candidates = [charset] if charset else []
+    candidates.extend(["utf-8", "cp1252", "latin1"])
+    seen = set()
+    for candidate in candidates:
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+        try:
+            return fix_mojibake(data.decode(candidate))
+        except UnicodeDecodeError:
+            continue
+    return fix_mojibake(data.decode("utf-8", errors="replace"))
 
 
 def request_text(url: str, timeout: float) -> str:
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=timeout) as response:
-        return response.read().decode("utf-8", errors="replace")
+        return decode_response(response.read(), response.headers.get_content_charset())
 
 
 def fetch_text(urls: list[str], timeout: float, retries: int) -> tuple[str, str]:

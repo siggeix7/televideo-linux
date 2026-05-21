@@ -16,12 +16,17 @@
     const previousPage = document.getElementById("previous-page");
     const nextPage = document.getElementById("next-page");
     const pageStatus = document.getElementById("page-status");
+    const searchInput = document.getElementById("search-input");
+    const clearSearch = document.getElementById("clear-search");
     const seen = new Set();
     const DEFAULT_LIMIT = 12;
+    const initialParams = new URLSearchParams(window.location.search);
+    const hasServerRendered = grid && grid.dataset.serverRendered === "true";
 
     let language = "it";
-    let selectedCategory = localStorage.getItem("chronica-category") || "all";
-    let page = Number(localStorage.getItem("chronica-page") || 1);
+    let selectedCategory = initialParams.get("category") || localStorage.getItem("chronica-category") || "all";
+    let page = Math.max(Number(initialParams.get("page") || localStorage.getItem("chronica-page") || 1) || 1, 1);
+    let searchQuery = initialParams.get("q") || "";
     let ui = {
         error_prefix: body.dataset.errorPrefix || "",
         timeout_error: body.dataset.timeoutError || "",
@@ -32,6 +37,8 @@
     let firstRender = true;
     let loading = false;
     let retryCount = 0;
+    let activeController = null;
+    let requestSeq = 0;
     const MAX_RETRIES = 3;
 
     function applyUi(nextUi) {
@@ -62,6 +69,31 @@
             dateStyle: "medium",
             timeStyle: "short",
         });
+    }
+
+    function formatPublished(item) {
+        if (item.published_iso) return formatDate(item.published_iso);
+        return item.published || "Ultim'Ora Rai Televideo";
+    }
+
+    function updateSearchControls() {
+        if (searchInput && searchInput.value !== searchQuery) {
+            searchInput.value = searchQuery;
+        }
+        if (clearSearch) {
+            clearSearch.hidden = !searchQuery;
+        }
+    }
+
+    function updateAddressBar() {
+        var params = new URLSearchParams();
+        if (selectedCategory && selectedCategory !== "all") params.set("category", selectedCategory);
+        if (searchQuery) params.set("q", searchQuery);
+        if (page > 1) params.set("page", String(page));
+        var nextUrl = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
+        if (nextUrl !== window.location.pathname + window.location.search) {
+            window.history.replaceState(null, "", nextUrl);
+        }
     }
 
     function showSkeletons(count) {
@@ -109,7 +141,9 @@
         });
 
         categoryList.querySelectorAll("[data-category]").forEach(function (button) {
-            button.classList.toggle("is-active", button.dataset.category === selectedCategory);
+            var isActive = button.dataset.category === selectedCategory;
+            button.classList.toggle("is-active", isActive);
+            button.setAttribute("aria-pressed", isActive ? "true" : "false");
             button.addEventListener("click", function () {
                 selectedCategory = button.dataset.category;
                 localStorage.setItem("chronica-category", selectedCategory);
@@ -133,10 +167,16 @@
         pageStatus.textContent = (ui.page_status || "Pagina {page} di {pages}")
             .replace("{page}", data.page)
             .replace("{pages}", data.pages);
+        updateAddressBar();
     }
 
     function renderNews(payload) {
         applyUi(payload.ui);
+        selectedCategory = payload.selected_category || selectedCategory;
+        if (Object.prototype.hasOwnProperty.call(payload, "search_query")) {
+            searchQuery = payload.search_query || "";
+        }
+        updateSearchControls();
         renderCategories(payload.categories || []);
 
         grid.classList.remove("is-loading");
@@ -156,8 +196,14 @@
 
         if (payload.items.length === 0) {
             emptyState.hidden = false;
-            emptyState.querySelector("h2").textContent = ui.empty_title || "Nessuna notizia";
-            emptyState.querySelector("p").textContent = ui.empty_message || "";
+            if (payload.search_query) {
+                emptyState.querySelector("h2").textContent = ui.no_search_results_title || "Nessun risultato";
+                emptyState.querySelector("p").textContent = (ui.no_search_results_message || 'Nessuna notizia contiene "{query}".')
+                    .replace("{query}", payload.search_query);
+            } else {
+                emptyState.querySelector("h2").textContent = ui.empty_title || "Nessuna notizia";
+                emptyState.querySelector("p").textContent = ui.empty_message || "";
+            }
         }
 
         statusText.textContent = ui.updated || "Notizie aggiornate";
@@ -199,8 +245,20 @@
                     node.classList.add("news-card--lead");
                 }
                 node.querySelector(".news-card__ribbon").textContent = ui.card_ribbon || "Novella";
-                node.querySelector("h2").textContent = item.title;
-                node.querySelector(".news-card__meta").textContent = item.published || "Ultim'Ora Rai Televideo";
+                var heading = node.querySelector("h2");
+                heading.replaceChildren();
+                if (item.link) {
+                    var titleLink = document.createElement("a");
+                    titleLink.className = "news-card__title-link";
+                    titleLink.href = item.link;
+                    titleLink.target = "_blank";
+                    titleLink.rel = "noopener noreferrer";
+                    titleLink.textContent = item.title;
+                    heading.appendChild(titleLink);
+                } else {
+                    heading.textContent = item.title;
+                }
+                node.querySelector(".news-card__meta").textContent = formatPublished(item);
                 node.querySelector(".news-card__category").textContent = item.category_name
                     ? (ui.category_prefix || "Categoria:") + " " + item.category_name
                     : "";
@@ -209,6 +267,17 @@
                         ? (ui.source_prefix || "Titolo originale:") + " " + item.source_title
                         : "";
                 node.querySelector(".news-card__summary").textContent = item.summary;
+                var actions = node.querySelector(".news-card__actions");
+                actions.replaceChildren();
+                if (item.link) {
+                    var action = document.createElement("a");
+                    action.className = "action-link";
+                    action.href = item.link;
+                    action.target = "_blank";
+                    action.rel = "noopener noreferrer";
+                    action.textContent = (ui.open_televideo || "Apri su Televideo") + " >";
+                    actions.appendChild(action);
+                }
                 if (!firstRender && !seen.has(item.id)) {
                     node.classList.add("is-new");
                 }
@@ -227,26 +296,41 @@
         loading = false;
     }
 
-    async function loadNews() {
-        if (loading) return;
+    async function loadNews(options) {
+        options = options || {};
+        var quiet = !!options.quiet;
+        var seq = ++requestSeq;
+        if (activeController) activeController.abort();
+        var controller = new AbortController();
+        activeController = controller;
         loading = true;
         hideError();
 
-        showSkeletons(DEFAULT_LIMIT);
+        if (!quiet) showSkeletons(DEFAULT_LIMIT);
+        if (searchQuery && statusText) {
+            statusText.textContent = ui.searching_status || "Cerco nell'archivio...";
+        }
 
         var url = new URL(apiUrl, window.location.origin);
         url.searchParams.set("lang", "it");
         url.searchParams.set("category", selectedCategory);
         url.searchParams.set("page", String(page));
+        if (searchQuery) {
+            url.searchParams.set("q", searchQuery);
+        }
+        var timeoutId = setTimeout(function () { controller.abort(); }, 15000);
 
         try {
             var response = await fetch(url, {
                 headers: { Accept: "application/json" },
-                signal: AbortSignal.timeout(15000),
+                signal: controller.signal,
             });
             if (!response.ok) throw new Error("HTTP " + response.status);
-            renderNews(await response.json());
+            var payload = await response.json();
+            if (seq !== requestSeq) return;
+            renderNews(payload);
         } catch (error) {
+            if (seq !== requestSeq) return;
             loading = false;
             grid.classList.remove("is-loading");
             grid.replaceChildren();
@@ -261,10 +345,13 @@
             }
             statusText.textContent = (ui.error_prefix || "Errore:") + " " + errMsg;
 
-            if (retryCount < MAX_RETRIES) {
+            if (!searchQuery && retryCount < MAX_RETRIES) {
                 retryCount++;
-                setTimeout(loadNews, 2000 * retryCount);
+                setTimeout(function () { loadNews({ quiet: true }); }, 2000 * retryCount);
             }
+        } finally {
+            clearTimeout(timeoutId);
+            if (seq === requestSeq) activeController = null;
         }
     }
 
@@ -280,41 +367,40 @@
         loadNews();
     });
 
-    var searchInput = document.getElementById("search-input");
     if (searchInput) {
         var searchTimeout;
         searchInput.addEventListener("input", function () {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(function () {
-                var query = searchInput.value.toLowerCase().trim();
-                var cards = grid.querySelectorAll(".news-card:not(.skeleton)");
-                var visible = 0;
-                cards.forEach(function (card) {
-                    var text = (card.textContent || "").toLowerCase();
-                    var match = !query || text.indexOf(query) !== -1;
-                    card.style.display = match ? "" : "none";
-                    if (match) visible++;
-                });
-                grid.querySelectorAll(".news-group").forEach(function (group) {
-                    var hasVisibleCards = Array.from(group.querySelectorAll(".news-card:not(.skeleton)")).some(function (card) {
-                        return card.style.display !== "none";
-                    });
-                    group.hidden = !hasVisibleCards;
-                });
-                if (query && visible === 0 && cards.length > 0) {
-                    emptyState.hidden = false;
-                    emptyState.querySelector("h2").textContent = ui.no_search_results_title || "Nessun risultato";
-                    emptyState.querySelector("p").textContent = (ui.no_search_results_message || 'Nessuna notizia contiene "{query}".')
-                        .replace("{query}", query);
-                } else if (!query) {
-                    emptyState.hidden = true;
-                }
+                var query = searchInput.value.trim();
+                if (query === searchQuery) return;
+                searchQuery = query;
+                page = 1;
+                localStorage.setItem("chronica-page", String(page));
+                firstRender = true;
+                retryCount = 0;
+                loadNews();
             }, 200);
         });
     }
 
-    loadNews();
+    if (clearSearch) {
+        clearSearch.addEventListener("click", function () {
+            if (!searchQuery && !searchInput.value) return;
+            searchQuery = "";
+            searchInput.value = "";
+            page = 1;
+            firstRender = true;
+            retryCount = 0;
+            updateSearchControls();
+            loadNews();
+            searchInput.focus();
+        });
+    }
+
+    updateSearchControls();
+    loadNews({ quiet: hasServerRendered });
     setInterval(function () {
-        if (!loading) loadNews();
+        if (!loading) loadNews({ quiet: true });
     }, refreshSeconds * 1000);
 })();

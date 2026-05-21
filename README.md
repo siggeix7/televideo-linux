@@ -25,6 +25,7 @@ notizie.
 - Database SQLite persistente su volume esterno `/data`.
 - Job di aggiornamento automatico con worker paralleli (news + sezioni).
 - API JSON usata dalla pagina per aggiornarsi senza refresh manuale.
+- Home renderizzata anche lato server, con ricerca condivisibile via URL e fallback senza JavaScript.
 - Skeleton loading con effetto shimmer, retry automatico (3 tentativi) e pagine di errore 404/500.
 - Meta tag Open Graph / Twitter Card e favicon SVG.
 - Container Docker con Gunicorn, worker background e volume dati `/data`.
@@ -70,6 +71,7 @@ services:
       NEWS_FETCH_LIMIT: "${NEWS_FETCH_LIMIT:-12}"
       CATEGORY_FETCH_LIMIT: "${CATEGORY_FETCH_LIMIT:-2}"
       TELETEXT_SECTION_REFRESH_SECONDS: "${TELETEXT_SECTION_REFRESH_SECONDS:-1800}"
+      PUBLIC_SITE_URL: "${PUBLIC_SITE_URL:-}"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-false}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-*}"
       DJANGO_CSRF_TRUSTED_ORIGINS: "${DJANGO_CSRF_TRUSTED_ORIGINS:-}"
@@ -95,6 +97,7 @@ NEWS_REFRESH_SECONDS=60
 NEWS_FETCH_LIMIT=12
 CATEGORY_FETCH_LIMIT=2
 TELETEXT_SECTION_REFRESH_SECONDS=1800
+PUBLIC_SITE_URL=https://televideo.example.com
 
 DJANGO_DEBUG=false
 DJANGO_ADMIN_ENABLED=false

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from urllib.parse import urlencode
+
 from django.conf import settings
 from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.db import connection
-from django.http import Http404, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.template import TemplateDoesNotExist
 from django.urls import reverse
@@ -23,6 +25,8 @@ from .formatters import (
 )
 from .models import Category, LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
 from .map_paths import get_map_regions
+from .site_urls import public_absolute_url
+from .services.parser import clean_snapshot_text, fix_mojibake
 from .services import (
     REGION_CHOICES,
     SECTION_DEFINITIONS,
@@ -76,6 +80,7 @@ UI_TEXT = {
         "super_link": "SuperEnalotto",
         "all_categories": "Tutte",
         "search_placeholder": "Cerca in titoli, testi e categorie...",
+        "clear_search": "Cancella",
         "status_label": "Stato",
         "loading": "Carico notizie...",
         "last_reading": "Ultima lettura",
@@ -92,10 +97,15 @@ UI_TEXT = {
         "timeout_error": "Timeout: server non risponde. Riprovo...",
         "no_search_results_title": "Nessun risultato",
         "no_search_results_message": "Nessuna notizia contiene \"{query}\".",
+        "searching_status": "Cerco nell'archivio...",
         "card_ribbon": "NOTIZIA",
         "source_prefix": "Titolo originale:",
         "category_prefix": "Categoria:",
         "source_link": "Fonte Rai",
+        "stale_label": "Dati da verificare",
+        "stale_message": "Questa sezione non riceve aggiornamenti recenti: mostro l'ultima copia salvata.",
+        "noscript_title": "Ultime notizie disponibili",
+        "noscript_message": "JavaScript e' disattivato: mostro un estratto statico delle ultime notizie salvate.",
         "open_televideo": "Apri su Televideo",
         "open_archive": "Apri archivio",
         "page_label": "Pagina",
@@ -212,16 +222,17 @@ def nav_items(active: str, _language: str = "it") -> list[dict[str, object]]:
 
 
 def snapshot_payload(snapshot: TelevideoPageSnapshot) -> dict[str, object]:
-    lines = snapshot.raw_text.splitlines()
+    raw_text = clean_snapshot_text(snapshot.raw_text)
+    lines = raw_text.splitlines()
     paragraphs = [line.strip() for line in lines if line.strip()]
     return {
         "page": snapshot.page,
         "subpage": snapshot.subpage,
-        "label": snapshot.label,
-        "title": snapshot.title,
+        "label": fix_mojibake(snapshot.label),
+        "title": fix_mojibake(snapshot.title),
         "content_kind": snapshot.content_kind,
         "source_url": snapshot.source_url,
-        "raw_text": snapshot.raw_text,
+        "raw_text": raw_text,
         "paragraphs": paragraphs,
         "fetched_at": snapshot.fetched_at,
     }
@@ -380,12 +391,128 @@ def parse_page(value: str | None) -> int:
         return 1
 
 
+def secure_external_url(url: str) -> str:
+    if url.startswith("http://www.televideo.rai.it/"):
+        return "https://" + url[len("http://") :]
+    return url
+
+
+def is_stale_timestamp(value, seconds: int) -> bool:
+    if not value:
+        return False
+    threshold = max(seconds * 2, 3600)
+    return (timezone.now() - value).total_seconds() > threshold
+
+
+def base_news_queryset():
+    return NewsItem.objects.select_related("category").filter(displayable_filter()).exclude(category__code__in=HIDDEN_CATEGORY_CODES)
+
+
+def apply_news_filters(queryset, category_code: str, search_query: str):
+    if category_code != "all":
+        valid_category = Category.objects.filter(active=True, code=category_code).exclude(code__in=HIDDEN_CATEGORY_CODES).exists()
+        if valid_category:
+            queryset = queryset.filter(category__code=category_code)
+        else:
+            category_code = "all"
+
+    if search_query:
+        queryset = queryset.filter(
+            Q(title_it__icontains=search_query)
+            | Q(summary_it__icontains=search_query)
+            | Q(category__name_it__icontains=search_query)
+            | Q(source_page__icontains=search_query)
+        ).distinct()
+
+    return queryset, category_code
+
+
+def ordered_news_queryset(queryset):
+    return queryset.annotate(
+        source_rank=Case(
+            When(category__code="rss101", then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField(),
+        )
+    ).order_by("source_rank", "-published_at", "-created_at")
+
+
+def serialized_news_item(item: NewsItem) -> dict[str, object]:
+    category = item.category
+    return {
+        "id": item.source_id,
+        "title": item.title_it,
+        "summary": item.summary_it,
+        "source_title": item.title_it,
+        "category_code": category.code if category else "",
+        "category_name": category.name_it if category else "",
+        "source_page": item.source_page,
+        "link": secure_external_url(item.link),
+        "published": item.pub_date_text,
+        "published_display": timezone.localtime(item.published_at).strftime("%d/%m/%Y %H:%M") if item.published_at else item.pub_date_text,
+        "published_iso": item.published_at.isoformat() if item.published_at else "",
+    }
+
+
+def news_listing(category_code: str, search_query: str, page: int, limit: int) -> dict[str, object]:
+    queryset, category_code = apply_news_filters(base_news_queryset(), category_code, search_query)
+    queryset = ordered_news_queryset(queryset)
+    total_items = queryset.count()
+    total_pages = max((total_items + limit - 1) // limit, 1)
+    page = min(page, total_pages)
+    start = (page - 1) * limit
+    end = start + limit
+    return {
+        "selected_category": category_code,
+        "search_query": search_query,
+        "pagination": {
+            "page": page,
+            "pages": total_pages,
+            "limit": limit,
+            "total": total_items,
+            "has_previous": page > 1,
+            "has_next": page < total_pages,
+        },
+        "items": [serialized_news_item(item) for item in queryset[start:end]],
+    }
+
+
+def category_filter_links(request, categories: list[dict[str, object]], selected_category: str, search_query: str) -> list[dict[str, object]]:
+    total_count = sum(int(c.get("count") or 0) for c in categories)
+    filters = [{"code": "all", "name": UI_TEXT["it"]["all_categories"], "count": total_count}] + categories
+    payload = []
+    for category in filters:
+        params = {}
+        if category["code"] != "all":
+            params["category"] = category["code"]
+        if search_query:
+            params["q"] = search_query
+        query = urlencode(params)
+        payload.append(
+            {
+                **category,
+                "active": category["code"] == selected_category,
+                "url": request.path + (f"?{query}" if query else ""),
+            }
+        )
+    return payload
+
+
+def initial_home_listing(request) -> dict[str, object]:
+    category_code = request.GET.get("category") or "all"
+    search_query = (request.GET.get("q") or "").strip()[:120]
+    page = parse_page(request.GET.get("page"))
+    return news_listing(category_code, search_query, page, limit=12)
+
+
 def home(request):
     if not NewsItem.objects.exists():
         try:
             refresh_if_stale()
         except RuntimeError:
             pass
+    listing = initial_home_listing(request)
+    categories = serialized_categories()
     return render(
         request,
         "news/home.html",
@@ -395,6 +522,12 @@ def home(request):
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
             "ui": UI_TEXT["it"],
             "nav_items": nav_items("home"),
+            "fallback_items": listing["items"],
+            "fallback_pagination": listing["pagination"],
+            "fallback_page_status": UI_TEXT["it"]["page_status"].replace("{page}", str(listing["pagination"]["page"])).replace("{pages}", str(listing["pagination"]["pages"])),
+            "category_filters": category_filter_links(request, categories, listing["selected_category"], listing["search_query"]),
+            "initial_category": listing["selected_category"],
+            "initial_search": listing["search_query"],
         },
     )
 
@@ -429,6 +562,7 @@ def televideo_section(request, section: str, active: str):
         "section": {**definition, "key": section},
         "data": formatted,
         "latest": latest,
+        "stale": is_stale_timestamp(latest, settings.TELETEXT_SECTION_REFRESH_SECONDS),
         "nav_items": nav_items(active),
         "language": "it",
         "languages": LANGUAGES,
@@ -476,6 +610,7 @@ def weather(request):
         "section": {**definition, "key": section},
         "data": formatted,
         "latest": latest,
+        "stale": is_stale_timestamp(latest, settings.TELETEXT_SECTION_REFRESH_SECONDS),
         "nav_items": nav_items("meteo"),
         "language": "it",
         "languages": LANGUAGES,
@@ -503,6 +638,7 @@ def games(request):
             "section": {**localized_section_definition("giochi"), "key": "giochi"},
             "data": formatted,
             "latest": latest,
+            "stale": is_stale_timestamp(latest, settings.TELETEXT_SECTION_REFRESH_SECONDS),
             "latest_superenalotto": latest_superenalotto,
             "latest_lotto": latest_lotto,
             "nav_items": nav_items("giochi"),
@@ -535,6 +671,7 @@ def regions(request, region_slug_value: str | None = None):
             "section": {**localized_section_definition("regioni"), "key": "regioni", "title": f"{localized_section_definition('regioni')['title']} - {selected_region}"},
             "data": formatted,
             "latest": latest,
+            "stale": is_stale_timestamp(latest, settings.TELETEXT_SECTION_REFRESH_SECONDS),
             "regions": regions_payload,
             "selected_region": selected_region,
             "nav_items": nav_items("regioni"),
@@ -578,53 +715,13 @@ def news_api(request):
     limit = parse_limit(request.GET.get("limit"), default=12)
     page = parse_page(request.GET.get("page"))
     category_code = request.GET.get("category") or "all"
+    search_query = (request.GET.get("q") or "").strip()[:120]
     error = ""
     try:
         refresh_if_stale()
     except RuntimeError as exc:
         error = str(exc)
-
-    queryset = (
-        NewsItem.objects.select_related("category")
-        .filter(displayable_filter())
-        .exclude(category__code__in=HIDDEN_CATEGORY_CODES)
-    )
-    if category_code != "all":
-        filtered = queryset.filter(category__code=category_code)
-        if filtered.exists():
-            queryset = filtered
-        else:
-            category_code = "all"
-
-    queryset = queryset.annotate(
-        source_rank=Case(
-            When(category__code="rss101", then=Value(0)),
-            default=Value(1),
-            output_field=IntegerField(),
-        )
-    ).order_by("source_rank", "-published_at", "-created_at")
-    total_items = queryset.count()
-    total_pages = max((total_items + limit - 1) // limit, 1)
-    page = min(page, total_pages)
-    start = (page - 1) * limit
-    end = start + limit
-
-    items = []
-    for item in queryset[start:end]:
-        category = item.category
-        items.append(
-            {
-                "id": item.source_id,
-                "title": item.title_it,
-                "summary": item.summary_it,
-                "source_title": item.title_it,
-                "category_code": category.code if category else "",
-                "category_name": category.name_it if category else "",
-                "source_page": item.source_page,
-                "published": item.pub_date_text,
-                "published_iso": item.published_at.isoformat() if item.published_at else "",
-            }
-        )
+    listing = news_listing(category_code, search_query, page, limit)
 
     return JsonResponse(
         {
@@ -632,19 +729,13 @@ def news_api(request):
             "language_label": "Italiano",
             "generated_at": timezone.localtime().isoformat(),
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
-            "selected_category": category_code,
+            "selected_category": listing["selected_category"],
+            "search_query": listing["search_query"],
             "ui": UI_TEXT["it"],
             "categories": serialized_categories(),
-            "pagination": {
-                "page": page,
-                "pages": total_pages,
-                "limit": limit,
-                "total": total_items,
-                "has_previous": page > 1,
-                "has_next": page < total_pages,
-            },
+            "pagination": listing["pagination"],
             "error": error,
-            "items": items,
+            "items": listing["items"],
         }
     )
 
@@ -704,6 +795,40 @@ def healthcheck(request):
         cursor.execute("SELECT 1")
         cursor.fetchone()
     return JsonResponse({"status": "ok", "time": timezone.localtime().isoformat()})
+
+
+def robots_txt(request):
+    sitemap_url = public_absolute_url(request, reverse("news:sitemap"))
+    body = f"User-agent: *\nAllow: /\nSitemap: {sitemap_url}\n"
+    return HttpResponse(body, content_type="text/plain; charset=utf-8")
+
+
+def sitemap_xml(request):
+    route_names = [
+        "home",
+        "tv",
+        "culture",
+        "environment",
+        "work",
+        "sport",
+        "weather",
+        "travel",
+        "games",
+        "regions",
+        "superenalotto",
+    ]
+    urls = [public_absolute_url(request, reverse(f"news:{name}")) for name in route_names]
+    urls.extend(
+        public_absolute_url(request, reverse("news:region", kwargs={"region_slug_value": region_slug(region)}))
+        for region in REGION_CHOICES
+    )
+    today = timezone.localdate().isoformat()
+    entries = "\n".join(
+        f"  <url><loc>{url}</loc><lastmod>{today}</lastmod><changefreq>hourly</changefreq></url>"
+        for url in urls
+    )
+    body = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n" + entries + "\n</urlset>\n"
+    return HttpResponse(body, content_type="application/xml; charset=utf-8")
 
 
 def decimal_payload(value):

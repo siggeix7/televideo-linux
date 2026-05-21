@@ -28,13 +28,18 @@
         <div class="home-controls">
             <div class="home-controls__filters">
                 <div class="search-bar">
-                    <input type="search" id="search-input" class="search-bar__input" placeholder="{{ ui.search_placeholder }}" aria-label="{{ ui.search_placeholder }}" data-ui-placeholder="search_placeholder">
+                    <input type="search" id="search-input" class="search-bar__input" value="{{ initial_search }}" placeholder="{{ ui.search_placeholder }}" aria-label="{{ ui.search_placeholder }}" data-ui-placeholder="search_placeholder">
+                    <button id="clear-search" class="search-bar__clear" type="button"{% if not initial_search %} hidden{% endif %}>{{ ui.clear_search }}</button>
                 </div>
 
                 <section class="category-panel" aria-label="{{ ui.categories_title }}">
                     <h2 data-ui="categories_title">{{ ui.categories_title }}</h2>
                     <div id="category-list" class="category-list">
+                        {% for category in category_filters %}
+                        <a href="{{ category.url }}" class="category-button{% if category.active %} is-active{% endif %}"{% if category.active %} aria-current="true"{% endif %}>{{ category.name }} ({{ category.count }})</a>
+                        {% empty %}
                         <span class="skeleton skeleton--pill"></span>
+                        {% endfor %}
                     </div>
                 </section>
             </div>
@@ -52,7 +57,34 @@
         </div>
 
         <main id="main">
-            <section id="news-grid" class="news-grid" aria-live="polite" aria-label="{{ ui.news_link }}">
+            <noscript>
+                <section class="empty-state noscript-state">
+                    <h2>{{ ui.noscript_title }}</h2>
+                    <p>{{ ui.noscript_message }}</p>
+                </section>
+            </noscript>
+
+            <section id="news-grid" class="news-grid" aria-live="polite" aria-label="{{ ui.news_link }}"{% if fallback_items %} data-server-rendered="true"{% endif %}>
+                {% if fallback_items %}
+                <section class="news-group">
+                    <div class="news-group__header">
+                        <h2>{{ ui.news_link }}</h2>
+                        <span>{{ fallback_items|length }}</span>
+                    </div>
+                    <div class="news-group__grid">
+                        {% for item in fallback_items %}
+                        <article class="news-card{% if forloop.first %} news-card--lead{% endif %}">
+                            <div class="news-card__ribbon">{{ ui.card_ribbon }}</div>
+                            <h2>{% if item.link %}<a class="news-card__title-link" href="{{ item.link }}" rel="noopener noreferrer" target="_blank">{{ item.title }}</a>{% else %}{{ item.title }}{% endif %}</h2>
+                            <p class="news-card__meta">{{ item.published_display }}</p>
+                            {% if item.category_name %}<p class="news-card__category">{{ ui.category_prefix }} {{ item.category_name }}</p>{% endif %}
+                            <p class="news-card__summary">{{ item.summary }}</p>
+                            {% if item.link %}<p class="news-card__actions"><a class="action-link" href="{{ item.link }}" rel="noopener noreferrer" target="_blank">{{ ui.open_televideo }} &nearr;</a></p>{% endif %}
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% else %}
                 <article class="news-card skeleton skeleton--card" aria-hidden="true">
                     <div class="skeleton skeleton--text skeleton--short"></div>
                     <div class="skeleton skeleton--title"></div>
@@ -60,12 +92,13 @@
                     <div class="skeleton skeleton--text"></div>
                     <div class="skeleton skeleton--text skeleton--half"></div>
                 </article>
+                {% endif %}
             </section>
 
             <nav class="pagination" aria-label="{{ ui.previous_page }} / {{ ui.next_page }}">
-                <button id="previous-page" class="pagination__button" type="button" disabled></button>
-                <span id="page-status" class="pagination__status"></span>
-                <button id="next-page" class="pagination__button" type="button" disabled></button>
+                <button id="previous-page" class="pagination__button" type="button"{% if not fallback_pagination.has_previous %} disabled{% endif %}>{{ ui.previous_page }}</button>
+                <span id="page-status" class="pagination__status">{{ fallback_page_status }}</span>
+                <button id="next-page" class="pagination__button" type="button"{% if not fallback_pagination.has_next %} disabled{% endif %}>{{ ui.next_page }}</button>
             </nav>
 
             <div id="empty-state" class="empty-state" hidden>
@@ -90,6 +123,7 @@
             <p class="news-card__category"></p>
             <p class="news-card__source"></p>
             <p class="news-card__summary"></p>
+            <p class="news-card__actions"></p>
         </article>
     </template>
 

@@ -1,5 +1,8 @@
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
+
+from news.models import Category, NewsItem
 
 
 class ViewTests(TestCase):
@@ -23,6 +26,56 @@ class ViewTests(TestCase):
     def test_news_api_with_params(self):
         response = self.client.get(reverse("news:news_api") + "?lang=en&category=test&page=1&limit=5")
         self.assertEqual(response.status_code, 200)
+
+    def test_news_api_searches_archive(self):
+        category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)
+        NewsItem.objects.create(
+            source_id="search-1",
+            category=category,
+            title_it="Titolo speciale",
+            summary_it="Contenuto con parola unica",
+            link="http://www.televideo.rai.it/televideo/pub/view.jsp?id=1&p=101",
+            published_at=timezone.now(),
+        )
+        NewsItem.objects.create(
+            source_id="search-2",
+            category=category,
+            title_it="Altro titolo",
+            summary_it="Contenuto generico",
+            published_at=timezone.now(),
+        )
+
+        response = self.client.get(reverse("news:news_api") + "?q=unica")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["pagination"]["total"], 1)
+        self.assertEqual(data["items"][0]["title"], "Titolo speciale")
+        self.assertTrue(data["items"][0]["link"].startswith("https://www.televideo.rai.it/"))
+        self.assertEqual(data["search_query"], "unica")
+
+    def test_home_renders_initial_news_and_filters(self):
+        category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)
+        NewsItem.objects.create(
+            source_id="home-1",
+            category=category,
+            title_it="Titolo iniziale",
+            summary_it="Testo renderizzato dal server",
+            published_at=timezone.now(),
+        )
+
+        response = self.client.get(reverse("news:home") + "?q=server&category=test")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-server-rendered")
+        self.assertContains(response, "value=\"server\"")
+        self.assertContains(response, "Cancella")
+
+    def test_robots_and_sitemap(self):
+        robots = self.client.get(reverse("news:robots"))
+        sitemap = self.client.get(reverse("news:sitemap"))
+        self.assertEqual(robots.status_code, 200)
+        self.assertContains(robots, "Sitemap:")
+        self.assertEqual(sitemap.status_code, 200)
+        self.assertContains(sitemap, "<urlset")
 
     def test_superenalotto_page(self):
         response = self.client.get(reverse("news:superenalotto"))

@@ -36,6 +36,13 @@
             </div>
         </section>
 
+        {% if stale %}
+        <section class="stale-banner" aria-live="polite">
+            <strong>{{ ui.stale_label }}</strong>
+            <p>{{ ui.stale_message }}</p>
+        </section>
+        {% endif %}
+
         {% block section_content %}{% endblock %}
 
     </div>

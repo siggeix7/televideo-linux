@@ -23,7 +23,23 @@ def compact_text(value: str) -> str:
     return re.sub(r"\s+", " ", strip_html(value)).strip()
 
 
+MOJIBAKE_MARKERS = ("\u00c3", "\u00c2", "\u00e2\u20ac", "\u00e2\u20ac\u2122", "\u00e2\u20ac\u0153", "\u00e2\u20ac\u009d")
+
+
+def fix_mojibake(value: str) -> str:
+    if not value or not any(marker in value for marker in MOJIBAKE_MARKERS):
+        return value
+    try:
+        fixed = value.encode("latin1").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return value
+    original_score = sum(value.count(marker) for marker in MOJIBAKE_MARKERS)
+    fixed_score = sum(fixed.count(marker) for marker in MOJIBAKE_MARKERS)
+    return fixed if fixed_score < original_score else value
+
+
 def extract_page_content(html_text: str) -> str:
+    html_text = fix_mojibake(html_text)
     pre_match = re.search(r"<pre\b[^>]*>(.*?)</pre>", html_text, flags=re.IGNORECASE | re.DOTALL)
     if not pre_match:
         raise RuntimeError("formato pagina Rai non riconosciuto")
@@ -201,6 +217,7 @@ def parse_superenalotto_content(content: str) -> dict[str, object]:
 
 
 def clean_snapshot_text(content: str) -> str:
+    content = fix_mojibake(content)
     content = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", content)
     content = re.sub(r"[£òù]{3,}", "", content)
     lines = [line.rstrip() for line in content.splitlines()]
