@@ -336,17 +336,18 @@
     previousPage.addEventListener("click", function () {
         if (page > 1) {
             page -= 1;
+            window.scrollTo({ top: 0, behavior: "smooth" });
             loadNews();
         }
     });
 
     nextPage.addEventListener("click", function () {
         page += 1;
+        window.scrollTo({ top: 0, behavior: "smooth" });
         loadNews();
     });
 
     if (searchInput) {
-        var searchTimeout;
         searchInput.addEventListener("input", function () {
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(function () {
@@ -357,6 +358,7 @@
                 localStorage.setItem("chronica-page", String(page));
                 firstRender = true;
                 retryCount = 0;
+                window.scrollTo({ top: 0, behavior: "smooth" });
                 loadNews();
             }, 200);
         });
@@ -378,6 +380,31 @@
 
     updateSearchControls();
     loadNews({ quiet: hasServerRendered });
+
+    var priorItemCount = 0;
+    var toastEl = document.getElementById("update-toast");
+    var toastTimeout = null;
+
+    function showToast(message) {
+        if (!toastEl) return;
+        toastEl.textContent = message;
+        toastEl.hidden = false;
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(function () {
+            toastEl.hidden = true;
+        }, 4000);
+    }
+
+    var originalRenderNews = renderNews;
+    renderNews = function (payload) {
+        var newCount = (payload.items || []).length;
+        originalRenderNews(payload);
+        if (!firstRender && !payload.error && newCount !== priorItemCount && !payload.search_query) {
+            showToast("Aggiornamento: " + newCount + " notizie caricate");
+        }
+        priorItemCount = newCount;
+    };
+
     setInterval(function () {
         if (!loading) loadNews({ quiet: true });
     }, refreshSeconds * 1000);
