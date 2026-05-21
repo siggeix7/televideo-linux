@@ -1,5 +1,5 @@
 <nav class="site-nav" aria-label="{{ ui.news_link }}">
     {% for item in nav_items %}
-        <a href="{{ item.url }}" class="site-nav__link{% if item.active %} is-active{% endif %}">{{ item.label }}</a>
+        <a href="{{ item.url }}" class="site-nav__link{% if item.active %} is-active{% endif %}"{% if item.active %} aria-current="page"{% endif %}>{{ item.label }}</a>
     {% endfor %}
 </nav>

@@ -34,7 +34,7 @@
         <h2>{{ aud.label }}</h2>
         <div class="table-wrap">
             <table class="data-table">
-                <thead><tr><th>{{ ui.channel_program_label }}</th><th class="right">{{ ui.share_label }}</th><th class="right">{{ ui.viewers_label }}</th></tr></thead>
+                <thead><tr><th scope="col">{{ ui.channel_program_label }}</th><th scope="col" class="right">{{ ui.share_label }}</th><th scope="col" class="right">{{ ui.viewers_label }}</th></tr></thead>
                 <tbody>
                     {% for row in aud.rows %}
                     <tr>

@@ -1,10 +1,10 @@
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from news.models import Category, NewsItem, TelevideoPageSnapshot
+from news.models import Category, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
 
 
 class ViewTests(TestCase):
@@ -35,7 +35,7 @@ class ViewTests(TestCase):
             source_id="search-1",
             category=category,
             title_it="Titolo speciale",
-            summary_it="Contenuto con parola unica",
+            summary_it="Dalle tavole del Televideo: Contenuto con parola unica",
             link="http://www.televideo.rai.it/televideo/pub/view.jsp?id=1&p=101",
             published_at=timezone.now(),
         )
@@ -52,6 +52,7 @@ class ViewTests(TestCase):
         data = response.json()
         self.assertEqual(data["pagination"]["total"], 1)
         self.assertEqual(data["items"][0]["title"], "Titolo speciale")
+        self.assertEqual(data["items"][0]["summary"], "Contenuto con parola unica")
         self.assertNotIn("link", data["items"][0])
         self.assertEqual(data["search_query"], "unica")
 
@@ -88,6 +89,8 @@ class ViewTests(TestCase):
         self.assertContains(response, "data-server-rendered")
         self.assertContains(response, "value=\"server\"")
         self.assertContains(response, "Cancella")
+        self.assertContains(response, "Vai al contenuto")
+        self.assertContains(response, "aria-current=\"page\"")
 
     def test_home_does_not_render_televideo_links(self):
         category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)
@@ -147,10 +150,25 @@ class ViewTests(TestCase):
     def test_superenalotto_page(self):
         response = self.client.get(reverse("news:superenalotto"))
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Vai al contenuto")
+        self.assertContains(response, "id=\"main\"")
 
     def test_superenalotto_api(self):
         response = self.client.get(reverse("news:superenalotto_api"))
         self.assertEqual(response.status_code, 200)
+
+    def test_superenalotto_api_falls_back_from_invalid_date(self):
+        SuperEnalottoDraw.objects.create(
+            draw_number=1,
+            draw_date=date(2026, 1, 1),
+            winning_numbers=[1, 2, 3, 4, 5, 6],
+        )
+
+        response = self.client.get(reverse("news:superenalotto_api") + "?date=1999-01-01")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["selected_date"], "2026-01-01")
+        self.assertEqual(data["selected"]["draw_number"], 1)
 
     def test_healthcheck(self):
         response = self.client.get(reverse("news:healthcheck"))

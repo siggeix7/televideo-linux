@@ -51,7 +51,13 @@
         }
     }
 
-    function renderDates(dates) {
+    function renderDates(dates, nextSelectedDate) {
+        if (nextSelectedDate) {
+            selectedDate = nextSelectedDate;
+        }
+        if (selectedDate && !dates.some(function (date) { return date.value === selectedDate; })) {
+            selectedDate = dates[0] ? dates[0].value : "";
+        }
         dateSelect.replaceChildren();
         dates.forEach(function (date) {
             var option = document.createElement("option");
@@ -62,7 +68,12 @@
         });
         if (!selectedDate && dates[0]) {
             selectedDate = dates[0].value;
+        }
+        if (selectedDate) {
             dateSelect.value = selectedDate;
+            localStorage.setItem("superenalotto-date", selectedDate);
+        } else {
+            localStorage.removeItem("superenalotto-date");
         }
     }
 
@@ -145,7 +156,7 @@
             if (!response.ok) throw new Error("HTTP " + response.status);
             var payload = await response.json();
             applyUi(payload.ui);
-            renderDates(payload.dates || []);
+            renderDates(payload.dates || [], payload.selected_date || (payload.selected && payload.selected.draw_date) || "");
             renderDraw(payload.selected);
             renderTrend(payload.trend || []);
             retryCount = 0;

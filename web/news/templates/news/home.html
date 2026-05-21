@@ -8,7 +8,7 @@
     <script defer src="{% static 'news/app.js' %}"></script>
 </head>
 <body data-api-url="{% url 'news:news_api' %}" data-initial-language="{{ language }}" data-refresh-seconds="{{ refresh_seconds }}" data-error-prefix="{{ ui.error_prefix }}" data-timeout-error="{{ ui.timeout_error }}" data-unknown-error="{{ ui.unknown_error }}" data-no-search-results-title="{{ ui.no_search_results_title }}" data-no-search-results-message="{{ ui.no_search_results_message }}">
-    <a href="#main" class="skip-link">{{ ui.back_home }}</a>
+    <a href="#main" class="skip-link">{{ ui.skip_to_content }}</a>
     <div class="page-shell">
         <header class="site-header">
             <div class="hero">

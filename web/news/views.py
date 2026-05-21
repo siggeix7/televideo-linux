@@ -155,6 +155,7 @@ UI_TEXT = {
         "footer_license": "Licenza MIT",
         "footer_data_prefix": "Dati da",
         "back_home": "Torna alla cronaca",
+        "skip_to_content": "Vai al contenuto",
         "error_eyebrow": "Errore {code}",
         "error_404_title": "Pagina non trovata",
         "error_404_message": "La pagina che cerchi non esiste o e' stata spostata.",
@@ -457,7 +458,7 @@ def serialized_news_item(item: NewsItem) -> dict[str, object]:
     return {
         "id": item.source_id,
         "title": item.title_it,
-        "summary": item.summary_it,
+        "summary": item.summary_for("it"),
         "source_title": item.title_it,
         "category_code": category.code if category else "",
         "category_name": category.name_it if category else "",
@@ -723,7 +724,7 @@ def news_title_for(item: NewsItem, _language: str = "it") -> str:
 
 
 def news_summary_for(item: NewsItem, _language: str = "it") -> str:
-    return item.summary_it
+    return item.summary_for("it")
 
 
 def news_api(request):
@@ -875,7 +876,9 @@ def superenalotto_api(request):
         error = str(exc)
 
     draws = SuperEnalottoDraw.objects.all()
-    selected = draws.filter(draw_date=selected_date).first() if selected_date else draws.first()
+    selected = draws.filter(draw_date=selected_date).first() if selected_date else None
+    if selected is None:
+        selected = draws.first()
     dates = [{"value": draw.draw_date.isoformat(), "label": f"{draw.draw_date.isoformat()} - N.{draw.draw_number}"} for draw in draws]
     trend_draws = list(reversed(list(SuperEnalottoDraw.objects.all()[:30])))
 
@@ -888,6 +891,7 @@ def superenalotto_api(request):
             "ui": UI_TEXT["it"],
             "error": error,
             "dates": dates,
+            "selected_date": selected.draw_date.isoformat() if selected else "",
             "selected": draw_payload(selected),
             "trend": [
                 {

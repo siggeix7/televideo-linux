@@ -8,7 +8,7 @@
     <script defer src="{% static 'news/superenalotto.js' %}"></script>
 </head>
 <body data-api-url="{% url 'news:superenalotto_api' %}" data-initial-language="{{ language }}" data-refresh-seconds="{{ refresh_seconds }}" data-timeout-error="{{ ui.timeout_error }}" data-unknown-error="{{ ui.unknown_error }}">
-    <a href="#main" class="skip-link">{{ ui.back_home }}</a>
+    <a href="#main" class="skip-link">{{ ui.skip_to_content }}</a>
     <div class="page-shell">
         <header class="site-header">
             <div class="hero hero--compact">
@@ -25,6 +25,7 @@
             </div>
         </header>
 
+        <main id="main">
         <section class="lottery-layout">
             <article class="lottery-card">
                 <label class="status-label" for="draw-date" data-ui="select_date">{{ ui.select_date }}</label>
@@ -62,6 +63,7 @@
             <h2 data-ui="load_error_title">{{ ui.load_error_title }}</h2>
             <p id="error-message"></p>
         </div>
+        </main>
     </div>
 
     {% include "news/_footer.html" %}
