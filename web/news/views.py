@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -43,6 +45,67 @@ LANGUAGES = {
 }
 
 HIDDEN_CATEGORY_CODES = {"p401", "p613", "p700", "p711"}
+NEWS_DUPLICATE_TITLE_PREFIX_TOKENS = 3
+NEWS_DUPLICATE_TITLE_MIN_TOKENS = 4
+NEWS_DUPLICATE_TITLE_MIN_OVERLAP = 0.75
+NEWS_DUPLICATE_TITLE_WINDOW = timedelta(hours=48)
+NEWS_DUPLICATE_TITLE_WORD_RE = re.compile(r"[^\W_]+", flags=re.UNICODE)
+NEWS_DUPLICATE_TITLE_STOPWORDS = {
+    "a",
+    "ad",
+    "agli",
+    "ai",
+    "al",
+    "all",
+    "alla",
+    "alle",
+    "allo",
+    "con",
+    "da",
+    "dal",
+    "dall",
+    "dalla",
+    "dalle",
+    "dallo",
+    "de",
+    "dei",
+    "del",
+    "dell",
+    "della",
+    "delle",
+    "degli",
+    "di",
+    "e",
+    "ed",
+    "fra",
+    "gli",
+    "i",
+    "il",
+    "in",
+    "l",
+    "la",
+    "le",
+    "lo",
+    "nei",
+    "nel",
+    "nell",
+    "nella",
+    "nelle",
+    "nello",
+    "o",
+    "od",
+    "per",
+    "su",
+    "sul",
+    "sull",
+    "sulla",
+    "sulle",
+    "sullo",
+    "tra",
+    "un",
+    "una",
+    "uno",
+}
 
 NAVIGATION = (
     ("home", "nav_home", "news:home"),
@@ -436,21 +499,64 @@ def normalized_news_text(value: str) -> str:
     return compact_text(value or "").casefold()
 
 
+def normalized_news_title_tokens(value: str) -> tuple[str, ...]:
+    tokens = NEWS_DUPLICATE_TITLE_WORD_RE.findall(normalized_news_text(value))
+    return tuple(
+        token
+        for token in tokens
+        if token not in NEWS_DUPLICATE_TITLE_STOPWORDS and (len(token) > 1 or token.isdigit())
+    )
+
+
 def dedupe_news_key(item: NewsItem) -> str:
     title = normalized_news_text(item.title_it)
     summary = normalized_news_text(item.summary_it)
     return "\0".join(part for part in (title, summary) if part) or item.source_id
 
 
+def duplicate_title_prefix(tokens: tuple[str, ...]) -> tuple[str, ...]:
+    if len(tokens) < NEWS_DUPLICATE_TITLE_MIN_TOKENS:
+        return ()
+    return tokens[:NEWS_DUPLICATE_TITLE_PREFIX_TOKENS]
+
+
+def similar_news_titles(first_tokens: tuple[str, ...], second_tokens: tuple[str, ...]) -> bool:
+    first_prefix = duplicate_title_prefix(first_tokens)
+    if not first_prefix or first_prefix != duplicate_title_prefix(second_tokens):
+        return False
+    first_set = set(first_tokens)
+    second_set = set(second_tokens)
+    common_tokens = len(first_set & second_set)
+    return common_tokens / max(len(first_set), len(second_set)) >= NEWS_DUPLICATE_TITLE_MIN_OVERLAP
+
+
+def news_items_close_in_time(first: NewsItem, second: NewsItem) -> bool:
+    if not first.published_at or not second.published_at:
+        return True
+    return abs(first.published_at - second.published_at) <= NEWS_DUPLICATE_TITLE_WINDOW
+
+
 def deduplicated_news_items(queryset) -> list[NewsItem]:
     items: list[NewsItem] = []
     seen: set[str] = set()
+    seen_similar_titles: dict[tuple[str, ...], list[tuple[NewsItem, tuple[str, ...]]]] = {}
     for item in queryset:
         key = dedupe_news_key(item)
         if key in seen:
             continue
+        title_tokens = normalized_news_title_tokens(item.title_it)
+        title_prefix = duplicate_title_prefix(title_tokens)
+        if title_prefix:
+            candidates = seen_similar_titles.get(title_prefix, [])
+            if any(
+                similar_news_titles(title_tokens, candidate_tokens) and news_items_close_in_time(item, candidate)
+                for candidate, candidate_tokens in candidates
+            ):
+                continue
         seen.add(key)
         items.append(item)
+        if title_prefix:
+            seen_similar_titles.setdefault(title_prefix, []).append((item, title_tokens))
     return items
 
 

@@ -74,6 +74,53 @@ class ViewTests(TestCase):
         self.assertEqual(data["pagination"]["total"], 1)
         self.assertEqual(len(data["items"]), 1)
 
+    def test_news_api_deduplicates_similar_titles(self):
+        category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)
+        published_at = timezone.now()
+        NewsItem.objects.create(
+            source_id="similar-1",
+            category=category,
+            title_it="Droni Kiev su dormitorio,morti e feriti",
+            summary_it="Attacco nella notte con vittime e persone ferite.",
+            published_at=published_at,
+        )
+        NewsItem.objects.create(
+            source_id="similar-2",
+            category=category,
+            title_it="Droni Kiev su dormitorio studenti,morti",
+            summary_it="Colpito un dormitorio studentesco, si registrano vittime.",
+            published_at=published_at - timedelta(minutes=5),
+        )
+
+        response = self.client.get(reverse("news:news_api"))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["pagination"]["total"], 1)
+        self.assertEqual(data["items"][0]["title"], "Droni Kiev su dormitorio,morti e feriti")
+
+    def test_news_api_keeps_titles_with_different_subjects(self):
+        category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)
+        published_at = timezone.now()
+        NewsItem.objects.create(
+            source_id="distinct-1",
+            category=category,
+            title_it="Droni Kiev su dormitorio,morti e feriti",
+            summary_it="Attacco contro un dormitorio.",
+            published_at=published_at,
+        )
+        NewsItem.objects.create(
+            source_id="distinct-2",
+            category=category,
+            title_it="Droni Kiev su deposito,morti e feriti",
+            summary_it="Attacco contro un deposito.",
+            published_at=published_at - timedelta(minutes=5),
+        )
+
+        response = self.client.get(reverse("news:news_api"))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["pagination"]["total"], 2)
+
     def test_home_renders_initial_news_and_filters(self):
         category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)
         NewsItem.objects.create(
