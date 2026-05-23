@@ -716,6 +716,71 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 }
 .temp-bar__vals { display: flex; justify-content: space-between; margin-top: 2px; color: var(--text-dim); font-size: var(--font-size-sm); }
 
+.tv-channel {
+    border: 1px solid var(--border-dim);
+    background: var(--bg-panel);
+    overflow: hidden;
+}
+
+.tv-channel__header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--text);
+    background: var(--bg-table-header);
+}
+
+.tv-channel__header h2 {
+    color: var(--white);
+    font-size: clamp(1.3rem, 2vw, 1.6rem);
+    text-transform: uppercase;
+}
+
+.tv-channel__page {
+    color: var(--text-dim);
+    font-size: var(--font-size-sm);
+    font-weight: bold;
+}
+
+.tv-channel__schedule {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1px;
+    padding: 1px;
+    background: var(--border-dim);
+}
+
+.tv-program {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--bg);
+    align-items: baseline;
+}
+
+.tv-program__time {
+    color: var(--cyan);
+    font-weight: bold;
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.tv-program__title {
+    color: var(--text);
+    font-size: var(--font-size-sm);
+    line-height: 1.35;
+}
+
+@media (max-width: 640px) {
+    .tv-channel__schedule {
+        grid-template-columns: 1fr;
+    }
+}
+
 .lottery-layout { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: 10px; }
 .draw-select {
     width: 100%;

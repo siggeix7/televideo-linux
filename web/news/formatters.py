@@ -284,3 +284,19 @@ def merge_snapshot_pages(snapshots: list) -> list:
             merged[page]["paragraphs"].extend(snap.get("paragraphs") or [])
             merged[page]["subpages"].append(snap.get("subpage", ""))
     return sorted(merged.values(), key=lambda s: s.get("sort_order", 0))
+
+
+def parse_tv_channel_schedule(raw_text: str) -> list[dict] | None:
+    """Parse TV channel schedule with time + program entries."""
+    programs = []
+    for line in raw_text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        time_match = re.match(r"^(\d{2}\.\d{2})\s{1,3}(.+)", line)
+        if time_match:
+            time_str = time_match.group(1)
+            program = time_match.group(2).strip()
+            programs.append({"time": time_str, "program": program})
+    return programs if len(programs) >= 3 else None
+

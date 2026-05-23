@@ -2,6 +2,25 @@
 
 {% block section_content %}
 <main class="section-stack" id="main">
+    {% if data.tv_channels %}
+    {% for ch in data.tv_channels %}
+    <section class="tv-channel">
+        <header class="tv-channel__header">
+            <h2>{{ ch.label }}</h2>
+            <span class="tv-channel__page">{{ ui.page_label }} {{ ch.page }}</span>
+        </header>
+        <div class="tv-channel__schedule">
+            {% for prog in ch.programs %}
+            <div class="tv-program">
+                <time class="tv-program__time">{{ prog.time }}</time>
+                <span class="tv-program__title">{{ prog.program }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endfor %}
+    {% endif %}
+
     {% if data.films or data.auditel %}
     <div class="section-mosaic section-mosaic--tv">
     {% if data.films %}
@@ -61,7 +80,7 @@
     </div>
     {% endif %}
 
-    {% if not data.films and not data.auditel and not data.cards %}
+    {% if not data.tv_channels and not data.films and not data.auditel and not data.cards %}
     <div class="empty-state">
         <h2>{{ ui.section_empty_title }}</h2>
         <p>{{ ui.section_empty_message }}</p>

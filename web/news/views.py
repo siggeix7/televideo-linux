@@ -24,6 +24,7 @@ from .formatters import (
     parse_round_info,
     parse_serie_a_standings,
     parse_temperatures,
+    parse_tv_channel_schedule,
     parse_weather_observation,
 )
 from .models import Category, LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
@@ -260,7 +261,7 @@ SECTION_TEXT = {
 
 
 STRUCTURED_PAGES = {
-    "tv": {514, 515, 531, 532, 533},
+    "tv": {514, 515, 517, 518, 519, 520, 521, 522, 523, 524, 525, 526, 527, 528, 531, 532, 533},
     "sport": {202, 203},
     "meteo": {702, 703, 704, 705, 706, 707, 708, 709, 711, 712},
     "giochi": {691, 692, 696},
@@ -362,6 +363,7 @@ def formatted_section_data(section: str, region: str = "") -> dict:
         "lotto": None,
         "articles": [],
         "round_info": None,
+        "tv_channels": [],
     }
 
     for snap in source_merged:
@@ -389,6 +391,16 @@ def formatted_section_data(section: str, region: str = "") -> dict:
             films = parse_film_schedule(raw)
             if films:
                 data["films"].extend(localize_film(film) for film in films)
+
+        # TV channel schedules
+        if section == "tv" and page in (517, 518, 519, 520, 521, 522, 523, 524, 525, 526, 527, 528):
+            programs = parse_tv_channel_schedule(raw)
+            if programs:
+                data["tv_channels"].append({
+                    "page": page,
+                    "label": display_snap.get("label", ""),
+                    "programs": programs,
+                })
 
         # Weather observations
         if section == "meteo" and page in (702, 703, 704, 705, 706, 707, 708, 709):
