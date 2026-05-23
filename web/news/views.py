@@ -260,8 +260,11 @@ SECTION_TEXT = {
 }
 
 
+TV_CHANNEL_PAGES = {518, 519, 520, 521, 522, 523, 524, 525, 526, 527}
+
+
 STRUCTURED_PAGES = {
-    "tv": {514, 515, 517, 518, 519, 520, 521, 522, 523, 524, 525, 526, 527, 528, 531, 532, 533},
+    "tv": {514, 515, 531, 532, 533, *TV_CHANNEL_PAGES},
     "sport": {202, 203},
     "meteo": {702, 703, 704, 705, 706, 707, 708, 709, 711, 712},
     "giochi": {691, 692, 696},
@@ -393,7 +396,7 @@ def formatted_section_data(section: str, region: str = "") -> dict:
                 data["films"].extend(localize_film(film) for film in films)
 
         # TV channel schedules
-        if section == "tv" and page in (517, 518, 519, 520, 521, 522, 523, 524, 525, 526, 527, 528):
+        if section == "tv" and page in TV_CHANNEL_PAGES:
             programs = parse_tv_channel_schedule(raw)
             if programs:
                 data["tv_channels"].append({

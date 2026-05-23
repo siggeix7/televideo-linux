@@ -188,6 +188,71 @@ class ViewTests(TestCase):
         self.assertNotContains(response, "2/2")
         self.assertNotContains(response, "101 Sommario 102 Esteri")
 
+    def test_tv_section_renders_channel_schedules_and_non_channel_cards(self):
+        TelevideoPageSnapshot.objects.create(
+            section="tv",
+            page=517,
+            subpage="01",
+            label="Programmi criptati",
+            title="Programmi criptati",
+            content_kind="schedule",
+            raw_text="SETTIMANA DAL 17/05 AL 23/05\n\nNESSUN PROGRAMMA CODIFICATO",
+            sort_order=1,
+        )
+        TelevideoPageSnapshot.objects.create(
+            section="tv",
+            page=518,
+            subpage="01",
+            label="Rai Sport HD",
+            title="23 Maggio",
+            content_kind="schedule",
+            raw_text=(
+                "23 Maggio\n"
+                " 06:00 Ciclismo - Giro d'Italia 2026:\n"
+                "       RiGiro\n"
+                " 07:00 TG Sport Mattina\n"
+                " 18:00 Atletica. Coppa Europa La Spe-\n"
+                "       zia: 10.000\n"
+            ),
+            sort_order=2,
+        )
+        TelevideoPageSnapshot.objects.create(
+            section="tv",
+            page=518,
+            subpage="02",
+            label="Rai Sport HD",
+            title="23 Maggio",
+            content_kind="schedule",
+            raw_text=(
+                "23 Maggio\n"
+                " 20:00 TGiro\n"
+                " 20:45 Pallavolo. Torneo Internazionale\n"
+                "       femminile\n"
+            ),
+            sort_order=3,
+        )
+        TelevideoPageSnapshot.objects.create(
+            section="tv",
+            page=528,
+            subpage="01",
+            label="RaiPlay",
+            title="FILM CLUB",
+            content_kind="schedule",
+            raw_text="FILM CLUB\nSerie in 6 episodi",
+            sort_order=4,
+        )
+
+        response = self.client.get(reverse("news:tv"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "tv-channel")
+        self.assertContains(response, "Rai Sport HD")
+        self.assertContains(response, "Ciclismo - Giro d&#x27;Italia 2026: RiGiro")
+        self.assertContains(response, "Atletica. Coppa Europa La Spezia: 10.000")
+        self.assertContains(response, "Pallavolo. Torneo Internazionale femminile")
+        self.assertNotContains(response, "TG Sport Mattina 23 Maggio")
+        self.assertContains(response, "NESSUN PROGRAMMA CODIFICATO")
+        self.assertContains(response, "FILM CLUB")
+
     def test_robots_and_sitemap(self):
         robots = self.client.get(reverse("news:robots"))
         sitemap = self.client.get(reverse("news:sitemap"))

@@ -289,14 +289,24 @@ def merge_snapshot_pages(snapshots: list) -> list:
 def parse_tv_channel_schedule(raw_text: str) -> list[dict] | None:
     """Parse TV channel schedule with time + program entries."""
     programs = []
-    for line in raw_text.splitlines():
-        line = line.strip()
+    current = None
+    for raw_line in raw_text.splitlines():
+        line = raw_line.strip()
         if not line:
             continue
-        time_match = re.match(r"^(\d{2}\.\d{2})\s{1,3}(.+)", line)
+        time_match = re.match(r"^(\d{2}[:.]\d{2})\s+(.+)", line)
         if time_match:
             time_str = time_match.group(1)
             program = time_match.group(2).strip()
-            programs.append({"time": time_str, "program": program})
+            current = {"time": time_str, "program": program}
+            programs.append(current)
+            continue
+        if re.match(r"^\d{1,2}\s+[A-Za-zÀ-ÿ]+(?:\s+\d{4})?$", line) or line.startswith("*"):
+            current = None
+            continue
+        if current and raw_line.startswith("     "):
+            if current["program"].endswith("-"):
+                current["program"] = current["program"][:-1] + line
+            else:
+                current["program"] += " " + line
     return programs if len(programs) >= 3 else None
-
