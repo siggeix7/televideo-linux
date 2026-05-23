@@ -223,28 +223,15 @@
             grouped.get(key).items.push(item);
         });
 
-        var absoluteIndex = 0;
         grouped.forEach(function (group) {
             var section = document.createElement("section");
             section.className = "news-group";
-
-            var header = document.createElement("div");
-            header.className = "news-group__header";
-            var title = document.createElement("h2");
-            title.textContent = group.name;
-            var count = document.createElement("span");
-            count.textContent = String(group.items.length);
-            header.appendChild(title);
-            header.appendChild(count);
 
             var cards = document.createElement("div");
             cards.className = "news-group__grid";
 
             group.items.forEach(function (item) {
                 var node = template.content.firstElementChild.cloneNode(true);
-                if (absoluteIndex === 0) {
-                    node.classList.add("news-card--lead");
-                }
                 node.querySelector(".news-card__ribbon").textContent = ui.card_ribbon || "Novella";
                 var heading = node.querySelector("h2");
                 heading.textContent = item.title;
@@ -262,10 +249,8 @@
                 }
                 seen.add(item.id);
                 cards.appendChild(node);
-                absoluteIndex++;
             });
 
-            section.appendChild(header);
             section.appendChild(cards);
             grid.appendChild(section);
         });

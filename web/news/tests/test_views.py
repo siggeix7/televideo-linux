@@ -138,6 +138,8 @@ class ViewTests(TestCase):
         self.assertContains(response, "Cancella")
         self.assertContains(response, "Vai al contenuto")
         self.assertContains(response, "aria-current=\"page\"")
+        self.assertNotContains(response, "news-group__header")
+        self.assertNotContains(response, "news-card--lead")
 
     def test_home_does_not_render_televideo_links(self):
         category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)

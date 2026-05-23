@@ -67,13 +67,9 @@
             <section id="news-grid" class="news-grid" aria-live="polite" aria-label="{{ ui.news_link }}"{% if fallback_items %} data-server-rendered="true"{% endif %}>
                 {% if fallback_items %}
                 <section class="news-group">
-                    <div class="news-group__header">
-                        <h2>{{ ui.news_link }}</h2>
-                        <span>{{ fallback_items|length }}</span>
-                    </div>
                     <div class="news-group__grid">
                         {% for item in fallback_items %}
-                        <article class="news-card{% if forloop.first %} news-card--lead{% endif %}">
+                        <article class="news-card">
                             <div class="news-card__ribbon">{{ ui.card_ribbon }}</div>
                             <h2>{{ item.title }}</h2>
                             <p class="news-card__meta">{{ item.published_display }}</p>
