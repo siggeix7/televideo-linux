@@ -8,6 +8,8 @@ services:
     environment:
       SQLITE_PATH: /data/chronica.sqlite3
       SQLITE_TIMEOUT: "${SQLITE_TIMEOUT:-30}"
+      DJANGO_CACHE_DIR: "${DJANGO_CACHE_DIR:-/data/django_cache}"
+      DJANGO_LOG_DIR: "${DJANGO_LOG_DIR:-/data}"
       NEWS_REFRESH_SECONDS: "${NEWS_REFRESH_SECONDS:-60}"
       NEWS_FETCH_LIMIT: "${NEWS_FETCH_LIMIT:-12}"
       CATEGORY_FETCH_LIMIT: "${CATEGORY_FETCH_LIMIT:-2}"

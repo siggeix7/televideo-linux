@@ -53,6 +53,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "chronica.csp_middleware.ContentSecurityPolicyMiddleware",
+    "chronica.rate_limit_middleware.RateLimitMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -112,12 +113,19 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+CACHE_DIR = os.environ.get("DJANGO_CACHE_DIR") or str(Path("/data/django_cache"))
 CACHES = {
     "default": {
-        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
-        "LOCATION": "televideo-cache",
+        "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+        "LOCATION": CACHE_DIR,
+        "OPTIONS": {"MAX_ENTRIES": 5000},
     }
 }
+
+LOG_DIR = os.environ.get("DJANGO_LOG_DIR", "")
+LOG_FILE = os.path.join(LOG_DIR, "televideo.log") if LOG_DIR else ""
+LOG_MAX_BYTES = int(os.environ.get("DJANGO_LOG_MAX_BYTES", str(5 * 1024 * 1024)))
+LOG_BACKUP_COUNT = int(os.environ.get("DJANGO_LOG_BACKUP_COUNT", "3"))
 
 LOGGING = {
     "version": 1,
@@ -146,6 +154,17 @@ LOGGING = {
         },
     },
 }
+
+if LOG_FILE:
+    LOGGING["handlers"]["file"] = {
+        "class": "logging.handlers.RotatingFileHandler",
+        "formatter": "simple",
+        "filename": LOG_FILE,
+        "maxBytes": LOG_MAX_BYTES,
+        "backupCount": LOG_BACKUP_COUNT,
+    }
+    LOGGING["root"]["handlers"].append("file")
+    LOGGING["loggers"]["news"]["handlers"].append("file")
 
 NEWS_REFRESH_SECONDS = int(os.environ.get("NEWS_REFRESH_SECONDS", "60"))
 NEWS_FETCH_LIMIT = int(os.environ.get("NEWS_FETCH_LIMIT", "12"))

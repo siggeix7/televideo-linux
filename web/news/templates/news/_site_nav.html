@@ -8,23 +8,46 @@
         <a href="{{ item.url }}" class="site-nav__link{% if item.active %} is-active{% endif %}"{% if item.active %} aria-current="page"{% endif %}>{{ item.label }}</a>
     {% endfor %}
 </nav>
+<button class="theme-toggle" id="theme-toggle" aria-label="Attiva/disattiva tema chiaro" title="Tema chiaro/scuro" type="button">
+    <span class="icon-dark" aria-hidden="true">&#9790;</span>
+    <span class="icon-light" aria-hidden="true">&#9728;</span>
+</button>
 <script>
 (function(){
     var toggle = document.getElementById("nav-toggle");
     var nav = document.getElementById("site-nav");
-    if (!toggle || !nav) return;
-    toggle.addEventListener("click", function(){
-        var open = toggle.getAttribute("aria-expanded") === "true";
-        toggle.setAttribute("aria-expanded", !open);
-        nav.classList.toggle("is-open");
-        toggle.classList.toggle("is-active");
-    });
-    nav.querySelectorAll("a").forEach(function(link){
-        link.addEventListener("click", function(){
-            nav.classList.remove("is-open");
-            toggle.classList.remove("is-active");
-            toggle.setAttribute("aria-expanded", "false");
+    if (toggle && nav) {
+        toggle.addEventListener("click", function(){
+            var open = toggle.getAttribute("aria-expanded") === "true";
+            toggle.setAttribute("aria-expanded", !open);
+            nav.classList.toggle("is-open");
+            toggle.classList.toggle("is-active");
         });
-    });
+        nav.querySelectorAll("a").forEach(function(link){
+            link.addEventListener("click", function(){
+                nav.classList.remove("is-open");
+                toggle.classList.remove("is-active");
+                toggle.setAttribute("aria-expanded", "false");
+            });
+        });
+    }
+    var themeToggle = document.getElementById("theme-toggle");
+    if (themeToggle) {
+        var saved = localStorage.getItem("chronica-theme");
+        if (saved === "light") {
+            document.documentElement.setAttribute("data-theme", "light");
+        }
+        themeToggle.addEventListener("click", function(){
+            var current = document.documentElement.getAttribute("data-theme");
+            var next = current === "light" ? null : "light";
+            if (next) {
+                document.documentElement.setAttribute("data-theme", next);
+                localStorage.setItem("chronica-theme", next);
+            } else {
+                document.documentElement.removeAttribute("data-theme");
+                localStorage.removeItem("chronica-theme");
+            }
+        });
+    }
 })();
 </script>

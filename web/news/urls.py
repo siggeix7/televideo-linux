@@ -21,6 +21,8 @@ urlpatterns = [
     path("robots.txt", views.robots_txt, name="robots"),
     path("sitemap.xml", views.sitemap_xml, name="sitemap"),
     path("healthz/", views.healthcheck, name="healthcheck"),
+    path("sw.js", views.service_worker_js, name="service_worker"),
     path("api/news/", views.news_api, name="news_api"),
     path("api/superenalotto/", views.superenalotto_api, name="superenalotto_api"),
+    path("feed.xml", views.atom_feed, name="atom_feed"),
 ]

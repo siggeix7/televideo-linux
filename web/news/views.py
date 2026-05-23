@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from datetime import timedelta
+from pathlib import Path
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -941,6 +942,7 @@ def sitemap_xml(request):
         "superenalotto",
     ]
     urls = [public_absolute_url(request, reverse(f"news:{name}")) for name in route_names]
+    urls.append(public_absolute_url(request, reverse("news:atom_feed")))
     urls.extend(
         public_absolute_url(request, reverse("news:region", kwargs={"region_slug_value": region_slug(region)}))
         for region in REGION_CHOICES
@@ -1010,3 +1012,72 @@ def superenalotto_api(request):
             ],
         }
     )
+
+
+def _escape_xml(value: str) -> str:
+    return value.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("'", "&apos;")
+
+
+def page_link_for_item(item) -> str:
+    if item.source_page:
+        try:
+            page_num = int(item.source_page)
+            if 100 <= page_num <= 999:
+                return f"https://www.televideo.rai.it/televideo/pub/solotesto.jsp?pagina={page_num}"
+        except ValueError:
+            pass
+    return ""
+
+
+def atom_feed(request):
+    items = NewsItem.objects.select_related("category").filter(
+        displayable_filter()
+    ).exclude(
+        category__code__in=HIDDEN_CATEGORY_CODES
+    ).order_by("-published_at", "-created_at")[:24]
+
+    base_url = public_base_url(request)
+    feed_url = public_absolute_url(request, reverse("news:atom_feed"))
+    updated = timezone.now().isoformat()
+
+    entries = []
+    for item in items:
+        title = item.title_it
+        summary = item.summary_for("it")
+        link = item.link or page_link_for_item(item)
+        if not link:
+            link = base_url
+        iso_date = (
+            item.published_at.strftime("%Y-%m-%dT%H:%M:%S%z")
+            if item.published_at
+            else updated
+        )
+        entries.append(
+            f"  <entry>\n"
+            f"    <title>{_escape_xml(title)}</title>\n"
+            f"    <link href=\"{_escape_xml(link)}\" rel=\"alternate\"/>\n"
+            f"    <id>urn:televideo:item:{item.source_id}</id>\n"
+            f"    <published>{iso_date}</published>\n"
+            f"    <updated>{iso_date}</updated>\n"
+            f"    <summary type=\"text\">{_escape_xml(summary)}</summary>\n"
+            f"  </entry>"
+        )
+
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<feed xmlns="http://www.w3.org/2005/Atom">\n'
+        f"  <title>Televideo News - Ultim&apos;Ora Rai Televideo</title>\n"
+        f"  <link href=\"{_escape_xml(base_url)}\" rel=\"alternate\"/>\n"
+        f"  <link href=\"{_escape_xml(feed_url)}\" rel=\"self\"/>\n"
+        f"  <id>{_escape_xml(base_url)}</id>\n"
+        f"  <updated>{updated}</updated>\n"
+        + "\n".join(entries)
+        + "\n</feed>\n"
+    )
+    return HttpResponse(body, content_type="application/atom+xml; charset=utf-8")
+
+
+def service_worker_js(request):
+    sw_path = Path(__file__).resolve().parent / "static" / "news" / "sw.js"
+    content = sw_path.read_text(encoding="utf-8")
+    return HttpResponse(content, content_type="application/javascript; charset=utf-8")

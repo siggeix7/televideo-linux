@@ -19,6 +19,8 @@ fi
 python web/manage.py showmigrations --plan >/dev/null
 python web/manage.py migrate --noinput
 
+mkdir -p "${DJANGO_CACHE_DIR:-/data/django_cache}"
+
 # Background worker: news, lotto, superenalotto
 python web/manage.py fetch_televideo --loop --interval "${NEWS_REFRESH_SECONDS:-60}" --limit "${NEWS_FETCH_LIMIT:-12}" --category-limit "${CATEGORY_FETCH_LIMIT:-2}" &
 
