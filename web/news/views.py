@@ -471,7 +471,7 @@ def parse_page(value: str | None) -> int:
 def is_stale_timestamp(value, seconds: int) -> bool:
     if not value:
         return False
-    threshold = max(seconds * 2, 3600)
+    threshold = max(seconds * 6, 7200)
     return (timezone.now() - value).total_seconds() > threshold
 
 
