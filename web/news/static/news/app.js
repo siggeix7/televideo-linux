@@ -39,6 +39,7 @@
     let retryCount = 0;
     let activeController = null;
     let requestSeq = 0;
+    let searchTimeout = null;
     const MAX_RETRIES = 3;
 
     function applyUi(nextUi) {
