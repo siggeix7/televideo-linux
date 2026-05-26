@@ -8,7 +8,7 @@
         <a href="{{ item.url }}" class="site-nav__link{% if item.active %} is-active{% endif %}"{% if item.active %} aria-current="page"{% endif %}>{{ item.label }}</a>
     {% endfor %}
 </nav>
-<button class="theme-toggle" id="theme-toggle" aria-label="Attiva/disattiva tema chiaro" title="Tema chiaro/scuro" type="button">
+<button class="theme-toggle" id="theme-toggle" aria-label="Attiva tema chiaro" aria-pressed="false" title="Tema chiaro" type="button">
     <span class="icon-dark" aria-hidden="true">&#9790;</span>
     <span class="icon-light" aria-hidden="true">&#9728;</span>
 </button>
@@ -16,6 +16,12 @@
 (function(){
     var toggle = document.getElementById("nav-toggle");
     var nav = document.getElementById("site-nav");
+    function closeNav() {
+        if (!toggle || !nav) return;
+        nav.classList.remove("is-open");
+        toggle.classList.remove("is-active");
+        toggle.setAttribute("aria-expanded", "false");
+    }
     if (toggle && nav) {
         toggle.addEventListener("click", function(){
             var open = toggle.getAttribute("aria-expanded") === "true";
@@ -25,28 +31,50 @@
         });
         nav.querySelectorAll("a").forEach(function(link){
             link.addEventListener("click", function(){
-                nav.classList.remove("is-open");
-                toggle.classList.remove("is-active");
-                toggle.setAttribute("aria-expanded", "false");
+                closeNav();
             });
+        });
+        document.addEventListener("keydown", function(event){
+            if (event.key === "Escape") closeNav();
+        });
+        document.addEventListener("click", function(event){
+            if (!nav.classList.contains("is-open")) return;
+            if (nav.contains(event.target) || toggle.contains(event.target)) return;
+            closeNav();
         });
     }
     var themeToggle = document.getElementById("theme-toggle");
     if (themeToggle) {
-        var saved = localStorage.getItem("chronica-theme");
-        if (saved === "light") {
-            document.documentElement.setAttribute("data-theme", "light");
+        function storedTheme() {
+            try {
+                return localStorage.getItem("chronica-theme");
+            } catch (error) {
+                return null;
+            }
         }
+        function saveTheme(value) {
+            try {
+                if (value) localStorage.setItem("chronica-theme", value);
+                else localStorage.removeItem("chronica-theme");
+            } catch (error) {}
+        }
+        function applyTheme(value) {
+            var isLight = value === "light";
+            if (isLight) {
+                document.documentElement.setAttribute("data-theme", "light");
+            } else {
+                document.documentElement.removeAttribute("data-theme");
+            }
+            themeToggle.setAttribute("aria-pressed", isLight ? "true" : "false");
+            themeToggle.setAttribute("aria-label", isLight ? "Attiva tema scuro" : "Attiva tema chiaro");
+            themeToggle.setAttribute("title", isLight ? "Tema scuro" : "Tema chiaro");
+        }
+        applyTheme(storedTheme() === "light" ? "light" : null);
         themeToggle.addEventListener("click", function(){
             var current = document.documentElement.getAttribute("data-theme");
             var next = current === "light" ? null : "light";
-            if (next) {
-                document.documentElement.setAttribute("data-theme", next);
-                localStorage.setItem("chronica-theme", next);
-            } else {
-                document.documentElement.removeAttribute("data-theme");
-                localStorage.removeItem("chronica-theme");
-            }
+            applyTheme(next);
+            saveTheme(next);
         });
     }
 })();

@@ -475,6 +475,7 @@ h1 {
 .lottery-card,
 .trend-card {
     padding: 14px 16px;
+    overflow-wrap: anywhere;
 }
 
 .news-card { min-height: 200px; overflow: hidden; transition: border-color 60ms var(--ease); }

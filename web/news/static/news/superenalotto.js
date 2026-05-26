@@ -25,6 +25,8 @@
     };
     let loading = false;
     let retryCount = 0;
+    let activeController = null;
+    let requestSeq = 0;
     const MAX_RETRIES = 3;
 
     function applyUi(nextUi) {
@@ -138,7 +140,10 @@
     }
 
     async function loadDraw() {
-        if (loading) return;
+        var seq = ++requestSeq;
+        if (activeController) activeController.abort();
+        var controller = new AbortController();
+        activeController = controller;
         loading = true;
         hideError();
 
@@ -147,14 +152,16 @@
         if (selectedDate) {
             url.searchParams.set("date", selectedDate);
         }
+        var timeoutId = setTimeout(function () { controller.abort(); }, 15000);
 
         try {
             var response = await fetch(url, {
                 headers: { Accept: "application/json" },
-                signal: AbortSignal.timeout(15000),
+                signal: controller.signal,
             });
             if (!response.ok) throw new Error("HTTP " + response.status);
             var payload = await response.json();
+            if (seq !== requestSeq) return;
             applyUi(payload.ui);
             renderDates(payload.dates || [], payload.selected_date || (payload.selected && payload.selected.draw_date) || "");
             renderDraw(payload.selected);
@@ -162,6 +169,7 @@
             retryCount = 0;
             loading = false;
         } catch (error) {
+            if (seq !== requestSeq) return;
             loading = false;
             if (error.name === "TimeoutError" || error.name === "AbortError") {
                 showError(ui.timeout_error || "Timeout: il server non risponde. Nuovo tentativo in corso...");
@@ -172,6 +180,9 @@
                 retryCount++;
                 setTimeout(loadDraw, 2000 * retryCount);
             }
+        } finally {
+            clearTimeout(timeoutId);
+            if (seq === requestSeq) activeController = null;
         }
     }
 

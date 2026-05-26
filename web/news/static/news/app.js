@@ -384,8 +384,9 @@
     var originalRenderNews = renderNews;
     renderNews = function (payload) {
         var newCount = (payload.items || []).length;
+        var wasFirstRender = firstRender;
         originalRenderNews(payload);
-        if (!firstRender && !payload.error && newCount !== priorItemCount && !payload.search_query) {
+        if (!wasFirstRender && !payload.error && newCount !== priorItemCount && !payload.search_query) {
             showToast("Aggiornamento: " + newCount + " notizie caricate");
         }
         priorItemCount = newCount;
