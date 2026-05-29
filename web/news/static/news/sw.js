@@ -1,4 +1,4 @@
-const CACHE_NAME = "televideo-v8";
+const CACHE_NAME = "televideo-v9";
 const STATIC_ASSETS = [
     "/",
     "/static/news/styles.css",

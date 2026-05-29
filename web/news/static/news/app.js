@@ -12,7 +12,8 @@
     const emptyState = document.getElementById("empty-state");
     const errorState = document.getElementById("error-state");
     const errorMessage = document.getElementById("error-message");
-    const categoryList = document.getElementById("category-list");
+    const dateInput = document.getElementById("date-input");
+    const clearDate = document.getElementById("clear-date");
     const previousPage = document.getElementById("previous-page");
     const nextPage = document.getElementById("next-page");
     const pageStatus = document.getElementById("page-status");
@@ -24,15 +25,17 @@
     const hasServerRendered = grid && grid.dataset.serverRendered === "true";
 
     let language = "it";
-    let selectedCategory = initialParams.get("category") || localStorage.getItem("chronica-category") || "all";
     let page = Math.max(Number(initialParams.get("page") || localStorage.getItem("chronica-page") || 1) || 1, 1);
     let searchQuery = initialParams.get("q") || "";
+    let selectedDate = initialParams.get("date") || "";
     let ui = {
         error_prefix: body.dataset.errorPrefix || "",
         timeout_error: body.dataset.timeoutError || "",
         unknown_error: body.dataset.unknownError || "",
         no_search_results_title: body.dataset.noSearchResultsTitle || "",
         no_search_results_message: body.dataset.noSearchResultsMessage || "",
+        no_date_results_title: "",
+        no_date_results_message: "",
     };
     let firstRender = true;
     let loading = false;
@@ -86,10 +89,25 @@
         }
     }
 
+    function updateDateControls(dateMin, dateMax) {
+        if (!dateInput) return;
+        if (dateInput.value !== selectedDate) {
+            dateInput.value = selectedDate;
+        }
+        if (dateMin) dateInput.min = dateMin;
+        else dateInput.removeAttribute("min");
+        if (dateMax) dateInput.max = dateMax;
+        else dateInput.removeAttribute("max");
+        if (clearDate) {
+            clearDate.hidden = !selectedDate;
+            clearDate.textContent = ui.date_filter_all || "Tutti i giorni";
+        }
+    }
+
     function updateAddressBar() {
         var params = new URLSearchParams();
-        if (selectedCategory && selectedCategory !== "all") params.set("category", selectedCategory);
         if (searchQuery) params.set("q", searchQuery);
+        if (selectedDate) params.set("date", selectedDate);
         if (page > 1) params.set("page", String(page));
         var nextUrl = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
         if (nextUrl !== window.location.pathname + window.location.search) {
@@ -117,46 +135,6 @@
         }
     }
 
-    function renderCategories(categories) {
-        categoryList.replaceChildren();
-        if (selectedCategory !== "all" && !categories.some(function (c) { return c.code === selectedCategory; })) {
-            selectedCategory = "all";
-            localStorage.setItem("chronica-category", selectedCategory);
-        }
-
-        var allCount = categories.reduce(function (sum, c) { return sum + Number(c.count || 0); }, 0);
-        var allButton = document.createElement("button");
-        allButton.type = "button";
-        allButton.className = "category-button";
-        allButton.dataset.category = "all";
-        allButton.textContent = (ui.all_categories || "Tutte") + " (" + allCount + ")";
-        categoryList.appendChild(allButton);
-
-        categories.forEach(function (category) {
-            var button = document.createElement("button");
-            button.type = "button";
-            button.className = "category-button";
-            button.dataset.category = category.code;
-            button.textContent = category.name + " (" + category.count + ")";
-            categoryList.appendChild(button);
-        });
-
-        categoryList.querySelectorAll("[data-category]").forEach(function (button) {
-            var isActive = button.dataset.category === selectedCategory;
-            button.classList.toggle("is-active", isActive);
-            button.setAttribute("aria-pressed", isActive ? "true" : "false");
-            button.addEventListener("click", function () {
-                selectedCategory = button.dataset.category;
-                localStorage.setItem("chronica-category", selectedCategory);
-                page = 1;
-                localStorage.setItem("chronica-page", String(page));
-                firstRender = true;
-                retryCount = 0;
-                loadNews();
-            });
-        });
-    }
-
     function renderPagination(pagination) {
         var data = pagination || { page: 1, pages: 1, has_previous: false, has_next: false };
         page = data.page;
@@ -173,12 +151,14 @@
 
     function renderNews(payload) {
         applyUi(payload.ui);
-        selectedCategory = payload.selected_category || selectedCategory;
         if (Object.prototype.hasOwnProperty.call(payload, "search_query")) {
             searchQuery = payload.search_query || "";
         }
+        if (Object.prototype.hasOwnProperty.call(payload, "selected_date")) {
+            selectedDate = payload.selected_date || "";
+        }
         updateSearchControls();
-        renderCategories(payload.categories || []);
+        updateDateControls(payload.date_min, payload.date_max);
 
         grid.classList.remove("is-loading");
         grid.replaceChildren();
@@ -201,6 +181,9 @@
                 emptyState.querySelector("h2").textContent = ui.no_search_results_title || "Nessun risultato";
                 emptyState.querySelector("p").textContent = (ui.no_search_results_message || 'Nessuna notizia contiene "{query}".')
                     .replace("{query}", payload.search_query);
+            } else if (payload.selected_date) {
+                emptyState.querySelector("h2").textContent = ui.no_date_results_title || "Nessuna notizia in questa data";
+                emptyState.querySelector("p").textContent = ui.no_date_results_message || "";
             } else {
                 emptyState.querySelector("h2").textContent = ui.empty_title || "Nessuna notizia";
                 emptyState.querySelector("p").textContent = ui.empty_message || "";
@@ -213,10 +196,10 @@
 
         var grouped = new Map();
         payload.items.forEach(function (item) {
-            var key = item.category_code || "uncategorized";
+            var key = item.published_date || "unknown";
             if (!grouped.has(key)) {
                 grouped.set(key, {
-                    name: item.category_name || ui.all_categories || "Tutte",
+                    name: item.published_date_label || ui.date_unavailable || "data non disponibile",
                     items: [],
                 });
             }
@@ -227,6 +210,16 @@
             var section = document.createElement("section");
             section.className = "news-group";
 
+            var header = document.createElement("div");
+            header.className = "news-group__header";
+            var title = document.createElement("h2");
+            title.textContent = group.name;
+            var count = document.createElement("span");
+            count.textContent = String(group.items.length);
+            header.appendChild(title);
+            header.appendChild(count);
+            section.appendChild(header);
+
             var cards = document.createElement("div");
             cards.className = "news-group__grid";
 
@@ -236,9 +229,6 @@
                 var heading = node.querySelector("h2");
                 heading.textContent = item.title;
                 node.querySelector(".news-card__meta").textContent = formatPublished(item);
-                node.querySelector(".news-card__category").textContent = item.category_name
-                    ? (ui.category_prefix || "Categoria:") + " " + item.category_name
-                    : "";
                 node.querySelector(".news-card__source").textContent =
                     item.source_title && item.source_title !== item.title
                         ? (ui.source_prefix || "Titolo originale:") + " " + item.source_title
@@ -277,8 +267,10 @@
 
         var url = new URL(apiUrl, window.location.origin);
         url.searchParams.set("lang", "it");
-        url.searchParams.set("category", selectedCategory);
         url.searchParams.set("page", String(page));
+        if (selectedDate) {
+            url.searchParams.set("date", selectedDate);
+        }
         if (searchQuery) {
             url.searchParams.set("q", searchQuery);
         }
@@ -364,7 +356,34 @@
         });
     }
 
+    if (dateInput) {
+        dateInput.addEventListener("change", function () {
+            selectedDate = dateInput.value || "";
+            page = 1;
+            localStorage.setItem("chronica-page", String(page));
+            firstRender = true;
+            retryCount = 0;
+            loadNews();
+        });
+    }
+
+    if (clearDate) {
+        clearDate.addEventListener("click", function () {
+            if (!selectedDate && !dateInput.value) return;
+            selectedDate = "";
+            dateInput.value = "";
+            page = 1;
+            localStorage.setItem("chronica-page", String(page));
+            firstRender = true;
+            retryCount = 0;
+            updateDateControls();
+            loadNews();
+            dateInput.focus();
+        });
+    }
+
     updateSearchControls();
+    updateDateControls();
     loadNews({ quiet: hasServerRendered });
 
     var priorItemCount = 0;
@@ -386,7 +405,7 @@
         var newCount = (payload.items || []).length;
         var wasFirstRender = firstRender;
         originalRenderNews(payload);
-        if (!wasFirstRender && !payload.error && newCount !== priorItemCount && !payload.search_query) {
+        if (!wasFirstRender && !payload.error && newCount !== priorItemCount && !payload.search_query && !payload.selected_date) {
             showToast("Aggiornamento: " + newCount + " notizie caricate");
         }
         priorItemCount = newCount;

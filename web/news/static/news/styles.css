@@ -147,7 +147,7 @@ button, input, select { font: inherit; color: inherit; }
 .hero,
 .topbar,
 .status-panel,
-.category-panel,
+.date-filter,
 .search-bar,
 .news-card,
 .content-card,
@@ -370,29 +370,30 @@ h1 {
 }
 .search-bar__clear:hover { border-color: var(--yellow); color: var(--yellow); }
 
-.category-panel {
+.date-filter {
     padding: 10px 12px;
     border-color: var(--border-dim);
 }
 
-.category-panel h2 { color: var(--yellow); font-size: var(--font-size-sm); text-transform: uppercase; letter-spacing: 0.1em; }
-
-.category-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-
-.category-button {
-    display: inline-flex;
-    align-items: center;
-    min-height: 28px;
-    padding: 4px 10px;
-    border: 1px solid var(--text-dim);
+.date-filter h2 { color: var(--yellow); font-size: var(--font-size-sm); text-transform: uppercase; letter-spacing: 0.1em; }
+.date-filter label { display: block; margin-top: 8px; color: var(--text-dim); font-size: var(--font-size-sm); }
+.date-filter__controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; margin-top: 6px; }
+.date-filter__input {
+    min-height: 36px;
+    border: 1px solid var(--text);
+    padding: 0 10px;
     color: var(--text);
     background: var(--bg);
-    cursor: pointer;
-    font-size: var(--font-size-sm);
-    text-decoration: none;
 }
-.category-button:hover { border-color: var(--yellow); color: var(--yellow); text-decoration: underline; }
-.category-button.is-active { border-color: var(--yellow); color: #000; background: var(--yellow); }
+.date-filter__clear {
+    min-height: 36px;
+    border: 1px solid var(--text-dim);
+    padding: 0 12px;
+    color: var(--cyan);
+    background: var(--bg);
+    cursor: pointer;
+}
+.date-filter__clear:hover { border-color: var(--yellow); color: var(--yellow); }
 
 .status-panel {
     display: grid;
@@ -507,7 +508,6 @@ h1 {
 .news-card h2 { margin: 8px 0 6px; }
 .news-card--lead h2 { max-width: 20ch; font-size: clamp(1.4rem, 3vw, 2rem); }
 .news-card__meta,
-.news-card__category,
 .news-card__source { color: var(--text-dim); font-size: var(--font-size-sm); }
 
 .news-card__summary { margin-top: 10px; color: var(--text); font-size: var(--font-size-md); }
@@ -941,7 +941,8 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
     .hero { grid-template-columns: 1fr; min-height: auto; padding: 14px; }
     .seal { width: 48px; }
     h1 { font-size: clamp(1.3rem, 8vw, 2rem); }
-    .category-panel,
+    .date-filter,
+    .date-filter__controls,
     .home-controls,
     .search-bar,
     .status-panel,

@@ -28,11 +28,12 @@ class ViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertIn("items", data)
-        self.assertIn("categories", data)
+        self.assertIn("available_dates", data)
+        self.assertIn("selected_date", data)
         self.assertIn("pagination", data)
 
     def test_news_api_with_params(self):
-        response = self.client.get(reverse("news:news_api") + "?lang=en&category=test&page=1&limit=5")
+        response = self.client.get(reverse("news:news_api") + "?lang=en&date=2026-05-29&page=1&limit=5")
         self.assertEqual(response.status_code, 200)
 
     def test_news_api_searches_archive(self):
@@ -61,6 +62,33 @@ class ViewTests(TestCase):
         self.assertEqual(data["items"][0]["summary"], "Contenuto con parola unica")
         self.assertNotIn("link", data["items"][0])
         self.assertEqual(data["search_query"], "unica")
+
+    def test_news_api_filters_by_date(self):
+        category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)
+        today = timezone.localtime().replace(hour=12, minute=0, second=0, microsecond=0)
+        yesterday = today - timedelta(days=1)
+        NewsItem.objects.create(
+            source_id="date-1",
+            category=category,
+            title_it="Notizia di oggi",
+            summary_it="Contenuto odierno",
+            published_at=today,
+        )
+        NewsItem.objects.create(
+            source_id="date-2",
+            category=category,
+            title_it="Notizia di ieri",
+            summary_it="Contenuto precedente",
+            published_at=yesterday,
+        )
+
+        selected = yesterday.date().isoformat()
+        response = self.client.get(reverse("news:news_api") + f"?date={selected}")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["selected_date"], selected)
+        self.assertEqual(data["pagination"]["total"], 1)
+        self.assertEqual(data["items"][0]["title"], "Notizia di ieri")
 
     def test_news_api_deduplicates_items(self):
         category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)
@@ -129,22 +157,26 @@ class ViewTests(TestCase):
 
     def test_home_renders_initial_news_and_filters(self):
         category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)
+        published_at = timezone.localtime().replace(hour=12, minute=0, second=0, microsecond=0)
+        selected = published_at.date().isoformat()
         NewsItem.objects.create(
             source_id="home-1",
             category=category,
             title_it="Titolo iniziale",
             summary_it="Testo renderizzato dal server",
-            published_at=timezone.now(),
+            published_at=published_at,
         )
 
-        response = self.client.get(reverse("news:home") + "?q=server&category=test")
+        response = self.client.get(reverse("news:home") + f"?q=server&date={selected}")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "data-server-rendered")
         self.assertContains(response, "value=\"server\"")
+        self.assertContains(response, f"value=\"{selected}\"")
         self.assertContains(response, "Cancella")
         self.assertContains(response, "Vai al contenuto")
         self.assertContains(response, "aria-current=\"page\"")
-        self.assertNotContains(response, "news-group__header")
+        self.assertContains(response, "news-group__header")
+        self.assertNotContains(response, "category-panel")
         self.assertNotContains(response, "news-card--lead")
 
     def test_home_does_not_render_televideo_links(self):

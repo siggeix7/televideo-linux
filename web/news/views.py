@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import re
-from datetime import timedelta
+from datetime import date, timedelta
 from pathlib import Path
-from urllib.parse import urlencode
 
 from django.conf import settings
-from django.db.models import Case, Count, IntegerField, Q, Value, When
+from django.db.models import Q
 from django.db import connection
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import render
@@ -27,7 +26,7 @@ from .formatters import (
     parse_tv_channel_schedule,
     parse_weather_observation,
 )
-from .models import Category, LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
+from .models import LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
 from .map_paths import get_map_regions
 from .site_urls import public_absolute_url
 from .services.parser import compact_text, display_snapshot_text, fix_mojibake, prose_paragraphs
@@ -128,7 +127,7 @@ UI_TEXT = {
         "site_name": "Televideo News",
         "eyebrow": "Rai Televideo RSS 101 e pagina 104",
         "title": "Televideo News",
-        "lede": "Notizie da Rai Televideo, archiviate automaticamente e organizzate per categoria.",
+        "lede": "Notizie da Rai Televideo, archiviate automaticamente e ordinate per giorno.",
         "nav_home": "Cronaca",
         "nav_tv": "TV",
         "nav_culture": "Cultura",
@@ -140,11 +139,13 @@ UI_TEXT = {
         "nav_games": "Giochi",
         "nav_regions": "Regioni",
         "language_nav_label": "Lingua",
-        "categories_title": "Categorie",
+        "date_filter_title": "Archivio per giorno",
+        "date_filter_label": "Scegli una data",
+        "date_filter_all": "Tutti i giorni",
         "news_link": "Cronaca",
         "super_link": "SuperEnalotto",
         "all_categories": "Tutte",
-        "search_placeholder": "Cerca in titoli, testi e categorie...",
+        "search_placeholder": "Cerca in titoli e testi...",
         "clear_search": "Cancella",
         "status_label": "Stato",
         "loading": "Carico notizie...",
@@ -162,6 +163,8 @@ UI_TEXT = {
         "timeout_error": "Timeout: server non risponde. Riprovo...",
         "no_search_results_title": "Nessun risultato",
         "no_search_results_message": "Nessuna notizia contiene \"{query}\".",
+        "no_date_results_title": "Nessuna notizia in questa data",
+        "no_date_results_message": "Non ci sono notizie archiviate per il giorno selezionato.",
         "searching_status": "Cerco nell'archivio...",
         "card_ribbon": "NOTIZIA",
         "source_prefix": "Titolo originale:",
@@ -482,14 +485,7 @@ def base_news_queryset():
     return NewsItem.objects.select_related("category").filter(displayable_filter()).exclude(category__code__in=HIDDEN_CATEGORY_CODES)
 
 
-def apply_news_filters(queryset, category_code: str, search_query: str):
-    if category_code != "all":
-        valid_category = Category.objects.filter(active=True, code=category_code).exclude(code__in=HIDDEN_CATEGORY_CODES).exists()
-        if valid_category:
-            queryset = queryset.filter(category__code=category_code)
-        else:
-            category_code = "all"
-
+def apply_news_filters(queryset, search_query: str):
     if search_query:
         queryset = queryset.filter(
             Q(title_it__icontains=search_query)
@@ -498,17 +494,11 @@ def apply_news_filters(queryset, category_code: str, search_query: str):
             | Q(source_page__icontains=search_query)
         ).distinct()
 
-    return queryset, category_code
+    return queryset
 
 
 def ordered_news_queryset(queryset):
-    return queryset.annotate(
-        source_rank=Case(
-            When(category__code="rss101", then=Value(0)),
-            default=Value(1),
-            output_field=IntegerField(),
-        )
-    ).order_by("source_rank", "-published_at", "-created_at")
+    return queryset.order_by("-published_at", "-created_at")
 
 
 def normalized_news_text(value: str) -> str:
@@ -576,8 +566,48 @@ def deduplicated_news_items(queryset) -> list[NewsItem]:
     return items
 
 
+def parse_news_date(value: str | None) -> date | None:
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def news_item_local_date(item: NewsItem) -> date | None:
+    if not item.published_at:
+        return None
+    return timezone.localtime(item.published_at).date()
+
+
+def news_date_label(value: date | None) -> str:
+    if value is None:
+        return UI_TEXT["it"]["date_unavailable"]
+    today = timezone.localdate()
+    if value == today:
+        return "Oggi"
+    if value == today - timedelta(days=1):
+        return "Ieri"
+    return value.strftime("%d/%m/%Y")
+
+
+def news_date_options(items: list[NewsItem]) -> list[dict[str, object]]:
+    counts: dict[date, int] = {}
+    for item in items:
+        item_date = news_item_local_date(item)
+        if item_date is None:
+            continue
+        counts[item_date] = counts.get(item_date, 0) + 1
+    return [
+        {"value": item_date.isoformat(), "label": news_date_label(item_date), "count": count}
+        for item_date, count in sorted(counts.items(), reverse=True)
+    ]
+
+
 def serialized_news_item(item: NewsItem) -> dict[str, object]:
     category = item.category
+    item_date = news_item_local_date(item)
     return {
         "id": item.source_id,
         "title": item.title_it,
@@ -588,21 +618,47 @@ def serialized_news_item(item: NewsItem) -> dict[str, object]:
         "source_page": item.source_page,
         "published": item.pub_date_text,
         "published_display": timezone.localtime(item.published_at).strftime("%d/%m/%Y %H:%M") if item.published_at else item.pub_date_text,
+        "published_date": item_date.isoformat() if item_date else "",
+        "published_date_label": news_date_label(item_date),
         "published_iso": item.published_at.isoformat() if item.published_at else "",
     }
 
 
-def news_listing(category_code: str, search_query: str, page: int, limit: int) -> dict[str, object]:
-    queryset, category_code = apply_news_filters(base_news_queryset(), category_code, search_query)
+def grouped_news_items(items: list[dict[str, object]]) -> list[dict[str, object]]:
+    groups: list[dict[str, object]] = []
+    groups_by_date: dict[str, dict[str, object]] = {}
+    for item in items:
+        key = str(item.get("published_date") or "unknown")
+        if key not in groups_by_date:
+            group = {
+                "key": key,
+                "label": item.get("published_date_label") or UI_TEXT["it"]["date_unavailable"],
+                "items": [],
+            }
+            groups_by_date[key] = group
+            groups.append(group)
+        groups_by_date[key]["items"].append(item)
+    return groups
+
+
+def news_listing(search_query: str, page: int, limit: int, selected_date: date | None = None) -> dict[str, object]:
+    queryset = apply_news_filters(base_news_queryset(), search_query)
     queryset = ordered_news_queryset(queryset)
-    items = deduplicated_news_items(queryset)
+    all_items = deduplicated_news_items(queryset)
+    available_dates = news_date_options(all_items)
+    items = [item for item in all_items if news_item_local_date(item) == selected_date] if selected_date else all_items
     total_items = len(items)
     total_pages = max((total_items + limit - 1) // limit, 1)
     page = min(page, total_pages)
     start = (page - 1) * limit
     end = start + limit
+    serialized_items = [serialized_news_item(item) for item in items[start:end]]
+    date_values = [str(option["value"]) for option in available_dates]
     return {
-        "selected_category": category_code,
+        "available_dates": available_dates,
+        "date_max": date_values[0] if date_values else "",
+        "date_min": date_values[-1] if date_values else "",
+        "selected_date": selected_date.isoformat() if selected_date else "",
         "search_query": search_query,
         "pagination": {
             "page": page,
@@ -612,36 +668,16 @@ def news_listing(category_code: str, search_query: str, page: int, limit: int) -
             "has_previous": page > 1,
             "has_next": page < total_pages,
         },
-        "items": [serialized_news_item(item) for item in items[start:end]],
+        "items": serialized_items,
+        "groups": grouped_news_items(serialized_items),
     }
 
 
-def category_filter_links(request, categories: list[dict[str, object]], selected_category: str, search_query: str) -> list[dict[str, object]]:
-    total_count = sum(int(c.get("count") or 0) for c in categories)
-    filters = [{"code": "all", "name": UI_TEXT["it"]["all_categories"], "count": total_count}] + categories
-    payload = []
-    for category in filters:
-        params = {}
-        if category["code"] != "all":
-            params["category"] = category["code"]
-        if search_query:
-            params["q"] = search_query
-        query = urlencode(params)
-        payload.append(
-            {
-                **category,
-                "active": category["code"] == selected_category,
-                "url": request.path + (f"?{query}" if query else ""),
-            }
-        )
-    return payload
-
-
 def initial_home_listing(request) -> dict[str, object]:
-    category_code = request.GET.get("category") or "all"
     search_query = (request.GET.get("q") or "").strip()[:120]
     page = parse_page(request.GET.get("page"))
-    return news_listing(category_code, search_query, page, limit=12)
+    selected_date = parse_news_date(request.GET.get("date"))
+    return news_listing(search_query, page, limit=12, selected_date=selected_date)
 
 
 def home(request):
@@ -651,7 +687,6 @@ def home(request):
         except RuntimeError:
             pass
     listing = initial_home_listing(request)
-    categories = serialized_categories()
     return render(
         request,
         "news/home.html",
@@ -661,12 +696,13 @@ def home(request):
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
             "ui": UI_TEXT["it"],
             "nav_items": nav_items("home"),
-            "fallback_items": listing["items"],
+            "fallback_groups": listing["groups"],
             "fallback_pagination": listing["pagination"],
             "fallback_page_status": UI_TEXT["it"]["page_status"].replace("{page}", str(listing["pagination"]["page"])).replace("{pages}", str(listing["pagination"]["pages"])),
-            "category_filters": category_filter_links(request, categories, listing["selected_category"], listing["search_query"]),
-            "initial_category": listing["selected_category"],
             "initial_search": listing["search_query"],
+            "initial_date": listing["selected_date"],
+            "date_min": listing["date_min"],
+            "date_max": listing["date_max"],
         },
     )
 
@@ -822,26 +858,6 @@ def regions(request, region_slug_value: str | None = None):
     )
 
 
-def serialized_categories(language: str = "it") -> list[dict[str, object]]:
-    categories = []
-    queryset = (
-        Category.objects.filter(active=True)
-        .exclude(code__in=HIDDEN_CATEGORY_CODES)
-        .annotate(news_count=Count("items", filter=displayable_category_filter()))
-        .filter(news_count__gt=0)
-    )
-    for category in queryset.order_by("sort_order", "name_it"):
-        categories.append(
-            {
-                "code": category.code,
-                "name": category.name_it,
-                "page": category.page,
-                "count": category.news_count,
-            }
-        )
-    return categories
-
-
 def news_title_for(item: NewsItem, _language: str = "it") -> str:
     return item.title_it
 
@@ -853,14 +869,14 @@ def news_summary_for(item: NewsItem, _language: str = "it") -> str:
 def news_api(request):
     limit = parse_limit(request.GET.get("limit"), default=12)
     page = parse_page(request.GET.get("page"))
-    category_code = request.GET.get("category") or "all"
     search_query = (request.GET.get("q") or "").strip()[:120]
+    selected_date = parse_news_date(request.GET.get("date"))
     error = ""
     try:
         refresh_if_stale()
     except RuntimeError as exc:
         error = str(exc)
-    listing = news_listing(category_code, search_query, page, limit)
+    listing = news_listing(search_query, page, limit, selected_date=selected_date)
 
     return JsonResponse(
         {
@@ -868,10 +884,12 @@ def news_api(request):
             "language_label": "Italiano",
             "generated_at": timezone.localtime().isoformat(),
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
-            "selected_category": listing["selected_category"],
+            "available_dates": listing["available_dates"],
+            "date_max": listing["date_max"],
+            "date_min": listing["date_min"],
+            "selected_date": listing["selected_date"],
             "search_query": listing["search_query"],
             "ui": UI_TEXT["it"],
-            "categories": serialized_categories(),
             "pagination": listing["pagination"],
             "error": error,
             "items": listing["items"],
@@ -881,14 +899,6 @@ def news_api(request):
 
 def displayable_filter() -> Q:
     return ~Q(title_it__regex=r"^\d+/\d+$") & ~Q(summary_it__regex=r"^S\.?\s*S\.?$", title_it__regex=r"^\d+/\d+$")
-
-
-def displayable_category_filter() -> Q:
-    return (
-        ~Q(items__category__code__in=HIDDEN_CATEGORY_CODES)
-        & ~Q(items__title_it__regex=r"^\d+/\d+$")
-        & ~Q(items__summary_it__regex=r"^S\.?\s*S\.?$", items__title_it__regex=r"^\d+/\d+$")
-    )
 
 
 def page_not_found(request, exception=None):

@@ -11,7 +11,7 @@ notizie.
 
 - Web app Django con stile mediavideo retro curato, responsive e design system a token.
 - Notizie reali dal feed pubblico Rai Televideo RSS 101.
-- Categorie importate dalla pagina 104 di Televideo e notizie figlie nelle rispettive sezioni.
+- Archivio news unico, senza filtri per categoria, raggruppato per giorno e filtrabile da calendario.
 - Barra di ricerca client-side per filtrare le notizie nella pagina principale.
 - Storico notizie persistente: le notizie restano salvate anche dopo che spariscono da Televideo.
 - Paginazione automatica quando lo storico contiene molte notizie.
@@ -287,30 +287,15 @@ http://localhost:8000/healthz/
 
 Il Dockerfile include un `HEALTHCHECK` che interroga questo endpoint.
 
-## Categorie Televideo
+## Archivio News
 
-La pagina principale replica le categorie indicate dalla pagina 104 di Rai
-Televideo. Il job importa gli indici, segue le pagine figlie quando disponibili
-e collega ogni notizia alla categoria corrispondente.
+La pagina principale mostra un archivio unico delle notizie, senza divisioni per
+categoria. Le card sono raggruppate per giorno e il campo data permette di
+aprire direttamente le notizie pubblicate in una giornata specifica.
 
-Esempi di categorie:
-
-```text
-Ultim'Ora, Politica, Economia, Dall'Italia, Dal Mondo, Culture, Focus
-```
-
-Puoi filtrare le notizie dalla barra categorie nella pagina web.
-
-Le categorie che Televideo pubblica vuote o senza pagine figlie vengono nascoste
-dall'interfaccia; se una categoria salvata nel browser non ha piu' notizie, il
-sito torna automaticamente a `Tutte`.
-
-Oltre alle categorie della pagina 104, il job importa anche sezioni sportive
-quando sono disponibili, per esempio:
-
-```text
-Calcio, Altri Sport, Brevi Sport
-```
+Il job continua a importare gli indici dalla pagina 104 di Rai Televideo e segue
+le pagine figlie quando disponibili, ma le categorie restano solo un dettaglio
+interno usato per recuperare piu' notizie dall'origine Rai.
 
 Le pagine di servizio o tabellari, come Almanacco, Meteo, Temperature e
 Viabilita', non vengono mostrate come notizie: Televideo le espone in formati
