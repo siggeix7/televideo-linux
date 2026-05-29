@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import logging
 import time
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from news.services import update_news
+
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -25,8 +29,17 @@ class Command(BaseCommand):
         category_limit = options["category_limit"]
 
         while True:
-            saved = update_news(limit, category_limit)
-            self.stdout.write(self.style.SUCCESS(f"stored {saved} Televideo records"))
+            sleep_interval = interval
+            try:
+                saved = update_news(limit, category_limit)
+            except Exception as exc:
+                logger.exception("Televideo news refresh failed")
+                if options["once"] or not loop:
+                    raise
+                sleep_interval = min(interval, 60)
+                self.stderr.write(self.style.ERROR(f"Televideo refresh failed: {exc}"))
+            else:
+                self.stdout.write(self.style.SUCCESS(f"stored {saved} Televideo records"))
             if options["once"] or not loop:
                 return
-            time.sleep(interval)
+            time.sleep(sleep_interval)

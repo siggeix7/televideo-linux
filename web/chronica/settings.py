@@ -166,8 +166,8 @@ if LOG_FILE:
     LOGGING["root"]["handlers"].append("file")
     LOGGING["loggers"]["news"]["handlers"].append("file")
 
-NEWS_REFRESH_SECONDS = int(os.environ.get("NEWS_REFRESH_SECONDS", "60"))
-NEWS_FETCH_LIMIT = int(os.environ.get("NEWS_FETCH_LIMIT", "12"))
+NEWS_REFRESH_SECONDS = int(os.environ.get("NEWS_REFRESH_SECONDS", "1800"))
+NEWS_FETCH_LIMIT = int(os.environ.get("NEWS_FETCH_LIMIT", "30"))
 CATEGORY_FETCH_LIMIT = int(os.environ.get("CATEGORY_FETCH_LIMIT", "2"))
 TELETEXT_SECTION_REFRESH_SECONDS = int(os.environ.get("TELETEXT_SECTION_REFRESH_SECONDS", "1800"))
 TRANSLATION_TIMEOUT = float(os.environ.get("TRANSLATION_TIMEOUT", "8"))

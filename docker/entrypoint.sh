@@ -9,7 +9,7 @@ if [ "${1:-web}" = "manage" ]; then
 fi
 
 if [ "${1:-web}" = "worker" ]; then
-    exec python web/manage.py fetch_televideo --loop --interval "${NEWS_REFRESH_SECONDS:-60}" --limit "${NEWS_FETCH_LIMIT:-12}" --category-limit "${CATEGORY_FETCH_LIMIT:-2}"
+    exec python web/manage.py fetch_televideo --loop --interval "${NEWS_REFRESH_SECONDS:-1800}" --limit "${NEWS_FETCH_LIMIT:-30}" --category-limit "${CATEGORY_FETCH_LIMIT:-2}"
 fi
 
 if [ "${1:-web}" != "web" ]; then
@@ -22,7 +22,7 @@ python web/manage.py migrate --noinput
 mkdir -p "${DJANGO_CACHE_DIR:-/data/django_cache}"
 
 # Background worker: news, lotto, superenalotto
-python web/manage.py fetch_televideo --loop --interval "${NEWS_REFRESH_SECONDS:-60}" --limit "${NEWS_FETCH_LIMIT:-12}" --category-limit "${CATEGORY_FETCH_LIMIT:-2}" &
+python web/manage.py fetch_televideo --loop --interval "${NEWS_REFRESH_SECONDS:-1800}" --limit "${NEWS_FETCH_LIMIT:-30}" --category-limit "${CATEGORY_FETCH_LIMIT:-2}" &
 
 # Background worker: section snapshots (TV, sport, cultura, etc.)
 python web/manage.py fetch_sections --loop --interval "${TELETEXT_SECTION_REFRESH_SECONDS:-1800}" &

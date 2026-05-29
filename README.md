@@ -32,7 +32,7 @@ notizie.
 - Makefile per build, run, test e salvataggio immagine in `/tmp`.
 - GitHub Action per build, push su GHCR e release del container.
 - CLI `./televideo` ancora disponibile per uso terminale.
-- Test automatizzati: modelli Django e viste (19 test).
+- Test automatizzati per modelli Django, viste, asset statici e worker.
 
 ## Avvio Con Docker
 
@@ -67,8 +67,8 @@ services:
     environment:
       SQLITE_PATH: /data/chronica.sqlite3
       SQLITE_TIMEOUT: "${SQLITE_TIMEOUT:-30}"
-      NEWS_REFRESH_SECONDS: "${NEWS_REFRESH_SECONDS:-60}"
-      NEWS_FETCH_LIMIT: "${NEWS_FETCH_LIMIT:-12}"
+      NEWS_REFRESH_SECONDS: "${NEWS_REFRESH_SECONDS:-1800}"
+      NEWS_FETCH_LIMIT: "${NEWS_FETCH_LIMIT:-30}"
       CATEGORY_FETCH_LIMIT: "${CATEGORY_FETCH_LIMIT:-2}"
       TELETEXT_SECTION_REFRESH_SECONDS: "${TELETEXT_SECTION_REFRESH_SECONDS:-1800}"
       PUBLIC_SITE_URL: "${PUBLIC_SITE_URL:-}"
@@ -93,8 +93,8 @@ Per produzione dietro Nginx Proxy Manager, crea `/opt/televideo-docker/.env`:
 ```env
 PORT=8000
 SQLITE_TIMEOUT=30
-NEWS_REFRESH_SECONDS=60
-NEWS_FETCH_LIMIT=12
+NEWS_REFRESH_SECONDS=1800
+NEWS_FETCH_LIMIT=30
 CATEGORY_FETCH_LIMIT=2
 TELETEXT_SECTION_REFRESH_SECONDS=1800
 PUBLIC_SITE_URL=https://televideo.example.com
@@ -236,7 +236,7 @@ python web/manage.py runserver
 Job di aggiornamento continuo:
 
 ```sh
-python web/manage.py fetch_televideo --loop --interval 60 --limit 20
+python web/manage.py fetch_televideo --loop --interval 1800 --limit 30
 ```
 
 ## Configurazione Runtime
@@ -247,8 +247,8 @@ Variabili d'ambiente principali:
 PORT                  porta HTTP del container, default 8000
 SQLITE_PATH           path database, default /data/chronica.sqlite3 nel container
 SQLITE_TIMEOUT        timeout lock SQLite in secondi, default 30
-NEWS_REFRESH_SECONDS  frequenza aggiornamento notizie, default 60
-NEWS_FETCH_LIMIT      quante notizie conservare a ogni giro, default 12
+NEWS_REFRESH_SECONDS  frequenza aggiornamento notizie, default 1800
+NEWS_FETCH_LIMIT      quante notizie conservare a ogni giro, default 30
 CATEGORY_FETCH_LIMIT  quante notizie importare per ogni categoria Televideo, default 2
 TELETEXT_SECTION_REFRESH_SECONDS frequenza cache sezioni Televideo dedicate, default 1800
 DJANGO_DEBUG          debug Django, default false
