@@ -25,6 +25,7 @@ notizie.
 - Database SQLite persistente su volume esterno `/data`.
 - Job di aggiornamento automatico con worker paralleli (news + sezioni).
 - API JSON usata dalla pagina per aggiornarsi senza refresh manuale.
+- Tag versione visibile nel footer, utile per verificare quale container e' in esecuzione.
 - Home renderizzata anche lato server, con ricerca condivisibile via URL e fallback senza JavaScript.
 - Skeleton loading con effetto shimmer, retry automatico (3 tentativi) e pagine di errore 404/500.
 - Meta tag Open Graph / Twitter Card e favicon SVG.
@@ -251,6 +252,7 @@ NEWS_REFRESH_SECONDS  frequenza aggiornamento notizie, default 1800
 NEWS_FETCH_LIMIT      quante notizie conservare a ogni giro, default 30
 CATEGORY_FETCH_LIMIT  quante notizie importare per ogni categoria Televideo, default 2
 TELETEXT_SECTION_REFRESH_SECONDS frequenza cache sezioni Televideo dedicate, default 1800
+APP_VERSION           tag mostrato nel footer, impostato automaticamente dalla release container
 DJANGO_DEBUG          debug Django, default false
 DJANGO_ALLOWED_HOSTS  host consentiti, default *
 DJANGO_CSRF_TRUSTED_ORIGINS origini HTTPS fidate per admin/form, es. https://dominio

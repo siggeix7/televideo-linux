@@ -21,6 +21,7 @@ DEBUG = env_bool("DJANGO_DEBUG")
 RUNNING_TESTS = "test" in sys.argv
 ADMIN_ENABLED = env_bool("DJANGO_ADMIN_ENABLED")
 PUBLIC_SITE_URL = os.environ.get("PUBLIC_SITE_URL", "").rstrip("/")
+APP_VERSION = os.environ.get("APP_VERSION", "dev")
 ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "*")
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 USE_X_FORWARDED_HOST = env_bool("DJANGO_USE_X_FORWARDED_HOST", True)

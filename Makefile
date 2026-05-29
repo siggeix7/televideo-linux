@@ -9,7 +9,7 @@ PYTHON ?= python3
 all: save
 
 build:
-	docker build -t $(IMAGE):$(TAG) .
+	docker build --build-arg APP_VERSION=$(TAG) -t $(IMAGE):$(TAG) .
 
 save: build
 	docker save $(IMAGE):$(TAG) -o $(TMP_IMAGE)

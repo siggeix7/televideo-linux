@@ -18,4 +18,7 @@ def public_absolute_url(request, path: str) -> str:
 
 
 def seo_context(request) -> dict[str, str]:
-    return {"canonical_url": public_absolute_url(request, request.path)}
+    return {
+        "app_version": getattr(settings, "APP_VERSION", "dev"),
+        "canonical_url": public_absolute_url(request, request.path),
+    }

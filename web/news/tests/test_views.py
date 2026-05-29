@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -16,6 +16,12 @@ class ViewTests(TestCase):
     def test_home_with_language(self):
         response = self.client.get(reverse("news:home") + "?lang=en")
         self.assertEqual(response.status_code, 200)
+
+    @override_settings(APP_VERSION="vtest")
+    def test_footer_shows_app_version(self):
+        response = self.client.get(reverse("news:home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Versione vtest")
 
     def test_news_api_returns_json(self):
         response = self.client.get(reverse("news:news_api"))

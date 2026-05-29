@@ -1,8 +1,11 @@
 FROM python:3.12-slim
 
+ARG APP_VERSION=dev
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DJANGO_SETTINGS_MODULE=chronica.settings \
+    APP_VERSION=${APP_VERSION} \
     SQLITE_PATH=/data/chronica.sqlite3 \
     DJANGO_CACHE_DIR=/data/django_cache \
     DJANGO_LOG_DIR=/data \

@@ -51,6 +51,7 @@ jobs:
           docker build \
             --provenance=false \
             --sbom=false \
+            --build-arg APP_VERSION="${{ steps.meta.outputs.version }}" \
             -t "${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.version }}" \
             -t "${{ steps.meta.outputs.image }}:latest" \
             .
