@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm
+FROM rockylinux/rockylinux:10
 
 ARG APP_VERSION=dev
 
@@ -14,35 +14,34 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     CATEGORY_FETCH_LIMIT=2 \
     PORT=8000 \
     PGDATA=/data/postgresql \
-    PATH=/usr/lib/postgresql/18/bin:/app:$PATH
+    PATH=/usr/pgsql-18/bin:/app:$PATH
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y curl ca-certificates gnupg && \
-    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql.gpg && \
-    echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
-    apt-get update && apt-get install -y postgresql-18 locales && \
-    sed -i '/en_US.UTF-8/s/^# //' /etc/locale.gen && locale-gen && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN dnf -y install --nogpgcheck https://download.postgresql.org/pub/repos/yum/reporpms/EL-10-x86_64/pgdg-redhat-repo-latest.noarch.rpm \
+    && rpm --import /etc/pki/rpm-gpg/PGDG-RPM-GPG-KEY-RHEL \
+    && dnf -y install python3-pip python3-devel gcc postgresql18-server glibc-langpack-en curl \
+    && dnf clean all \
+    && ln -sf python3 /usr/bin/python
 
-RUN adduser --disabled-password --gecos "" chronica \
+RUN useradd -m -u 1000 chronica \
     && mkdir -p /data \
     && chown -R chronica:chronica /data
 
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY . .
 RUN chmod +x /app/televideo /app/docker/entrypoint.sh /app/docker/force_refresh_meteo.sh /app/docker/migrate_to_postgresql.sh \
     && ln -s /app/docker/force_refresh_meteo.sh /usr/local/bin/refresh-meteo \
     && ln -s /app/docker/migrate_to_postgresql.sh /usr/local/bin/migrate-to-postgresql \
-    && python web/manage.py collectstatic --noinput
+    && python3 web/manage.py collectstatic --noinput
 
 VOLUME ["/data"]
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD python -c "import urllib.request; req=urllib.request.Request('http://127.0.0.1:8000/healthz/', headers={'X-Forwarded-Proto': 'https'}); urllib.request.urlopen(req, timeout=4).read()"
+    CMD python3 -c "import urllib.request; req=urllib.request.Request('http://127.0.0.1:8000/healthz/', headers={'X-Forwarded-Proto': 'https'}); urllib.request.urlopen(req, timeout=4).read()"
 
 USER chronica
 
