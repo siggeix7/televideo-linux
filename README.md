@@ -50,41 +50,23 @@ Nel setup preparato in questa macchina trovi:
 ```text
 /opt/televideo-docker/docker-compose.yml
 /opt/televideo-docker/chronica.sqlite3
+/opt/televideo-docker/postgresql/
 ```
 
 Il database vive fuori dal container, quindi rimane disponibile quando
 il container viene fermato, ricreato o aggiornato. Di default usa SQLite; e'
-possibile passare a PostgreSQL 18.
+possibile passare a PostgreSQL 18 (embedded nel container).
 
-Docker Compose consigliato (con PostgreSQL opzionale):
+Docker Compose consigliato:
 
 ```yaml
 services:
-  postgres:
-    image: postgres:18-alpine
-    container_name: televideo-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: "${POSTGRES_DB:-televideo}"
-      POSTGRES_USER: "${POSTGRES_USER:-televideo}"
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-televideo}"
-    volumes:
-      - /opt/televideo-docker/postgres-data:/var/lib/postgresql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-televideo} -d ${POSTGRES_DB:-televideo}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   televideo:
     image: televideo-linux:latest
     container_name: televideo-web
     restart: unless-stopped
     ports:
       - "${PORT:-8000}:8000"
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
       SQLITE_PATH: /data/chronica.sqlite3
       SQLITE_TIMEOUT: "${SQLITE_TIMEOUT:-30}"
@@ -322,36 +304,26 @@ DJANGO_SECRET_KEY     secret key Django per ambienti pubblici
 
 ### Passare a PostgreSQL 18
 
-Di default il progetto usa SQLite. Per passare a PostgreSQL:
-
-1. Aggiungi il servizio `postgres` al `docker-compose.yml` (vedi esempio sopra).
-2. Aggiungi al file `.env`:
+Di default il progetto usa SQLite. PostgreSQL 18 e' incluso nel container;
+per attivarlo aggiungi al file `.env`:
 
 ```env
-POSTGRES_HOST=postgres
+POSTGRES_HOST=localhost
 POSTGRES_DB=televideo
 POSTGRES_USER=televideo
-POSTGRES_PASSWORD=una-password-sicura
+POSTGRES_PASSWORD=televideo
 POSTGRES_PORT=5432
 ```
 
-3. Avvia il servizio PostgreSQL:
+Il container avvia automaticamente PostgreSQL alla partenza e inizializza il
+data directory in `/data/postgresql/` (mappato su
+`/opt/televideo-docker/postgresql/`). Se il data directory esiste gia', viene
+riutilizzato.
 
-```sh
-docker compose -f /opt/televideo-docker/docker-compose.yml up -d postgres
-```
-
-4. Attendi che PostgreSQL sia pronto (`docker logs televideo-postgres`) e
-   poi esegui la migrazione dei dati da SQLite a PostgreSQL:
+Per migrare i dati esistenti da SQLite:
 
 ```sh
 docker exec televideo-web python web/manage.py migrate_to_postgresql
-```
-
-5. Ricrea il container del sito per agganciare PostgreSQL:
-
-```sh
-docker compose -f /opt/televideo-docker/docker-compose.yml up -d televideo
 ```
 
 Il database SQLite originale (`/opt/televideo-docker/chronica.sqlite3`) non

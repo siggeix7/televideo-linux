@@ -16,6 +16,24 @@ if [ "${1:-web}" != "web" ]; then
     exec "$@"
 fi
 
+# Start embedded PostgreSQL if configured
+if [ -n "${POSTGRES_HOST:-}" ] && [ "${POSTGRES_HOST}" = "localhost" ]; then
+    PGDATA="${PGDATA:-/data/postgresql}"
+    if [ ! -f "$PGDATA/PG_VERSION" ]; then
+        echo "Initialising PostgreSQL data directory at $PGDATA ..."
+        initdb -D "$PGDATA" --locale=C.UTF-8 --encoding=UTF8 --username="${POSTGRES_USER:-televideo}" --auth=trust
+    fi
+    echo "Starting PostgreSQL ..."
+    pg_ctl -D "$PGDATA" -l /data/postgresql.log start
+    until pg_isready -q 2>/dev/null; do
+        sleep 1
+    done
+    if ! psql -lqt | cut -d '|' -f 1 | grep -qw "${POSTGRES_DB:-televideo}"; then
+        createdb "${POSTGRES_DB:-televideo}" -O "${POSTGRES_USER:-televideo}"
+    fi
+    echo "PostgreSQL is ready."
+fi
+
 python web/manage.py showmigrations --plan >/dev/null
 python web/manage.py migrate --noinput --database=default
 
