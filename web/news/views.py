@@ -8,7 +8,7 @@ from django.conf import settings
 from django.db.models import Q
 from django.db import connection
 from django.http import Http404, HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.template import TemplateDoesNotExist
 from django.urls import reverse
 from django.utils import timezone
@@ -36,6 +36,7 @@ from .services import (
     normalize_region,
     refresh_if_stale,
     refresh_section_if_stale,
+    region_display_name,
     region_slug,
     section_definition,
 )
@@ -838,12 +839,16 @@ def games(request):
 
 def regions(request, region_slug_value: str | None = None):
     selected_region = normalize_region(region_slug_value or request.GET.get("regione"))
+    canonical_slug = region_slug(selected_region)
+    # Redirect old Trentino/Alto Adige slugs to the canonical one
+    if region_slug_value and region_slug_value != canonical_slug:
+        return redirect("news:region", region_slug_value=canonical_slug, permanent=True)
     refresh_section_if_stale("regioni", selected_region)
     formatted = formatted_section_data("regioni", selected_region)
     latest = max((card["fetched_at"] for card in formatted["raw"]), default=None)
     regions_payload = [
         {
-            "name": region,
+            "name": region_display_name(region),
             "slug": region_slug(region),
             "url": reverse("news:region", kwargs={"region_slug_value": region_slug(region)}),
             "active": region == selected_region,

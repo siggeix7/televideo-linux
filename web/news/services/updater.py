@@ -54,6 +54,8 @@ def normalize_region(value: str | None) -> str:
 
 
 def region_slug(region: str) -> str:
+    if region == "Trentino":
+        return "trentino-alto-adige"
     return region.lower().replace(" ", "-")
 
 

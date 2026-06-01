@@ -39,19 +39,28 @@ FLASH_NEWS_PAGES = {108, 109}
 EXTRA_CATEGORY_PAGES = (201, 260, 299)
 
 REGIONS = {
-    "abruzzo": "Abruzzo", "altoadige": "Altoadige", "alto-adige": "Altoadige",
+    "abruzzo": "Abruzzo", "altoadige": "Trentino", "alto-adige": "Trentino",
+    "trentino": "Trentino", "trentino-alto-adige": "Trentino",
+    "trentino-altoadige": "Trentino",
     "basilicata": "Basilicata", "calabria": "Calabria", "campania": "Campania",
     "emilia": "Emilia", "emilia-romagna": "Emilia",
     "friuli": "Friuli", "friuli-venezia-giulia": "Friuli",
     "lazio": "Lazio", "liguria": "Liguria", "lombardia": "Lombardia",
     "marche": "Marche", "molise": "Molise", "piemonte": "Piemonte",
     "puglia": "Puglia", "sardegna": "Sardegna", "sicilia": "Sicilia",
-    "toscana": "Toscana", "trentino": "Trentino", "umbria": "Umbria",
+    "toscana": "Toscana", "umbria": "Umbria",
     "aosta": "Aosta", "valle-aosta": "Aosta", "veneto": "Veneto",
 }
 
+_REGION_DISPLAY = {
+    "Trentino": "Trentino-Alto Adige",
+}
+
+def region_display_name(televideo_region: str) -> str:
+    return _REGION_DISPLAY.get(televideo_region, televideo_region)
+
 REGION_CHOICES = (
-    "Abruzzo", "Altoadige", "Basilicata", "Calabria", "Campania",
+    "Abruzzo", "Basilicata", "Calabria", "Campania",
     "Emilia", "Friuli", "Lazio", "Liguria", "Lombardia",
     "Marche", "Molise", "Piemonte", "Puglia", "Sardegna",
     "Sicilia", "Toscana", "Trentino", "Umbria", "Aosta", "Veneto",
