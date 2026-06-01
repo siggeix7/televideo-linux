@@ -158,7 +158,6 @@
     }
 
     function renderDraw(draw) {
-        if (emptyState) emptyState.hidden = Boolean(draw);
         if (!draw) {
             if (drawDetail) drawDetail.hidden = true;
             heading.textContent = "";
