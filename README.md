@@ -75,9 +75,9 @@ services:
       METEO_SECTION_REFRESH_SECONDS: "${METEO_SECTION_REFRESH_SECONDS:-9000}"
       OPENWEATHER_API_KEY: "${OPENWEATHER_API_KEY:-}"
       OPENWEATHER_REFRESH_CHECK_SECONDS: "${OPENWEATHER_REFRESH_CHECK_SECONDS:-9000}"
-      OPENWEATHER_STALE_SECONDS: "${OPENWEATHER_STALE_SECONDS:-43200}"
+      OPENWEATHER_STALE_SECONDS: "${OPENWEATHER_STALE_SECONDS:-9000}"
       OPENWEATHER_MAX_CALLS_PER_MINUTE: "${OPENWEATHER_MAX_CALLS_PER_MINUTE:-40}"
-      OPENWEATHER_BATCH_SIZE: "${OPENWEATHER_BATCH_SIZE:-40}"
+      OPENWEATHER_BATCH_SIZE: "${OPENWEATHER_BATCH_SIZE:-200}"
       PUBLIC_SITE_URL: "${PUBLIC_SITE_URL:-}"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-false}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-*}"
@@ -107,9 +107,9 @@ TELETEXT_SECTION_REFRESH_SECONDS=1800
 METEO_SECTION_REFRESH_SECONDS=9000
 OPENWEATHER_API_KEY=
 OPENWEATHER_REFRESH_CHECK_SECONDS=9000
-OPENWEATHER_STALE_SECONDS=43200
+OPENWEATHER_STALE_SECONDS=9000
 OPENWEATHER_MAX_CALLS_PER_MINUTE=40
-OPENWEATHER_BATCH_SIZE=40
+OPENWEATHER_BATCH_SIZE=200
 PUBLIC_SITE_URL=https://televideo.example.com
 
 DJANGO_DEBUG=false
@@ -267,9 +267,9 @@ TELETEXT_SECTION_REFRESH_SECONDS frequenza cache sezioni Televideo dedicate, def
 METEO_SECTION_REFRESH_SECONDS frequenza refresh dati meteo, default 9000 (2.5 ore)
 OPENWEATHER_API_KEY chiave API OpenWeatherMap; se vuota il fallback meteo e' disabilitato
 OPENWEATHER_REFRESH_CHECK_SECONDS frequenza check fallback meteo, default 9000
-OPENWEATHER_STALE_SECONDS eta' massima cache meteo OpenWeatherMap, default 43200
+OPENWEATHER_STALE_SECONDS eta' massima cache meteo OpenWeatherMap, default 9000 (2.5 ore)
 OPENWEATHER_MAX_CALLS_PER_MINUTE limite interno richieste OpenWeatherMap, default 40
-OPENWEATHER_BATCH_SIZE massimo capoluoghi aggiornati per check, default 40
+OPENWEATHER_BATCH_SIZE massimo capoluoghi aggiornati per check, default 200
 APP_VERSION           tag mostrato nel footer, impostato automaticamente dalla release container
 DJANGO_DEBUG          debug Django, default false
 DJANGO_ALLOWED_HOSTS  host consentiti, default *
@@ -366,11 +366,9 @@ La chiave non va salvata nel repository. Senza `OPENWEATHER_API_KEY` il sito
 continua a usare solo Televideo per la sezione meteo.
 
 Il worker non chiama l'API durante le visite degli utenti: legge e aggiorna una
-cache SQLite. Ogni 2.5 ore controlla se ci sono capoluoghi con dati piu'
-vecchi di 12 ore e, se necessario, aggiorna un batch da massimo
-`OPENWEATHER_BATCH_SIZE` capoluoghi. Il rate limiter interno resta sotto
-`OPENWEATHER_MAX_CALLS_PER_MINUTE` richieste al minuto (default 40), cosi' il
-piano gratuito non viene stressato.
+cache SQLite. Ogni 2.5 ore aggiorna tutti i capoluoghi di provincia (110 circa),
+con un rate limiter che non supera `OPENWEATHER_MAX_CALLS_PER_MINUTE` richieste
+al minuto (default 40), cosi' il piano gratuito non viene stressato.
 
 Per forzare l'aggiornamento immediato di tutti i dati meteo
 (Televideo + OpenWeatherMap), esegui dentro al container:
