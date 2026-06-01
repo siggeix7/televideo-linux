@@ -364,8 +364,8 @@ class ViewTests(TestCase):
         response = self.client.get(reverse("news:superenalotto_api") + "?date=1999-01-01")
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertEqual(data["selected_date"], "2026-01-01")
-        self.assertEqual(data["selected"]["draw_number"], 1)
+        self.assertEqual(data["selected_date"], "")
+        self.assertIsNone(data["selected"])
 
     def test_healthcheck(self):
         response = self.client.get(reverse("news:healthcheck"))

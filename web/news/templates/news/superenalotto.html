@@ -27,9 +27,30 @@
 
         <main id="main">
         <section class="lottery-layout">
-            <article class="lottery-card">
-                <label class="status-label" for="draw-date" data-ui="select_date">{{ ui.select_date }}</label>
-                <select id="draw-date" class="draw-select"></select>
+            <div class="lottery-controls">
+                <label class="status-label" for="year-select" data-ui="select_year">{{ ui.select_year }}</label>
+                <div id="year-buttons" class="year-buttons"></div>
+            </div>
+
+            <div class="draws-table-wrapper">
+                <table id="draws-table" class="draws-table">
+                    <thead>
+                        <tr>
+                            <th data-ui="draw_number_label">{{ ui.draw_number_label }}</th>
+                            <th data-ui="draw_date_label_short">{{ ui.draw_date_label_short }}</th>
+                            <th data-ui="numbers_label_short">{{ ui.numbers_label_short }}</th>
+                            <th data-ui="jolly_label">{{ ui.jolly_label }}</th>
+                            <th data-ui="superstar_label">{{ ui.superstar_label }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="draws-tbody">
+                    </tbody>
+                </table>
+                <p id="draw-count" class="draw-count"></p>
+            </div>
+
+            <article id="draw-detail" class="lottery-card" hidden>
+                <label class="status-label" data-ui="select_date">{{ ui.select_date }}</label>
                 <h2 id="draw-heading"></h2>
                 <p class="news-card__meta" id="draw-date-text"></p>
                 <div class="number-row" id="winning-numbers"></div>
@@ -39,19 +60,6 @@
                     <div><dt data-ui="jackpot_label">{{ ui.jackpot_label }}</dt><dd id="jackpot">&mdash;</dd></div>
                     <div><dt data-ui="prize_pool_label">{{ ui.prize_pool_label }}</dt><dd id="prize-pool">&mdash;</dd></div>
                 </dl>
-            </article>
-
-            <article class="trend-card">
-                <h2 data-ui="trend_label">{{ ui.trend_label }}</h2>
-                <div id="trend-chart" class="trend-chart">
-                    <div class="trend-row" aria-hidden="true">
-                        <div class="skeleton skeleton--text skeleton--short"></div>
-                        <div class="trend-bars">
-                            <div class="skeleton trend-skeleton"></div>
-                            <div class="skeleton trend-skeleton trend-skeleton--short"></div>
-                        </div>
-                    </div>
-                </div>
             </article>
         </section>
 

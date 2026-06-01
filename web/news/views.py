@@ -194,8 +194,11 @@ UI_TEXT = {
         "jackpot_label": "Jackpot",
         "prize_pool_label": "Montepremi",
         "history_label": "Storico",
-        "trend_label": "Andamento Jackpot e Montepremi",
-        "select_date": "Seleziona data",
+        "select_year": "Seleziona anno",
+        "draw_number_label": "N.",
+        "draw_date_label_short": "Data",
+        "numbers_label_short": "Numeri",
+        "select_date": "Seleziona concorso",
         "no_draws": "Nessuna estrazione salvata.",
         "super_latest_title": "Ultima estrazione",
         "latest_news": "Ultime notizie",
@@ -1011,18 +1014,30 @@ def draw_payload(draw: SuperEnalottoDraw | None) -> dict[str, object] | None:
 
 def superenalotto_api(request):
     selected_date = request.GET.get("date") or ""
+    selected_year = request.GET.get("year") or ""
     error = ""
     try:
         refresh_if_stale()
     except RuntimeError as exc:
         error = str(exc)
 
-    draws = SuperEnalottoDraw.objects.all()
-    selected = draws.filter(draw_date=selected_date).first() if selected_date else None
-    if selected is None:
-        selected = draws.first()
-    dates = [{"value": draw.draw_date.isoformat(), "label": f"{draw.draw_date.isoformat()} - N.{draw.draw_number}"} for draw in draws]
-    trend_draws = list(reversed(list(SuperEnalottoDraw.objects.all()[:30])))
+    years_qs = (
+        SuperEnalottoDraw.objects
+        .dates("draw_date", "year")
+        .distinct()
+    )
+    years = sorted([d.year for d in years_qs])
+
+    selected = None
+    if selected_date:
+        selected = SuperEnalottoDraw.objects.filter(draw_date=selected_date).first()
+    if selected:
+        selected_year = str(selected.draw_date.year)
+    elif not selected_year:
+        selected_year = str(years[-1]) if years else ""
+
+    year_int = int(selected_year) if selected_year else None
+    draws_qs = SuperEnalottoDraw.objects.filter(draw_date__year=year_int) if year_int else SuperEnalottoDraw.objects.none()
 
     return JsonResponse(
         {
@@ -1032,17 +1047,12 @@ def superenalotto_api(request):
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
             "ui": UI_TEXT["it"],
             "error": error,
-            "dates": dates,
+            "years": years,
+            "selected_year": selected_year,
             "selected_date": selected.draw_date.isoformat() if selected else "",
-            "selected": draw_payload(selected),
-            "trend": [
-                {
-                    "label": f"{draw.draw_date.isoformat()} N.{draw.draw_number}",
-                    "jackpot": float(draw.jackpot) if draw.jackpot is not None else None,
-                    "prize_pool": float(draw.prize_pool) if draw.prize_pool is not None else None,
-                }
-                for draw in trend_draws
-            ],
+            "draws": [draw_payload(d) for d in draws_qs],
+            "selected": draw_payload(selected) if selected else None,
+            "draw_count": draws_qs.count(),
         }
     )
 

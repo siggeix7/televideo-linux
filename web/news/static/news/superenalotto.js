@@ -4,7 +4,10 @@
     const body = document.body;
     const apiUrl = body.dataset.apiUrl;
     const refreshSeconds = Math.max(Number(body.dataset.refreshSeconds || 60), 15);
-    const dateSelect = document.getElementById("draw-date");
+    const yearButtons = document.getElementById("year-buttons");
+    const drawsTbody = document.getElementById("draws-tbody");
+    const drawCount = document.getElementById("draw-count");
+    const drawDetail = document.getElementById("draw-detail");
     const heading = document.getElementById("draw-heading");
     const drawDateText = document.getElementById("draw-date-text");
     const winningNumbers = document.getElementById("winning-numbers");
@@ -12,13 +15,13 @@
     const superstarNumber = document.getElementById("superstar-number");
     const jackpot = document.getElementById("jackpot");
     const prizePool = document.getElementById("prize-pool");
-    const chart = document.getElementById("trend-chart");
     const emptyState = document.getElementById("empty-state");
     const errorState = document.getElementById("error-state");
     const errorMessage = document.getElementById("error-message");
 
     let language = "it";
-    let selectedDate = localStorage.getItem("superenalotto-date") || "";
+    let selectedYear = localStorage.getItem("superenalotto-year") || "";
+    let selectedDate = "";
     let ui = {
         timeout_error: body.dataset.timeoutError || "",
         unknown_error: body.dataset.unknownError || "",
@@ -53,32 +56,6 @@
         }
     }
 
-    function renderDates(dates, nextSelectedDate) {
-        if (nextSelectedDate) {
-            selectedDate = nextSelectedDate;
-        }
-        if (selectedDate && !dates.some(function (date) { return date.value === selectedDate; })) {
-            selectedDate = dates[0] ? dates[0].value : "";
-        }
-        dateSelect.replaceChildren();
-        dates.forEach(function (date) {
-            var option = document.createElement("option");
-            option.value = date.value;
-            option.textContent = date.label;
-            option.selected = date.value === selectedDate;
-            dateSelect.appendChild(option);
-        });
-        if (!selectedDate && dates[0]) {
-            selectedDate = dates[0].value;
-        }
-        if (selectedDate) {
-            dateSelect.value = selectedDate;
-            localStorage.setItem("superenalotto-date", selectedDate);
-        } else {
-            localStorage.removeItem("superenalotto-date");
-        }
-    }
-
     function numberChip(value) {
         var chip = document.createElement("span");
         chip.className = "number-chip";
@@ -86,9 +63,104 @@
         return chip;
     }
 
+    function numberChipSmall(value) {
+        var chip = document.createElement("span");
+        chip.className = "number-chip number-chip--small";
+        chip.textContent = value;
+        return chip;
+    }
+
+    function renderYearButtons(years) {
+        yearButtons.replaceChildren();
+        years.forEach(function (year) {
+            var btn = document.createElement("button");
+            btn.className = "year-btn" + (year === Number(selectedYear) ? " year-btn--active" : "");
+            btn.textContent = year;
+            btn.type = "button";
+            btn.addEventListener("click", function () {
+                if (Number(selectedYear) === year) return;
+                selectedYear = String(year);
+                selectedDate = "";
+                localStorage.setItem("superenalotto-year", selectedYear);
+                retryCount = 0;
+                loadData();
+            });
+            yearButtons.appendChild(btn);
+        });
+    }
+
+    function renderDrawsTable(draws) {
+        drawsTbody.replaceChildren();
+
+        if (!draws || draws.length === 0) {
+            if (emptyState) emptyState.hidden = false;
+            drawCount.textContent = "";
+            return;
+        }
+
+        if (emptyState) emptyState.hidden = true;
+        drawCount.textContent = draws.length + " " + (ui.draws_count || "estrazioni");
+
+        draws.forEach(function (draw) {
+            var tr = document.createElement("tr");
+            tr.className = "draws-table__row";
+            tr.tabIndex = 0;
+            tr.setAttribute("role", "button");
+            tr.setAttribute("aria-expanded", draw.draw_date === selectedDate ? "true" : "false");
+
+            if (draw.draw_date === selectedDate) {
+                tr.classList.add("draws-table__row--selected");
+            }
+
+            tr.addEventListener("click", function () {
+                selectedDate = draw.draw_date;
+                retryCount = 0;
+                loadData();
+            });
+            tr.addEventListener("keydown", function (e) {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    selectedDate = draw.draw_date;
+                    retryCount = 0;
+                    loadData();
+                }
+            });
+
+            var tdNum = document.createElement("td");
+            tdNum.textContent = draw.draw_number;
+            tdNum.className = "draws-table__num";
+
+            var tdDate = document.createElement("td");
+            tdDate.textContent = draw.draw_date;
+            tdDate.className = "draws-table__date";
+
+            var tdNums = document.createElement("td");
+            tdNums.className = "draws-table__numbers";
+            draw.winning_numbers.forEach(function (n) {
+                tdNums.appendChild(numberChipSmall(n));
+            });
+
+            var tdJolly = document.createElement("td");
+            tdJolly.textContent = draw.jolly_number || "\u2014";
+            tdJolly.className = "draws-table__jolly";
+
+            var tdSs = document.createElement("td");
+            tdSs.textContent = draw.superstar_number || "\u2014";
+            tdSs.className = "draws-table__superstar";
+
+            tr.appendChild(tdNum);
+            tr.appendChild(tdDate);
+            tr.appendChild(tdNums);
+            tr.appendChild(tdJolly);
+            tr.appendChild(tdSs);
+            drawsTbody.appendChild(tr);
+        });
+    }
+
     function renderDraw(draw) {
         if (emptyState) emptyState.hidden = Boolean(draw);
         if (!draw) {
+            if (drawDetail) drawDetail.hidden = true;
             heading.textContent = "";
             drawDateText.textContent = "";
             winningNumbers.replaceChildren();
@@ -98,6 +170,7 @@
             prizePool.textContent = "\u2014";
             return;
         }
+        if (drawDetail) drawDetail.hidden = false;
         heading.textContent = (ui.draw_label || "Concorso") + " N." + draw.draw_number;
         drawDateText.textContent = (ui.draw_date_label || "Data") + ": " + draw.draw_date;
         winningNumbers.replaceChildren.apply(winningNumbers, draw.winning_numbers.map(numberChip));
@@ -105,41 +178,12 @@
         superstarNumber.textContent = draw.superstar_number || "\u2014";
         jackpot.textContent = draw.jackpot.text || "\u2014";
         prizePool.textContent = draw.prize_pool.text || "\u2014";
+
+        var detailTop = drawDetail.getBoundingClientRect().top + window.scrollY - 24;
+        drawDetail.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
-    function renderTrend(trend) {
-        chart.replaceChildren();
-        var maxValue = Math.max.apply(null, [1].concat(trend.map(function (point) {
-            return Math.max(point.jackpot || 0, point.prize_pool || 0);
-        })));
-
-        trend.forEach(function (point) {
-            var row = document.createElement("div");
-            row.className = "trend-row";
-
-            var label = document.createElement("span");
-            label.textContent = point.label;
-
-            var bars = document.createElement("div");
-            bars.className = "trend-bars";
-
-            var jackpotBar = document.createElement("i");
-            jackpotBar.className = "trend-bar trend-bar--jackpot";
-            jackpotBar.style.width = Math.max(2, ((point.jackpot || 0) / maxValue) * 100) + "%";
-
-            var poolBar = document.createElement("i");
-            poolBar.className = "trend-bar trend-bar--pool";
-            poolBar.style.width = Math.max(2, ((point.prize_pool || 0) / maxValue) * 100) + "%";
-
-            bars.appendChild(jackpotBar);
-            bars.appendChild(poolBar);
-            row.appendChild(label);
-            row.appendChild(bars);
-            chart.appendChild(row);
-        });
-    }
-
-    async function loadDraw() {
+    async function loadData() {
         var seq = ++requestSeq;
         if (activeController) activeController.abort();
         var controller = new AbortController();
@@ -149,6 +193,9 @@
 
         var url = new URL(apiUrl, window.location.origin);
         url.searchParams.set("lang", "it");
+        if (selectedYear) {
+            url.searchParams.set("year", selectedYear);
+        }
         if (selectedDate) {
             url.searchParams.set("date", selectedDate);
         }
@@ -162,10 +209,17 @@
             if (!response.ok) throw new Error("HTTP " + response.status);
             var payload = await response.json();
             if (seq !== requestSeq) return;
+
             applyUi(payload.ui);
-            renderDates(payload.dates || [], payload.selected_date || (payload.selected && payload.selected.draw_date) || "");
+
+            if (!selectedYear && payload.selected_year) {
+                selectedYear = String(payload.selected_year);
+                localStorage.setItem("superenalotto-year", selectedYear);
+            }
+
+            renderYearButtons(payload.years || []);
+            renderDrawsTable(payload.draws || []);
             renderDraw(payload.selected);
-            renderTrend(payload.trend || []);
             retryCount = 0;
             loading = false;
         } catch (error) {
@@ -178,7 +232,7 @@
             }
             if (retryCount < MAX_RETRIES) {
                 retryCount++;
-                setTimeout(loadDraw, 2000 * retryCount);
+                setTimeout(loadData, 2000 * retryCount);
             }
         } finally {
             clearTimeout(timeoutId);
@@ -186,15 +240,8 @@
         }
     }
 
-    dateSelect.addEventListener("change", function () {
-        selectedDate = dateSelect.value;
-        localStorage.setItem("superenalotto-date", selectedDate);
-        retryCount = 0;
-        loadDraw();
-    });
-
-    loadDraw();
+    loadData();
     setInterval(function () {
-        if (!loading) loadDraw();
+        if (!loading) loadData();
     }, refreshSeconds * 1000);
 })();
