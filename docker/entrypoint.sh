@@ -17,7 +17,7 @@ if [ "${1:-web}" != "web" ]; then
 fi
 
 python web/manage.py showmigrations --plan >/dev/null
-python web/manage.py migrate --noinput
+python web/manage.py migrate --noinput --database=default
 
 mkdir -p "${DJANGO_CACHE_DIR:-/data/django_cache}"
 

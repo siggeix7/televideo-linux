@@ -85,16 +85,39 @@ TEMPLATES = [
 WSGI_APPLICATION = "chronica.wsgi.application"
 
 SQLITE_PATH = os.environ.get("SQLITE_PATH") or str(BASE_DIR / "db.sqlite3")
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": SQLITE_PATH,
-        "OPTIONS": {
-            "timeout": int(os.environ.get("SQLITE_TIMEOUT", "60")),
-            "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
-        },
-    }
+
+POSTGRES_HOST = os.environ.get("POSTGRES_HOST", "").strip()
+_USE_POSTGRES = bool(POSTGRES_HOST)
+
+SQLITE_DEFAULTS = {
+    "ENGINE": "django.db.backends.sqlite3",
+    "NAME": SQLITE_PATH,
+    "OPTIONS": {
+        "timeout": int(os.environ.get("SQLITE_TIMEOUT", "60")),
+        "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
+    },
 }
+
+if _USE_POSTGRES:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.environ.get("POSTGRES_DB", "televideo"),
+            "USER": os.environ.get("POSTGRES_USER", "televideo"),
+            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "televideo"),
+            "HOST": POSTGRES_HOST,
+            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+            "OPTIONS": {
+                "connect_timeout": int(os.environ.get("POSTGRES_CONNECT_TIMEOUT", "10")),
+            },
+        },
+        "sqlite": SQLITE_DEFAULTS,
+    }
+    DATABASE_ROUTERS = ["chronica.routers.DefaultOnlyRouter"]
+else:
+    DATABASES = {
+        "default": SQLITE_DEFAULTS,
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

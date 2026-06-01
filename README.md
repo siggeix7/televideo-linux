@@ -52,19 +52,39 @@ Nel setup preparato in questa macchina trovi:
 /opt/televideo-docker/chronica.sqlite3
 ```
 
-Il database SQLite vive fuori dal container, quindi rimane disponibile quando
-il container viene fermato, ricreato o aggiornato.
+Il database vive fuori dal container, quindi rimane disponibile quando
+il container viene fermato, ricreato o aggiornato. Di default usa SQLite; e'
+possibile passare a PostgreSQL 18.
 
-Docker Compose consigliato:
+Docker Compose consigliato (con PostgreSQL opzionale):
 
 ```yaml
 services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: televideo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-televideo}"
+      POSTGRES_USER: "${POSTGRES_USER:-televideo}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-televideo}"
+    volumes:
+      - /opt/televideo-docker/postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-televideo} -d ${POSTGRES_DB:-televideo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   televideo:
     image: televideo-linux:latest
     container_name: televideo-web
     restart: unless-stopped
     ports:
       - "${PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       SQLITE_PATH: /data/chronica.sqlite3
       SQLITE_TIMEOUT: "${SQLITE_TIMEOUT:-30}"
@@ -78,6 +98,11 @@ services:
       OPENWEATHER_STALE_SECONDS: "${OPENWEATHER_STALE_SECONDS:-9000}"
       OPENWEATHER_MAX_CALLS_PER_MINUTE: "${OPENWEATHER_MAX_CALLS_PER_MINUTE:-40}"
       OPENWEATHER_BATCH_SIZE: "${OPENWEATHER_BATCH_SIZE:-200}"
+      POSTGRES_HOST: "${POSTGRES_HOST:-}"
+      POSTGRES_DB: "${POSTGRES_DB:-televideo}"
+      POSTGRES_USER: "${POSTGRES_USER:-televideo}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-televideo}"
+      POSTGRES_PORT: "${POSTGRES_PORT:-5432}"
       PUBLIC_SITE_URL: "${PUBLIC_SITE_URL:-}"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-false}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-*}"
@@ -110,6 +135,11 @@ OPENWEATHER_REFRESH_CHECK_SECONDS=9000
 OPENWEATHER_STALE_SECONDS=9000
 OPENWEATHER_MAX_CALLS_PER_MINUTE=40
 OPENWEATHER_BATCH_SIZE=200
+POSTGRES_HOST=
+POSTGRES_DB=televideo
+POSTGRES_USER=televideo
+POSTGRES_PASSWORD=televideo
+POSTGRES_PORT=5432
 PUBLIC_SITE_URL=https://televideo.example.com
 
 DJANGO_DEBUG=false
@@ -270,6 +300,11 @@ OPENWEATHER_REFRESH_CHECK_SECONDS frequenza check fallback meteo, default 9000
 OPENWEATHER_STALE_SECONDS eta' massima cache meteo OpenWeatherMap, default 9000 (2.5 ore)
 OPENWEATHER_MAX_CALLS_PER_MINUTE limite interno richieste OpenWeatherMap, default 40
 OPENWEATHER_BATCH_SIZE massimo capoluoghi aggiornati per check, default 200
+POSTGRES_HOST         hostname PostgreSQL; se vuoto usa SQLite
+POSTGRES_DB           nome database PostgreSQL, default televideo
+POSTGRES_USER         utente PostgreSQL, default televideo
+POSTGRES_PASSWORD     password PostgreSQL, default televideo
+POSTGRES_PORT         porta PostgreSQL, default 5432
 APP_VERSION           tag mostrato nel footer, impostato automaticamente dalla release container
 DJANGO_DEBUG          debug Django, default false
 DJANGO_ALLOWED_HOSTS  host consentiti, default *
@@ -284,6 +319,44 @@ DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS include i sottodomini nell'HSTS
 DJANGO_SECURE_HSTS_PRELOAD abilita il flag preload HSTS
 DJANGO_SECRET_KEY     secret key Django per ambienti pubblici
 ```
+
+### Passare a PostgreSQL 18
+
+Di default il progetto usa SQLite. Per passare a PostgreSQL:
+
+1. Aggiungi il servizio `postgres` al `docker-compose.yml` (vedi esempio sopra).
+2. Aggiungi al file `.env`:
+
+```env
+POSTGRES_HOST=postgres
+POSTGRES_DB=televideo
+POSTGRES_USER=televideo
+POSTGRES_PASSWORD=una-password-sicura
+POSTGRES_PORT=5432
+```
+
+3. Avvia il servizio PostgreSQL:
+
+```sh
+docker compose -f /opt/televideo-docker/docker-compose.yml up -d postgres
+```
+
+4. Attendi che PostgreSQL sia pronto (`docker logs televideo-postgres`) e
+   poi esegui la migrazione dei dati da SQLite a PostgreSQL:
+
+```sh
+docker exec televideo-web python web/manage.py migrate_to_postgresql
+```
+
+5. Ricrea il container del sito per agganciare PostgreSQL:
+
+```sh
+docker compose -f /opt/televideo-docker/docker-compose.yml up -d televideo
+```
+
+Il database SQLite originale (`/opt/televideo-docker/chronica.sqlite3`) non
+viene modificato. Per tornare a SQLite basta rimuovere `POSTGRES_HOST` dal
+`.env` e ricreare il container.
 
 Il container avvia automaticamente:
 
