@@ -19,17 +19,18 @@ fi
 # Start embedded PostgreSQL if configured
 if [ -n "${POSTGRES_HOST:-}" ] && [ "${POSTGRES_HOST}" = "localhost" ]; then
     PGDATA="${PGDATA:-/data/postgresql}"
+    PGSOCKET="/data/.s.PGSQL.5432"
     if [ ! -f "$PGDATA/PG_VERSION" ]; then
         echo "Initialising PostgreSQL data directory at $PGDATA ..."
         initdb -D "$PGDATA" --locale=C.UTF-8 --encoding=UTF8 --username="${POSTGRES_USER:-televideo}" --auth=trust
     fi
     echo "Starting PostgreSQL ..."
-    pg_ctl -D "$PGDATA" -l /data/postgresql.log start
-    until pg_isready -q 2>/dev/null; do
+    pg_ctl -D "$PGDATA" -o "-k /data" -l /data/postgresql.log start
+    until pg_isready -q -h /data 2>/dev/null; do
         sleep 1
     done
-    if ! psql -lqt | cut -d '|' -f 1 | grep -qw "${POSTGRES_DB:-televideo}"; then
-        createdb "${POSTGRES_DB:-televideo}" -O "${POSTGRES_USER:-televideo}"
+    if ! psql -h /data -lqt 2>/dev/null | cut -d '|' -f 1 | grep -qw "${POSTGRES_DB:-televideo}"; then
+        createdb -h /data "${POSTGRES_DB:-televideo}" -O "${POSTGRES_USER:-televideo}"
     fi
     echo "PostgreSQL is ready."
 fi
