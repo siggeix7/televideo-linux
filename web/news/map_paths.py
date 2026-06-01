@@ -46,6 +46,57 @@ _RENDER_ORDER = {
 _DATA = json.loads(Path(__file__).with_name("map_data.json").read_text())
 
 
+def _clean_path(d: str) -> str:
+    """Remove Z from sub-paths that are chained together.
+    
+    The raw data uses M...Z M...Z where consecutive segments share endpoints.
+    Each Z closes the segment back to its own start, creating slivers.
+    We merge chained segments by removing Z on connecting segments,
+    keeping Z only on closed standalone segments (islands/holes).
+    """
+    parts = [p.strip() for p in d.split("Z")]
+    parts = [p for p in parts if p.strip()]
+
+    if len(parts) <= 1:
+        return d
+
+    cleaned = []
+    for i, part in enumerate(parts):
+        cleaned.append(part.strip())
+
+        if i == len(parts) - 1:
+            # Last part: always close with Z
+            cleaned.append("Z")
+            break
+
+        # Check if this part connects to the next part
+        # Get the last coordinate of this part
+        this_tokens = part.replace("M", "").replace("L", "").strip().split()
+        next_part = parts[i + 1].strip()
+        # Get first coordinate of next part (after the initial M)
+        next_tokens = next_part.replace("M", "").replace("L", "").strip().split()
+
+        if not this_tokens or not next_tokens:
+            cleaned.append("Z")
+            continue
+
+        this_last = this_tokens[-1]
+        next_first = next_tokens[0]
+
+        # Parse coordinates
+        try:
+            x1, y1 = this_last.split(",")
+            x2, y2 = next_first.split(",")
+            if abs(float(x1) - float(x2)) < 1.0 and abs(float(y1) - float(y2)) < 1.0:
+                # Connected: don't close this segment with Z
+                continue
+        except (ValueError, IndexError):
+            pass
+        cleaned.append("Z")
+
+    return " ".join(cleaned)
+
+
 def _estimate_area(item: dict) -> float:
     """Approximate the area from the SVG path bounding box."""
     d = item["d"]
@@ -79,7 +130,7 @@ def get_map_regions():
             "font_size": _FONT.get(slug, 9),
             "cx": item["cx"],
             "cy": item["cy"],
-            "path": item["d"],
+            "path": _clean_path(item["d"]),
             "url": reverse("news:region", kwargs={"region_slug_value": slug}),
         }
         candidates.append(entry)
