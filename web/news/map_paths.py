@@ -33,13 +33,46 @@ _FONT = {
     "sicilia": 12, "sardegna": 12,
 }
 
+# Render order: smaller/enclosed regions LAST so they render on top and remain clickable.
+# Higher index = drawn later = on top.
+_RENDER_ORDER = {
+    "sicilia": 1, "sardegna": 1,
+    "piemonte": 2, "lombardia": 2, "veneto": 2, "emilia": 2, "toscana": 2,
+    "lazio": 3, "campania": 3, "puglia": 3, "calabria": 3,
+    "abruzzo": 4, "marche": 4, "liguria": 4, "friuli": 4,
+    "umbria": 5, "molise": 5, "basilicata": 5, "trentino": 5, "altoadige": 5, "aosta": 5,
+}
+
 _DATA = json.loads(Path(__file__).with_name("map_data.json").read_text())
+
+
+def _estimate_area(item: dict) -> float:
+    """Approximate the area from the SVG path bounding box."""
+    d = item["d"]
+    xs, ys = [], []
+    for part in d.split("M"):
+        if not part.strip():
+            continue
+        coords = part.strip().split()
+        for c in coords:
+            c = c.rstrip("Z")
+            if "," in c:
+                try:
+                    x_s, y_s = c.split(",")
+                    xs.append(float(x_s))
+                    ys.append(float(y_s))
+                except ValueError:
+                    pass
+    if not xs:
+        return 0
+    return (max(xs) - min(xs)) * (max(ys) - min(ys))
 
 
 def get_map_regions():
     regions = []
-    for slug, item in sorted(_DATA.items()):
-        regions.append({
+    candidates = []
+    for slug, item in _DATA.items():
+        entry = {
             "slug": slug,
             "label": _NAMES.get(slug, slug),
             "label_short": _SHORT.get(slug, ""),
@@ -48,5 +81,9 @@ def get_map_regions():
             "cy": item["cy"],
             "path": item["d"],
             "url": reverse("news:region", kwargs={"region_slug_value": slug}),
-        })
-    return regions
+        }
+        candidates.append(entry)
+
+    # Sort by render order (small on top), then by estimated area (small on top)
+    candidates.sort(key=lambda r: (_RENDER_ORDER.get(r["slug"], 3), -_estimate_area(_DATA[r["slug"]])))
+    return candidates
