@@ -22,9 +22,9 @@ shell: build
 	docker run --rm -it -v televideo-data:/data $(IMAGE):$(TAG) manage shell
 
 test:
-	$(PYTHON) -m py_compile televideo
-	$(PYTHON) web/manage.py check
-	$(PYTHON) web/manage.py makemigrations --check --dry-run
+	DJANGO_SECRET_KEY=test-key $(PYTHON) -m py_compile televideo
+	DJANGO_SECRET_KEY=test-key $(PYTHON) web/manage.py check
+	DJANGO_SECRET_KEY=test-key $(PYTHON) web/manage.py makemigrations --check --dry-run
 
 clean:
 	rm -f $(TMP_IMAGE)

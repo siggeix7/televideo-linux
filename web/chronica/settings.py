@@ -16,7 +16,10 @@ def env_bool(name: str, default: bool = False) -> bool:
 def env_list(name: str, default: str = "") -> list[str]:
     return [value.strip() for value in os.environ.get(name, default).split(",") if value.strip()]
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "chronica-televidei-development-key")
+_SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "")
+if not _SECRET_KEY:
+    raise SystemExit("DJANGO_SECRET_KEY is required. Generate one with: python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'")
+SECRET_KEY = _SECRET_KEY
 DEBUG = env_bool("DJANGO_DEBUG")
 RUNNING_TESTS = "test" in sys.argv
 ADMIN_ENABLED = env_bool("DJANGO_ADMIN_ENABLED")
@@ -102,9 +105,9 @@ if _USE_POSTGRES:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.environ.get("POSTGRES_DB", "televideo"),
-            "USER": os.environ.get("POSTGRES_USER", "televideo"),
-            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "televideo"),
+            "NAME": os.environ.get("POSTGRES_DB", ""),
+            "USER": os.environ.get("POSTGRES_USER", ""),
+            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", ""),
             "HOST": POSTGRES_HOST,
             "PORT": os.environ.get("POSTGRES_PORT", "5432"),
             "OPTIONS": {

@@ -20,12 +20,35 @@ fi
 if [ -n "${POSTGRES_HOST:-}" ] && [ "${POSTGRES_HOST}" = "localhost" ]; then
     PGDATA="${PGDATA:-/data/postgresql}"
     PGUSER="${POSTGRES_USER:-televideo}"
+    PGPASSWORD="${POSTGRES_PASSWORD:-}"
     PGHOST="/data"
+    export PGPASSWORD
+
+    PG_AUTH_FILE="$PGDATA/pg_hba.conf"
+
     if ! pg_isready -q -h "$PGHOST" 2>/dev/null; then
         if [ ! -f "$PGDATA/PG_VERSION" ]; then
             echo "Initialising PostgreSQL data directory at $PGDATA ..."
             initdb -D "$PGDATA" --locale=C.UTF-8 --encoding=UTF8 --username="$PGUSER" --auth=trust
         fi
+
+        # Harden auth: ensure pg_hba.conf uses scram-sha-256 after password is set
+        if grep -q 'trust$' "$PG_AUTH_FILE" 2>/dev/null; then
+            if [ -n "$PGPASSWORD" ]; then
+                echo "Starting PostgreSQL (setup mode) ..."
+                pg_ctl -D "$PGDATA" -o "-k $PGHOST -c listen_addresses=" -l /data/postgresql.log start
+                until pg_isready -q -h "$PGHOST" 2>/dev/null; do sleep 1; done
+                echo "Setting password for $PGUSER ..."
+                ESCAPED_PW=$(printf '%s' "$PGPASSWORD" | sed "s/'/''/g")
+                psql -h "$PGHOST" -U "$PGUSER" -d postgres -c "ALTER ROLE \"$PGUSER\" PASSWORD '${ESCAPED_PW}'" >/dev/null
+                pg_ctl -D "$PGDATA" stop -m fast 2>/dev/null || true
+                sed -i 's/trust$/scram-sha-256/' "$PG_AUTH_FILE"
+                echo "PostgreSQL auth hardened to scram-sha-256."
+            else
+                echo "WARNING: POSTGRES_PASSWORD not set. PostgreSQL will use trust authentication (insecure)." >&2
+            fi
+        fi
+
         echo "Starting PostgreSQL ..."
         pg_ctl -D "$PGDATA" -o "-k $PGHOST" -l /data/postgresql.log start
         until pg_isready -q -h "$PGHOST" 2>/dev/null; do

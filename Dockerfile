@@ -35,7 +35,7 @@ COPY . .
 RUN chmod +x /app/televideo /app/docker/entrypoint.sh /app/docker/force_refresh_meteo.sh /app/docker/migrate_to_postgresql.sh \
     && ln -s /app/docker/force_refresh_meteo.sh /usr/local/bin/refresh-meteo \
     && ln -s /app/docker/migrate_to_postgresql.sh /usr/local/bin/migrate-to-postgresql \
-    && python3 web/manage.py collectstatic --noinput
+    && DJANGO_SECRET_KEY=build-collectstatic-key python3 web/manage.py collectstatic --noinput
 
 VOLUME ["/data"]
 EXPOSE 8000
