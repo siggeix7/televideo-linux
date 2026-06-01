@@ -430,6 +430,12 @@ class ViewTests(TestCase):
         self.assertNotContains(response, "weather-zone-grid")
         self.assertNotContains(response, "temperature-grid")
 
+    def test_atom_feed_returns_valid_xml(self):
+        response = self.client.get(reverse("news:atom_feed"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'<?xml version="1.0" encoding="UTF-8"?>', response.content)
+        self.assertContains(response, "<feed xmlns=")
+
     def test_invalid_section_returns_404(self):
         response = self.client.get("/nonexistent/")
         self.assertEqual(response.status_code, 404)

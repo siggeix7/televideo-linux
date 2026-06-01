@@ -5,7 +5,9 @@ import re
 import threading
 
 from django.conf import settings
-from django.db import close_old_connections
+import time as time_mod
+
+from django.db import OperationalError, close_old_connections
 from django.utils import timezone
 
 from .constants import (
@@ -267,6 +269,24 @@ def refresh_worker() -> None:
         _REFRESH_LOCK.release()
 
 
+_MAX_DB_RETRIES = 3
+_INITIAL_DB_RETRY_DELAY = 1.0
+
+
+def _retry_on_db_lock(operation, *args, **kwargs):
+    delay = _INITIAL_DB_RETRY_DELAY
+    for attempt in range(_MAX_DB_RETRIES):
+        try:
+            return operation(*args, **kwargs)
+        except OperationalError as exc:
+            if "database is locked" not in str(exc):
+                raise
+            if attempt == _MAX_DB_RETRIES - 1:
+                raise
+            time_mod.sleep(delay)
+            delay *= 2
+
+
 def refresh_section_if_stale(section: str, region: str = "") -> None:
     if getattr(settings, "RUNNING_TESTS", False):
         return
@@ -293,7 +313,7 @@ def refresh_section_if_stale(section: str, region: str = "") -> None:
 def section_refresh_worker(section: str, region: str) -> None:
     try:
         close_old_connections()
-        update_section_snapshots(section, region)
+        _retry_on_db_lock(update_section_snapshots, section, region)
     finally:
         close_old_connections()
         _SECTION_REFRESH_LOCK.release()
@@ -306,12 +326,12 @@ def refresh_all_sections() -> int:
         sections = [section for section in sections if section != "meteo"]
     for section in sections:
         try:
-            saved += update_section_snapshots(section)
+            saved += _retry_on_db_lock(update_section_snapshots, section)
         except RuntimeError:
             pass
     for region in REGION_CHOICES:
         try:
-            saved += update_section_snapshots("regioni", region)
+            saved += _retry_on_db_lock(update_section_snapshots, "regioni", region)
         except RuntimeError:
             pass
     return saved

@@ -29,7 +29,7 @@ from .formatters import (
 from .models import LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
 from .map_paths import get_map_regions
 from .openweather import openweather_cache_by_city
-from .site_urls import public_absolute_url
+from .site_urls import public_absolute_url, public_base_url
 from .weather_capitals import build_region_capital_weather, enrich_map_regions
 from .services.parser import compact_text, display_snapshot_text, fix_mojibake, prose_paragraphs
 from .services import (

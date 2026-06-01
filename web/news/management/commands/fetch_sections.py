@@ -3,8 +3,9 @@ import time
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.db import close_old_connections
 
-from news.services.updater import refresh_all_sections
+from news.services.updater import _retry_on_db_lock, refresh_all_sections
 
 
 logger = logging.getLogger(__name__)
@@ -29,7 +30,8 @@ class Command(BaseCommand):
         while True:
             sleep_interval = interval
             try:
-                saved = refresh_all_sections()
+                close_old_connections()
+                saved = _retry_on_db_lock(refresh_all_sections)
             except Exception as exc:
                 logger.exception("Televideo section refresh failed")
                 if options["once"] or not loop:

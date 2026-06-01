@@ -3,11 +3,29 @@ import time
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.db import OperationalError, close_old_connections
 
 from news.openweather import refresh_due_openweather_cities
 
 
 logger = logging.getLogger(__name__)
+
+_MAX_DB_RETRIES = 3
+_INITIAL_DB_RETRY_DELAY = 1.0
+
+
+def _retry_on_db_lock(operation, *args, **kwargs):
+    delay = _INITIAL_DB_RETRY_DELAY
+    for attempt in range(_MAX_DB_RETRIES):
+        try:
+            return operation(*args, **kwargs)
+        except OperationalError as exc:
+            if "database is locked" not in str(exc):
+                raise
+            if attempt == _MAX_DB_RETRIES - 1:
+                raise
+            time.sleep(delay)
+            delay *= 2
 
 
 class Command(BaseCommand):
@@ -32,7 +50,8 @@ class Command(BaseCommand):
         while True:
             sleep_interval = interval
             try:
-                result = refresh_due_openweather_cities(force=options["force"], max_calls=options["max_calls"])
+                close_old_connections()
+                result = _retry_on_db_lock(refresh_due_openweather_cities, force=options["force"], max_calls=options["max_calls"])
             except Exception as exc:
                 logger.exception("OpenWeather refresh check failed")
                 if options["once"] or not loop:
