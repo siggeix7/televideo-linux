@@ -47,54 +47,104 @@ _DATA = json.loads(Path(__file__).with_name("map_data.json").read_text())
 
 
 def _clean_path(d: str) -> str:
-    """Remove Z from sub-paths that are chained together.
+    """Merge chained M...Z sub-paths into a single closed polygon,
+    discarding internal holes/islands that create empty areas.
     
     The raw data uses M...Z M...Z where consecutive segments share endpoints.
-    Each Z closes the segment back to its own start, creating slivers.
-    We merge chained segments by removing Z on connecting segments,
-    keeping Z only on closed standalone segments (islands/holes).
+    We merge the main chain into one polygon and drop standalone sub-paths
+    that are likely to be lakes/holes inside the region.
     """
-    parts = [p.strip() for p in d.split("Z")]
-    parts = [p for p in parts if p.strip()]
+    parts_raw = [p.strip() for p in d.split("Z")]
+    parts_raw = [p for p in parts_raw if p.strip()]
 
-    if len(parts) <= 1:
+    if len(parts_raw) <= 1:
         return d
 
-    cleaned = []
-    for i, part in enumerate(parts):
-        cleaned.append(part.strip())
-
-        if i == len(parts) - 1:
-            # Last part: always close with Z
-            cleaned.append("Z")
-            break
-
-        # Check if this part connects to the next part
-        # Get the last coordinate of this part
-        this_tokens = part.replace("M", "").replace("L", "").strip().split()
-        next_part = parts[i + 1].strip()
-        # Get first coordinate of next part (after the initial M)
-        next_tokens = next_part.replace("M", "").replace("L", "").strip().split()
-
-        if not this_tokens or not next_tokens:
-            cleaned.append("Z")
-            continue
-
-        this_last = this_tokens[-1]
-        next_first = next_tokens[0]
-
-        # Parse coordinates
-        try:
-            x1, y1 = this_last.split(",")
-            x2, y2 = next_first.split(",")
-            if abs(float(x1) - float(x2)) < 1.0 and abs(float(y1) - float(y2)) < 1.0:
-                # Connected: don't close this segment with Z
+    # First pass: extract all sub-paths
+    subpaths = []
+    for part in parts_raw:
+        part = part.strip()
+        tokens = part.strip().split()
+        coord_tokens = []
+        for tok in tokens:
+            if tok in ("M", "L"):
                 continue
-        except (ValueError, IndexError):
-            pass
-        cleaned.append("Z")
+            tok = tok.rstrip("Z").rstrip(",")
+            if "," in tok:
+                coord_tokens.append(tok)
+        if coord_tokens:
+            subpaths.append({
+                "text": part,
+                "start": coord_tokens[0],
+                "end": coord_tokens[-1],
+            })
 
-    return " ".join(cleaned)
+    # Build connected chains
+    used = set()
+    chains = []
+    for i, sp in enumerate(subpaths):
+        if i in used:
+            continue
+        chain = [i]
+        used.add(i)
+        current_end = sp["end"]
+        while True:
+            found = False
+            for j, sp2 in enumerate(subpaths):
+                if j in used:
+                    continue
+                try:
+                    x1, y1 = map(float, current_end.split(","))
+                    x2, y2 = map(float, sp2["start"].split(","))
+                    if abs(x1 - x2) < 1.0 and abs(y1 - y2) < 1.0:
+                        chain.append(j)
+                        used.add(j)
+                        current_end = sp2["end"]
+                        found = True
+                        break
+                except (ValueError, IndexError):
+                    pass
+            if not found:
+                break
+        chains.append(chain)
+
+    # For each chain, merge into one path
+    merged_paths = []
+    for chain in chains:
+        tokens_list = []
+        for idx in chain:
+            sp = subpaths[idx]
+            toks = sp["text"].strip().split()
+            if idx == chain[0]:
+                tokens_list.extend(toks)
+            else:
+                # Remove M and the first coordinate (duplicate of previous end)
+                if toks[0] == "M":
+                    toks = toks[2:]  # skip "M x,y"
+                tokens_list.extend(toks)
+        # Close with Z
+        path = " ".join(tokens_list) + " Z"
+        # Compute bounding box area
+        xs, ys = [], []
+        for tok in tokens_list:
+            if tok in ("M", "L", "Z"):
+                continue
+            try:
+                x, y = tok.split(",")
+                xs.append(float(x))
+                ys.append(float(y))
+            except ValueError:
+                pass
+        if xs and ys:
+            bbox_area = (max(xs) - min(xs)) * (max(ys) - min(ys))
+        else:
+            bbox_area = 0
+        merged_paths.append((path, bbox_area))
+
+    # Sort by area (largest first) and keep only the main polygon
+    merged_paths.sort(key=lambda x: -x[1])
+
+    return merged_paths[0][0]
 
 
 def _estimate_area(item: dict) -> float:
