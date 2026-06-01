@@ -182,8 +182,12 @@ def get_map_regions():
     merged_slugs = set()
     for new_slug, source_slugs in _MERGE.items():
         merged_slugs.update(source_slugs)
-        # Combine paths: concatenate the raw d attributes
-        combined_d = " ".join(_DATA[s]["d"] for s in source_slugs if s in _DATA)
+        # Keep each source region as a separate M...Z sub-path so both are rendered
+        cleaned_parts = []
+        for s in source_slugs:
+            if s in _DATA:
+                cleaned_parts.append(_clean_path(_DATA[s]["d"]))
+        combined_d = " ".join(cleaned_parts)
         # Average centroids
         cxs, cys = [], []
         for s in source_slugs:
@@ -199,7 +203,7 @@ def get_map_regions():
             "font_size": _FONT.get(new_slug, 9),
             "cx": cx,
             "cy": cy,
-            "path": _clean_path(combined_d),
+            "path": combined_d,
             "url": reverse("news:region", kwargs={"region_slug_value": new_slug}),
         }
         candidates.append(entry)
