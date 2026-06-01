@@ -29,7 +29,7 @@ python web/manage.py fetch_sections --loop --interval "${TELETEXT_SECTION_REFRES
 
 # Optional OpenWeatherMap fallback for missing province-capital weather.
 if [ -n "${OPENWEATHER_API_KEY:-}" ]; then
-    python web/manage.py refresh_openweather --loop --interval "${OPENWEATHER_REFRESH_CHECK_SECONDS:-600}" &
+    python web/manage.py refresh_openweather --loop --interval "${OPENWEATHER_REFRESH_CHECK_SECONDS:-9000}" &
 fi
 
 exec gunicorn chronica.wsgi:application \

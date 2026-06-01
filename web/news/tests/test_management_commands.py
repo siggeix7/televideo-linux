@@ -3,6 +3,9 @@ from unittest.mock import patch
 
 from django.core.management import call_command
 from django.test import SimpleTestCase, override_settings
+from django.utils import timezone
+
+from news.models import OpenWeatherCity
 
 
 class FetchTelevideoCommandTests(SimpleTestCase):
@@ -53,3 +56,39 @@ class FetchSectionsCommandTests(SimpleTestCase):
         self.assertEqual(calls, [1, 1])
         sleep_mock.assert_called_once_with(60)
         self.assertIn("Televideo section refresh failed: temporary Rai error", stderr.getvalue())
+
+
+class ForceRefreshMeteoCommandTests(SimpleTestCase):
+    def test_force_refresh_without_openweather_key(self):
+        stdout = StringIO()
+
+        def fake_update_section(section, region=""):
+            return 3
+
+        with patch("news.management.commands.force_refresh_meteo.update_section_snapshots", side_effect=fake_update_section):
+            call_command("force_refresh_meteo", stdout=stdout)
+
+        output = stdout.getvalue()
+        self.assertIn("Televideo meteo snapshots: 3 record(s) saved", output)
+        self.assertIn("OpenWeatherMap: API key not configured, skipped", output)
+
+    @override_settings(OPENWEATHER_API_KEY="test-key")
+    def test_force_refresh_with_openweather_key(self):
+        stdout = StringIO()
+
+        def fake_update_section(section, region=""):
+            return 5
+
+        def fake_refresh(force=False, max_calls=None):
+            return {"status": "updated", "updated": 10, "errors": 0, "remaining": 0, "results": []}
+
+        with (
+            patch("news.management.commands.force_refresh_meteo.update_section_snapshots", side_effect=fake_update_section),
+            patch("news.management.commands.force_refresh_meteo.refresh_due_openweather_cities", side_effect=fake_refresh),
+        ):
+            call_command("force_refresh_meteo", stdout=stdout)
+
+        output = stdout.getvalue()
+        self.assertIn("Televideo meteo snapshots: 5 record(s) saved", output)
+        self.assertIn("OpenWeatherMap: updated", output)
+        self.assertIn("updated=10", output)

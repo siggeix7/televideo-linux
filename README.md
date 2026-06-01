@@ -72,8 +72,9 @@ services:
       NEWS_FETCH_LIMIT: "${NEWS_FETCH_LIMIT:-30}"
       CATEGORY_FETCH_LIMIT: "${CATEGORY_FETCH_LIMIT:-2}"
       TELETEXT_SECTION_REFRESH_SECONDS: "${TELETEXT_SECTION_REFRESH_SECONDS:-1800}"
+      METEO_SECTION_REFRESH_SECONDS: "${METEO_SECTION_REFRESH_SECONDS:-9000}"
       OPENWEATHER_API_KEY: "${OPENWEATHER_API_KEY:-}"
-      OPENWEATHER_REFRESH_CHECK_SECONDS: "${OPENWEATHER_REFRESH_CHECK_SECONDS:-600}"
+      OPENWEATHER_REFRESH_CHECK_SECONDS: "${OPENWEATHER_REFRESH_CHECK_SECONDS:-9000}"
       OPENWEATHER_STALE_SECONDS: "${OPENWEATHER_STALE_SECONDS:-43200}"
       OPENWEATHER_MAX_CALLS_PER_MINUTE: "${OPENWEATHER_MAX_CALLS_PER_MINUTE:-40}"
       OPENWEATHER_BATCH_SIZE: "${OPENWEATHER_BATCH_SIZE:-40}"
@@ -103,8 +104,9 @@ NEWS_REFRESH_SECONDS=1800
 NEWS_FETCH_LIMIT=30
 CATEGORY_FETCH_LIMIT=2
 TELETEXT_SECTION_REFRESH_SECONDS=1800
+METEO_SECTION_REFRESH_SECONDS=9000
 OPENWEATHER_API_KEY=
-OPENWEATHER_REFRESH_CHECK_SECONDS=600
+OPENWEATHER_REFRESH_CHECK_SECONDS=9000
 OPENWEATHER_STALE_SECONDS=43200
 OPENWEATHER_MAX_CALLS_PER_MINUTE=40
 OPENWEATHER_BATCH_SIZE=40
@@ -262,8 +264,9 @@ NEWS_REFRESH_SECONDS  frequenza aggiornamento notizie, default 1800
 NEWS_FETCH_LIMIT      quante notizie conservare a ogni giro, default 30
 CATEGORY_FETCH_LIMIT  quante notizie importare per ogni categoria Televideo, default 2
 TELETEXT_SECTION_REFRESH_SECONDS frequenza cache sezioni Televideo dedicate, default 1800
+METEO_SECTION_REFRESH_SECONDS frequenza refresh dati meteo, default 9000 (2.5 ore)
 OPENWEATHER_API_KEY chiave API OpenWeatherMap; se vuota il fallback meteo e' disabilitato
-OPENWEATHER_REFRESH_CHECK_SECONDS frequenza check fallback meteo, default 600
+OPENWEATHER_REFRESH_CHECK_SECONDS frequenza check fallback meteo, default 9000
 OPENWEATHER_STALE_SECONDS eta' massima cache meteo OpenWeatherMap, default 43200
 OPENWEATHER_MAX_CALLS_PER_MINUTE limite interno richieste OpenWeatherMap, default 40
 OPENWEATHER_BATCH_SIZE massimo capoluoghi aggiornati per check, default 40
@@ -363,11 +366,24 @@ La chiave non va salvata nel repository. Senza `OPENWEATHER_API_KEY` il sito
 continua a usare solo Televideo per la sezione meteo.
 
 Il worker non chiama l'API durante le visite degli utenti: legge e aggiorna una
-cache SQLite. Ogni 10 minuti controlla se ci sono capoluoghi con dati piu'
+cache SQLite. Ogni 2.5 ore controlla se ci sono capoluoghi con dati piu'
 vecchi di 12 ore e, se necessario, aggiorna un batch da massimo
 `OPENWEATHER_BATCH_SIZE` capoluoghi. Il rate limiter interno resta sotto
 `OPENWEATHER_MAX_CALLS_PER_MINUTE` richieste al minuto (default 40), cosi' il
 piano gratuito non viene stressato.
+
+Per forzare l'aggiornamento immediato di tutti i dati meteo
+(Televideo + OpenWeatherMap), esegui dentro al container:
+
+```sh
+docker exec televideo-web python web/manage.py force_refresh_meteo
+```
+
+oppure, se il container ha lo script sotto `/usr/local/bin/refresh-meteo`:
+
+```sh
+docker exec televideo-web refresh-meteo
+```
 
 ## SuperEnalotto
 

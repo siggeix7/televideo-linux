@@ -24,7 +24,8 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-RUN chmod +x /app/televideo /app/docker/entrypoint.sh \
+RUN chmod +x /app/televideo /app/docker/entrypoint.sh /app/docker/force_refresh_meteo.sh \
+    && ln -s /app/docker/force_refresh_meteo.sh /usr/local/bin/refresh-meteo \
     && python web/manage.py collectstatic --noinput
 
 VOLUME ["/data"]

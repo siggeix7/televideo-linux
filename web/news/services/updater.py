@@ -298,7 +298,8 @@ def refresh_section_if_stale(section: str, region: str = "") -> None:
         .order_by("-fetched_at")
         .first()
     )
-    if latest and (timezone.now() - latest.fetched_at).total_seconds() < settings.TELETEXT_SECTION_REFRESH_SECONDS:
+    refresh_seconds = settings.METEO_SECTION_REFRESH_SECONDS if section == "meteo" else settings.TELETEXT_SECTION_REFRESH_SECONDS
+    if latest and (timezone.now() - latest.fetched_at).total_seconds() < refresh_seconds:
         return
     if not _SECTION_REFRESH_LOCK.acquire(blocking=False):
         return

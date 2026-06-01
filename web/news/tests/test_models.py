@@ -1,5 +1,6 @@
 from datetime import date
 
+from django.conf import settings
 from django.test import TestCase
 
 from news.models import Category, LottoDraw, NewsItem, OpenWeatherCity, SuperEnalottoDraw, TelevideoPageSnapshot
@@ -101,3 +102,11 @@ class TelevideoPageSnapshotTests(TestCase):
         )
         self.assertEqual(snapshot.section, "test")
         self.assertEqual(snapshot.page, 100)
+
+
+class SettingsDefaultsTests(TestCase):
+    def test_meteo_section_refresh_defaults_to_two_and_half_hours(self):
+        self.assertEqual(settings.METEO_SECTION_REFRESH_SECONDS, 9000)
+
+    def test_openweather_refresh_check_defaults_to_two_and_half_hours(self):
+        self.assertEqual(settings.OPENWEATHER_REFRESH_CHECK_SECONDS, 9000)
