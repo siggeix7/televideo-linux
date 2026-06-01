@@ -16,6 +16,7 @@
         <g class="italy-regions">
             {% for r in map_regions %}
             <a href="{{ r.url }}" aria-label="{{ r.label }}">
+                <title>{{ r.label }}</title>
                 <path d="{{ r.path }}" fill="rgba(0,170,0,0.28)" stroke="rgba(0,255,0,0.65)" stroke-width="1.2" stroke-linejoin="round" class="italy-region"/>
             </a>
             {% endfor %}

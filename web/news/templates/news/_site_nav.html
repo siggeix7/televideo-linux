@@ -60,10 +60,14 @@
         }
         function applyTheme(value) {
             var isLight = value === "light";
+            var themeMeta = document.querySelector('meta[name="theme-color"]');
             if (isLight) {
                 document.documentElement.setAttribute("data-theme", "light");
             } else {
                 document.documentElement.removeAttribute("data-theme");
+            }
+            if (themeMeta) {
+                themeMeta.setAttribute("content", isLight ? "#e8e4d8" : "#001400");
             }
             themeToggle.setAttribute("aria-pressed", isLight ? "true" : "false");
             themeToggle.setAttribute("aria-label", isLight ? "Attiva tema scuro" : "Attiva tema chiaro");

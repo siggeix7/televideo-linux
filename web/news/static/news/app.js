@@ -27,6 +27,7 @@
     const DEFAULT_LIMIT = Math.max(Number(body.dataset.defaultLimit || body.dataset.initialLimit || 25), 1);
     const initialParams = new URLSearchParams(window.location.search);
     const hasServerRendered = grid && grid.dataset.serverRendered === "true";
+    const reduceMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
 
     let language = "it";
     let page = Math.max(Number(initialParams.get("page") || localStorage.getItem("chronica-page") || 1) || 1, 1);
@@ -49,6 +50,51 @@
     let requestSeq = 0;
     let searchTimeout = null;
     const MAX_RETRIES = 3;
+
+    function scrollToTop() {
+        window.scrollTo({ top: 0, behavior: reduceMotion && reduceMotion.matches ? "auto" : "smooth" });
+    }
+
+    function setGridBusy(isBusy) {
+        if (grid) {
+            grid.setAttribute("aria-busy", isBusy ? "true" : "false");
+        }
+    }
+
+    function appendHighlightedText(node, text, query) {
+        var source = String(text || "");
+        var needle = String(query || "").trim();
+        node.replaceChildren();
+        if (!needle) {
+            node.textContent = source;
+            return;
+        }
+
+        var lowerSource = source.toLocaleLowerCase("it-IT");
+        var lowerNeedle = needle.toLocaleLowerCase("it-IT");
+        var cursor = 0;
+        var matchIndex = lowerSource.indexOf(lowerNeedle, cursor);
+        if (matchIndex === -1) {
+            node.textContent = source;
+            return;
+        }
+
+        while (matchIndex !== -1) {
+            if (matchIndex > cursor) {
+                node.appendChild(document.createTextNode(source.slice(cursor, matchIndex)));
+            }
+            var mark = document.createElement("mark");
+            mark.className = "search-hit";
+            mark.textContent = source.slice(matchIndex, matchIndex + needle.length);
+            node.appendChild(mark);
+            cursor = matchIndex + needle.length;
+            matchIndex = lowerSource.indexOf(lowerNeedle, cursor);
+        }
+
+        if (cursor < source.length) {
+            node.appendChild(document.createTextNode(source.slice(cursor)));
+        }
+    }
 
     function applyUi(nextUi) {
         ui = nextUi || ui;
@@ -139,6 +185,7 @@
 
     function showSkeletons(count) {
         if (!skeletonTemplate) return;
+        setGridBusy(true);
         grid.classList.add("is-loading");
         grid.replaceChildren();
         for (var i = 0; i < count; i++) {
@@ -188,6 +235,7 @@
         updateDateControls(payload.date_min, payload.date_max);
 
         grid.classList.remove("is-loading");
+        setGridBusy(false);
         grid.replaceChildren();
 
         var hasError = !!payload.error;
@@ -217,7 +265,9 @@
             }
         }
 
-        statusText.textContent = ui.updated || "Notizie aggiornate";
+        var total = payload.pagination && typeof payload.pagination.total === "number" ? payload.pagination.total : null;
+        var totalSuffix = total === null ? "" : " · " + total + (total === 1 ? " notizia" : " notizie");
+        statusText.textContent = (payload.search_query ? "Risultati aggiornati" : (ui.updated || "Notizie aggiornate")) + totalSuffix;
         lastRefresh.textContent = formatDate(payload.generated_at);
         retryCount = 0;
 
@@ -235,7 +285,7 @@
 
         grouped.forEach(function (group) {
             var section = document.createElement("section");
-            section.className = "news-group";
+            section.className = "news-group animate-in";
 
             var header = document.createElement("div");
             header.className = "news-group__header";
@@ -254,13 +304,13 @@
                 var node = template.content.firstElementChild.cloneNode(true);
                 node.querySelector(".news-card__ribbon").textContent = ui.card_ribbon || "Novella";
                 var heading = node.querySelector("h2");
-                heading.textContent = item.title;
+                appendHighlightedText(heading, item.title, searchQuery);
                 node.querySelector(".news-card__meta").textContent = formatPublished(item);
                 node.querySelector(".news-card__source").textContent =
                     item.source_title && item.source_title !== item.title
                         ? (ui.source_prefix || "Titolo originale:") + " " + item.source_title
                         : "";
-                node.querySelector(".news-card__summary").textContent = item.summary;
+                appendHighlightedText(node.querySelector(".news-card__summary"), item.summary, searchQuery);
                 if (!firstRender && !seen.has(item.id)) {
                     node.classList.add("is-new");
                 }
@@ -270,6 +320,9 @@
 
             section.appendChild(cards);
             grid.appendChild(section);
+            requestAnimationFrame(function () {
+                section.classList.add("is-visible");
+            });
         });
 
         renderPagination(payload.pagination);
@@ -285,6 +338,7 @@
         var controller = new AbortController();
         activeController = controller;
         loading = true;
+        setGridBusy(true);
         hideError();
 
         if (!quiet) showSkeletons(Math.min(limit, DEFAULT_LIMIT));
@@ -317,6 +371,7 @@
             if (seq !== requestSeq) return;
             loading = false;
             grid.classList.remove("is-loading");
+            setGridBusy(false);
             grid.replaceChildren();
             emptyState.hidden = true;
             var errMsg;
@@ -342,14 +397,14 @@
     previousPage.addEventListener("click", function () {
         if (page > 1) {
             page -= 1;
-            window.scrollTo({ top: 0, behavior: "smooth" });
+            scrollToTop();
             loadNews();
         }
     });
 
     nextPage.addEventListener("click", function () {
         page += 1;
-        window.scrollTo({ top: 0, behavior: "smooth" });
+        scrollToTop();
         loadNews();
     });
 
@@ -364,7 +419,7 @@
             firstRender = true;
             retryCount = 0;
             updateLimitControls();
-            window.scrollTo({ top: 0, behavior: "smooth" });
+            scrollToTop();
             loadNews();
         });
     });
@@ -380,7 +435,6 @@
                 localStorage.setItem("chronica-page", String(page));
                 firstRender = true;
                 retryCount = 0;
-                window.scrollTo({ top: 0, behavior: "smooth" });
                 loadNews();
             }, 200);
         });

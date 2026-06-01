@@ -62,7 +62,7 @@
                 </section>
             </noscript>
 
-            <section id="news-grid" class="news-grid" aria-live="polite" aria-label="{{ ui.news_link }}"{% if fallback_groups %} data-server-rendered="true"{% endif %}>
+            <section id="news-grid" class="news-grid" aria-live="off" aria-busy="false" aria-label="{{ ui.news_link }}"{% if fallback_groups %} data-server-rendered="true"{% endif %}>
                 {% if fallback_groups %}
                 {% for group in fallback_groups %}
                 <section class="news-group">
