@@ -9,7 +9,7 @@ from django.urls import reverse
 
 _SHORT = {
     "piemonte": "PIE", "aosta": "VdA", "lombardia": "LOM",
-    "altoadige": "AA", "trentino": "TNT", "veneto": "VEN", "friuli": "FVG",
+    "trentino-alto-adige": "TAA", "veneto": "VEN", "friuli": "FVG",
     "liguria": "LIG", "emilia": "EMR", "toscana": "TOS",
     "umbria": "UMB", "marche": "MAR", "lazio": "LAZ",
     "abruzzo": "ABR", "molise": "MOL", "campania": "CAM",
@@ -19,7 +19,7 @@ _SHORT = {
 
 _NAMES = {
     "piemonte": "Piemonte", "aosta": "Valle d'Aosta", "lombardia": "Lombardia",
-    "altoadige": "Alto Adige", "trentino": "Trentino", "veneto": "Veneto", "friuli": "Friuli V.G.",
+    "trentino-alto-adige": "Trentino-Alto Adige", "veneto": "Veneto", "friuli": "Friuli V.G.",
     "liguria": "Liguria", "emilia": "Emilia R.", "toscana": "Toscana",
     "umbria": "Umbria", "marche": "Marche", "lazio": "Lazio",
     "abruzzo": "Abruzzo", "molise": "Molise", "campania": "Campania",
@@ -28,9 +28,15 @@ _NAMES = {
 }
 
 _FONT = {
-    "aosta": 9, "altoadige": 9, "trentino": 9, "molise": 9, "basilicata": 9,
+    "aosta": 9, "molise": 9, "basilicata": 9,
     "marche": 10, "umbria": 10, "abruzzo": 10,
     "sicilia": 12, "sardegna": 12,
+    "trentino-alto-adige": 9,
+}
+
+# Regions to merge: key = new slug, value = [source slugs]
+_MERGE = {
+    "trentino-alto-adige": ["trentino", "altoadige"],
 }
 
 # Render order: smaller/enclosed regions LAST so they render on top and remain clickable.
@@ -40,7 +46,7 @@ _RENDER_ORDER = {
     "piemonte": 2, "lombardia": 2, "veneto": 2, "emilia": 2, "toscana": 2,
     "lazio": 3, "campania": 3, "puglia": 3, "calabria": 3,
     "abruzzo": 4, "marche": 4, "liguria": 4, "friuli": 4,
-    "umbria": 5, "molise": 5, "basilicata": 5, "trentino": 5, "altoadige": 5, "aosta": 5,
+    "umbria": 5, "molise": 5, "basilicata": 5, "trentino-alto-adige": 5, "aosta": 5,
 }
 
 _DATA = json.loads(Path(__file__).with_name("map_data.json").read_text())
@@ -170,9 +176,37 @@ def _estimate_area(item: dict) -> float:
 
 
 def get_map_regions():
-    regions = []
     candidates = []
+
+    # Build merged regions from _MERGE config
+    merged_slugs = set()
+    for new_slug, source_slugs in _MERGE.items():
+        merged_slugs.update(source_slugs)
+        # Combine paths: concatenate the raw d attributes
+        combined_d = " ".join(_DATA[s]["d"] for s in source_slugs if s in _DATA)
+        # Average centroids
+        cxs, cys = [], []
+        for s in source_slugs:
+            if s in _DATA:
+                cxs.append(_DATA[s]["cx"])
+                cys.append(_DATA[s]["cy"])
+        cx = sum(cxs) / len(cxs) if cxs else 0
+        cy = sum(cys) / len(cys) if cys else 0
+        entry = {
+            "slug": new_slug,
+            "label": _NAMES.get(new_slug, new_slug),
+            "label_short": _SHORT.get(new_slug, ""),
+            "font_size": _FONT.get(new_slug, 9),
+            "cx": cx,
+            "cy": cy,
+            "path": _clean_path(combined_d),
+            "url": reverse("news:region", kwargs={"region_slug_value": new_slug}),
+        }
+        candidates.append(entry)
+
     for slug, item in _DATA.items():
+        if slug in merged_slugs:
+            continue
         entry = {
             "slug": slug,
             "label": _NAMES.get(slug, slug),
@@ -186,5 +220,5 @@ def get_map_regions():
         candidates.append(entry)
 
     # Sort by render order (small on top), then by estimated area (small on top)
-    candidates.sort(key=lambda r: (_RENDER_ORDER.get(r["slug"], 3), -_estimate_area(_DATA[r["slug"]])))
+    candidates.sort(key=lambda r: (_RENDER_ORDER.get(r["slug"], 3), -_estimate_area(_DATA.get(r["slug"], {"d": r["path"]}))))
     return candidates
