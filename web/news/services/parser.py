@@ -217,7 +217,14 @@ def is_low_quality_article(title: str, body: str) -> bool:
         return True
     if compact_body in {"S. S.", "S.S.", "np"}:
         return True
+    if starts_mid_word(title) and starts_mid_word(compact_body):
+        return True
     return False
+
+
+def starts_mid_word(value: str) -> bool:
+    match = re.search(r"[^\W\d_]", compact_text(value), flags=re.UNICODE)
+    return bool(match and match.group(0).islower())
 
 
 def parse_italian_decimal(value: str) -> Decimal | None:

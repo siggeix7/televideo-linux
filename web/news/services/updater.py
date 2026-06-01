@@ -12,6 +12,7 @@ from .constants import (
     CATEGORY_INDEX_PAGE,
     CATEGORY_LABELS,
     EXTRA_CATEGORY_PAGES,
+    FLASH_NEWS_PAGES,
     LOTTO_PAGES,
     REGION_CHOICES,
     REGIONS,
@@ -134,6 +135,8 @@ def update_category_news(categories: list[Category], per_category_limit: int) ->
     category_pages = {category.page for category in categories if category.page}
     for category in categories:
         if not category.page or category.page == 101:
+            continue
+        if category.page in FLASH_NEWS_PAGES:
             continue
         try:
             content = fetch_televideo_content(category.page)

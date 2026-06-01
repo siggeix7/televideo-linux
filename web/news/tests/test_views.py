@@ -225,6 +225,22 @@ class ViewTests(TestCase):
         self.assertNotContains(response, "www.televideo.rai.it/televideo/pub/view.jsp")
         self.assertNotContains(response, "news-card__title-link")
 
+    def test_home_hides_flash_page_scraped_fragments(self):
+        category = Category.objects.create(code="p109", name_it="Ultime News", sort_order=1, active=True)
+        NewsItem.objects.create(
+            source_id="flash-fragment",
+            category=category,
+            source_page="109",
+            title_it="re di soccorso.",
+            summary_it="ovane italiano di 20 anni,residenLiguria, e' cosciente ma ha un ar-.",
+            published_at=timezone.now(),
+        )
+
+        response = self.client.get(reverse("news:home"))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "re di soccorso")
+        self.assertNotContains(response, "residenLiguria")
+
     def test_culture_section_formats_article_text(self):
         TelevideoPageSnapshot.objects.create(
             section="cultura",

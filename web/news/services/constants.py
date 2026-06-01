@@ -35,6 +35,7 @@ CATEGORY_LABELS = {
     299: ("p299", "Brevi Sport", "Breves Ludi", "Sports Briefs"),
 }
 COMPOSITE_CATEGORY_PAGES = {103, 105, 110, 170, 180, 190}
+FLASH_NEWS_PAGES = {108, 109}
 EXTRA_CATEGORY_PAGES = (201, 260, 299)
 
 REGIONS = {
