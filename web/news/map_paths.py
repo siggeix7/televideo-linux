@@ -28,9 +28,9 @@ _NAMES = {
 }
 
 _FONT = {
-    "aosto": 7, "altoadige": 7, "trentino": 7, "molise": 7, "basilicata": 7,
-    "marche": 8, "umbria": 8, "abruzzo": 8,
-    "sicilia": 10, "sardegna": 10,
+    "aosta": 9, "altoadige": 9, "trentino": 9, "molise": 9, "basilicata": 9,
+    "marche": 10, "umbria": 10, "abruzzo": 10,
+    "sicilia": 12, "sardegna": 12,
 }
 
 _DATA = json.loads(Path(__file__).with_name("map_data.json").read_text())

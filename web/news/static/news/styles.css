@@ -1092,14 +1092,29 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 .italy-map__svg {
     display: block;
     width: 100%;
-    max-width: 420px;
+    max-width: 520px;
     margin: 0 auto;
     padding: 0 8px 8px;
 }
 
-.italy-region { transition: fill 100ms var(--ease), stroke 100ms var(--ease), filter 100ms var(--ease); cursor: pointer; }
-.italy-region:hover,
-.italy-regions a:focus-visible .italy-region { fill: rgba(0,255,0,0.5) !important; stroke: var(--yellow) !important; stroke-width: 2 !important; filter: drop-shadow(0 0 8px rgba(255,255,0,0.45)); }
+.italy-region-link { outline: none; }
+.italy-hitarea { fill: transparent; stroke: transparent; stroke-width: 14; stroke-linejoin: round; cursor: pointer; }
+.italy-region {
+    fill: rgba(0,170,0,0.28);
+    stroke: rgba(0,255,0,0.65);
+    stroke-width: 1.2;
+    stroke-linejoin: round;
+    pointer-events: none;
+    transition: fill 100ms var(--ease), stroke 100ms var(--ease), filter 100ms var(--ease);
+}
+.italy-hitarea:hover + .italy-region,
+.italy-hitarea:active + .italy-region,
+.italy-region-link:focus-visible .italy-region {
+    fill: rgba(0,255,0,0.5) !important;
+    stroke: var(--yellow) !important;
+    stroke-width: 2 !important;
+    filter: drop-shadow(0 0 8px rgba(255,255,0,0.45));
+}
 
 .toolbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-color: var(--border-dim); margin-bottom: 10px; }
 .stale-banner {

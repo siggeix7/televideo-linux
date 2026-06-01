@@ -15,8 +15,9 @@
 
         <g class="italy-regions">
             {% for r in map_regions %}
-            <a href="{{ r.url }}" aria-label="{{ r.label }}">
+            <a href="{{ r.url }}" aria-label="{{ r.label }}" class="italy-region-link">
                 <title>{{ r.label }}</title>
+                <path d="{{ r.path }}" fill="transparent" stroke="transparent" stroke-width="14" stroke-linejoin="round" class="italy-hitarea"/>
                 <path d="{{ r.path }}" fill="rgba(0,170,0,0.28)" stroke="rgba(0,255,0,0.65)" stroke-width="1.2" stroke-linejoin="round" class="italy-region"/>
             </a>
             {% endfor %}
@@ -24,7 +25,7 @@
 
         <g class="italy-labels" pointer-events="none">
             {% for r in map_regions %}
-            <text x="{{ r.cx }}" y="{{ r.cy }}" text-anchor="middle" fill="rgba(0,255,0,0.82)" font-size="{{ r.font_size }}" font-weight="800" font-family="monospace">{{ r.label_short }}</text>
+            <text x="{{ r.cx }}" y="{{ r.cy }}" text-anchor="middle" fill="rgba(0,255,0,0.88)" font-size="{{ r.font_size }}" font-weight="800" font-family="monospace" stroke="rgba(0,0,0,0.7)" stroke-width="0.6" paint-order="stroke fill">{{ r.label_short }}</text>
             {% endfor %}
         </g>
     </svg>
