@@ -46,6 +46,8 @@ LANGUAGES = {
 }
 
 HIDDEN_CATEGORY_CODES = {"p401", "p613", "p700", "p711"}
+NEWS_LIMIT_OPTIONS = (10, 25, 50, 100)
+DEFAULT_NEWS_LIMIT = 25
 NEWS_DUPLICATE_TITLE_PREFIX_TOKENS = 3
 NEWS_DUPLICATE_TITLE_MIN_TOKENS = 4
 NEWS_DUPLICATE_TITLE_MIN_OVERLAP = 0.75
@@ -181,6 +183,7 @@ UI_TEXT = {
         "previous_page": "Precedenti",
         "next_page": "Successive",
         "page_status": "Pagina {page} di {pages}",
+        "news_limit_label": "Notizie per pagina",
         "super_title": "Archivio SuperEnalotto",
         "super_lede": "Ultima combinazione dalla pagina 696 di Rai Televideo, salvata nello storico.",
         "draw_label": "Concorso",
@@ -460,11 +463,12 @@ def formatted_section_data(section: str, region: str = "") -> dict:
     return data
 
 
-def parse_limit(value: str | None, default: int = 18) -> int:
+def parse_limit(value: str | None, default: int = DEFAULT_NEWS_LIMIT) -> int:
     try:
-        return min(max(int(value or default), 1), 80)
+        parsed = int(value or default)
     except ValueError:
         return default
+    return parsed if parsed in NEWS_LIMIT_OPTIONS else default
 
 
 def parse_page(value: str | None) -> int:
@@ -676,8 +680,9 @@ def news_listing(search_query: str, page: int, limit: int, selected_date: date |
 def initial_home_listing(request) -> dict[str, object]:
     search_query = (request.GET.get("q") or "").strip()[:120]
     page = parse_page(request.GET.get("page"))
+    limit = parse_limit(request.GET.get("limit"))
     selected_date = parse_news_date(request.GET.get("date"))
-    return news_listing(search_query, page, limit=12, selected_date=selected_date)
+    return news_listing(search_query, page, limit=limit, selected_date=selected_date)
 
 
 def home(request):
@@ -694,6 +699,8 @@ def home(request):
             "language": "it",
             "languages": LANGUAGES,
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
+            "default_news_limit": DEFAULT_NEWS_LIMIT,
+            "news_limit_options": NEWS_LIMIT_OPTIONS,
             "ui": UI_TEXT["it"],
             "nav_items": nav_items("home"),
             "fallback_groups": listing["groups"],
@@ -701,6 +708,7 @@ def home(request):
             "fallback_page_status": UI_TEXT["it"]["page_status"].replace("{page}", str(listing["pagination"]["page"])).replace("{pages}", str(listing["pagination"]["pages"])),
             "initial_search": listing["search_query"],
             "initial_date": listing["selected_date"],
+            "initial_limit": listing["pagination"]["limit"],
             "date_min": listing["date_min"],
             "date_max": listing["date_max"],
         },
@@ -867,7 +875,7 @@ def news_summary_for(item: NewsItem, _language: str = "it") -> str:
 
 
 def news_api(request):
-    limit = parse_limit(request.GET.get("limit"), default=12)
+    limit = parse_limit(request.GET.get("limit"))
     page = parse_page(request.GET.get("page"))
     search_query = (request.GET.get("q") or "").strip()[:120]
     selected_date = parse_news_date(request.GET.get("date"))

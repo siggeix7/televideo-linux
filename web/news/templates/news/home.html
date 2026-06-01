@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="{% static 'news/styles.css' %}">
     <script defer src="{% static 'news/app.js' %}"></script>
 </head>
-<body data-api-url="{% url 'news:news_api' %}" data-initial-language="{{ language }}" data-refresh-seconds="{{ refresh_seconds }}" data-error-prefix="{{ ui.error_prefix }}" data-timeout-error="{{ ui.timeout_error }}" data-unknown-error="{{ ui.unknown_error }}" data-no-search-results-title="{{ ui.no_search_results_title }}" data-no-search-results-message="{{ ui.no_search_results_message }}">
+<body data-api-url="{% url 'news:news_api' %}" data-initial-language="{{ language }}" data-refresh-seconds="{{ refresh_seconds }}" data-initial-limit="{{ initial_limit }}" data-default-limit="{{ default_news_limit }}" data-error-prefix="{{ ui.error_prefix }}" data-timeout-error="{{ ui.timeout_error }}" data-unknown-error="{{ ui.unknown_error }}" data-no-search-results-title="{{ ui.no_search_results_title }}" data-no-search-results-message="{{ ui.no_search_results_message }}">
     <a href="#main" class="skip-link">{{ ui.skip_to_content }}</a>
     <div class="page-shell">
         <header class="site-header">
@@ -97,6 +97,12 @@
                 <button id="previous-page" class="pagination__button" type="button"{% if not fallback_pagination.has_previous %} disabled{% endif %}>{{ ui.previous_page }}</button>
                 <span id="page-status" class="pagination__status">{{ fallback_page_status }}</span>
                 <button id="next-page" class="pagination__button" type="button"{% if not fallback_pagination.has_next %} disabled{% endif %}>{{ ui.next_page }}</button>
+                <div class="pagination__limit" aria-label="{{ ui.news_limit_label }}">
+                    <span class="pagination__limit-label">{{ ui.news_limit_label }}</span>
+                    {% for option in news_limit_options %}
+                    <button class="pagination__button pagination__limit-option{% if option == initial_limit %} is-active{% endif %}" type="button" data-limit="{{ option }}" aria-pressed="{% if option == initial_limit %}true{% else %}false{% endif %}">{{ option }}</button>
+                    {% endfor %}
+                </div>
             </nav>
 
             <div id="empty-state" class="empty-state" hidden>

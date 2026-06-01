@@ -36,6 +36,25 @@ class ViewTests(TestCase):
         response = self.client.get(reverse("news:news_api") + "?lang=en&date=2026-05-29&page=1&limit=5")
         self.assertEqual(response.status_code, 200)
 
+    def test_news_api_applies_limit_options(self):
+        category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)
+        published_at = timezone.now()
+        for index in range(30):
+            NewsItem.objects.create(
+                source_id=f"limit-{index}",
+                category=category,
+                title_it=f"Titolo limite {index}",
+                summary_it=f"Contenuto limite {index}",
+                published_at=published_at - timedelta(minutes=index),
+            )
+
+        response = self.client.get(reverse("news:news_api") + "?limit=25")
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["pagination"]["limit"], 25)
+        self.assertEqual(data["pagination"]["pages"], 2)
+        self.assertEqual(len(data["items"]), 25)
+
     def test_news_api_searches_archive(self):
         category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)
         NewsItem.objects.create(
@@ -178,6 +197,16 @@ class ViewTests(TestCase):
         self.assertContains(response, "news-group__header")
         self.assertNotContains(response, "category-panel")
         self.assertNotContains(response, "news-card--lead")
+
+    def test_home_renders_news_limit_controls(self):
+        response = self.client.get(reverse("news:home") + "?limit=50")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Notizie per pagina")
+        self.assertContains(response, 'data-initial-limit="50"')
+        self.assertContains(response, 'data-limit="10"')
+        self.assertContains(response, 'data-limit="25"')
+        self.assertContains(response, 'data-limit="50" aria-pressed="true"')
+        self.assertContains(response, 'data-limit="100"')
 
     def test_home_does_not_render_televideo_links(self):
         category = Category.objects.create(code="test", name_it="Test", sort_order=1, active=True)

@@ -17,15 +17,20 @@
     const previousPage = document.getElementById("previous-page");
     const nextPage = document.getElementById("next-page");
     const pageStatus = document.getElementById("page-status");
+    const limitOptions = Array.from(document.querySelectorAll(".pagination__limit-option"));
+    const limitOptionValues = limitOptions.map(function (button) {
+        return Number(button.dataset.limit);
+    }).filter(Boolean);
     const searchInput = document.getElementById("search-input");
     const clearSearch = document.getElementById("clear-search");
     const seen = new Set();
-    const DEFAULT_LIMIT = 12;
+    const DEFAULT_LIMIT = Math.max(Number(body.dataset.defaultLimit || body.dataset.initialLimit || 25), 1);
     const initialParams = new URLSearchParams(window.location.search);
     const hasServerRendered = grid && grid.dataset.serverRendered === "true";
 
     let language = "it";
     let page = Math.max(Number(initialParams.get("page") || localStorage.getItem("chronica-page") || 1) || 1, 1);
+    let limit = normalizeLimit(initialParams.get("limit") || localStorage.getItem("chronica-limit") || body.dataset.initialLimit || DEFAULT_LIMIT);
     let searchQuery = initialParams.get("q") || "";
     let selectedDate = initialParams.get("date") || "";
     let ui = {
@@ -104,11 +109,28 @@
         }
     }
 
+    function normalizeLimit(value) {
+        var parsed = Number(value || DEFAULT_LIMIT);
+        if (limitOptionValues.length && limitOptionValues.indexOf(parsed) === -1) {
+            return DEFAULT_LIMIT;
+        }
+        return Math.max(parsed || DEFAULT_LIMIT, 1);
+    }
+
+    function updateLimitControls() {
+        limitOptions.forEach(function (button) {
+            var active = Number(button.dataset.limit) === limit;
+            button.classList.toggle("is-active", active);
+            button.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+    }
+
     function updateAddressBar() {
         var params = new URLSearchParams();
         if (searchQuery) params.set("q", searchQuery);
         if (selectedDate) params.set("date", selectedDate);
         if (page > 1) params.set("page", String(page));
+        if (limit !== DEFAULT_LIMIT) params.set("limit", String(limit));
         var nextUrl = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
         if (nextUrl !== window.location.pathname + window.location.search) {
             window.history.replaceState(null, "", nextUrl);
@@ -138,7 +160,12 @@
     function renderPagination(pagination) {
         var data = pagination || { page: 1, pages: 1, has_previous: false, has_next: false };
         page = data.page;
+        if (data.limit) {
+            limit = normalizeLimit(data.limit);
+            localStorage.setItem("chronica-limit", String(limit));
+        }
         localStorage.setItem("chronica-page", String(page));
+        updateLimitControls();
         previousPage.textContent = ui.previous_page || "Precedenti";
         nextPage.textContent = ui.next_page || "Successive";
         previousPage.disabled = !data.has_previous;
@@ -260,7 +287,7 @@
         loading = true;
         hideError();
 
-        if (!quiet) showSkeletons(DEFAULT_LIMIT);
+        if (!quiet) showSkeletons(Math.min(limit, DEFAULT_LIMIT));
         if (searchQuery && statusText) {
             statusText.textContent = ui.searching_status || "Cerco nell'archivio...";
         }
@@ -268,6 +295,7 @@
         var url = new URL(apiUrl, window.location.origin);
         url.searchParams.set("lang", "it");
         url.searchParams.set("page", String(page));
+        url.searchParams.set("limit", String(limit));
         if (selectedDate) {
             url.searchParams.set("date", selectedDate);
         }
@@ -323,6 +351,22 @@
         page += 1;
         window.scrollTo({ top: 0, behavior: "smooth" });
         loadNews();
+    });
+
+    limitOptions.forEach(function (button) {
+        button.addEventListener("click", function () {
+            var nextLimit = normalizeLimit(button.dataset.limit);
+            if (nextLimit === limit) return;
+            limit = nextLimit;
+            page = 1;
+            localStorage.setItem("chronica-limit", String(limit));
+            localStorage.setItem("chronica-page", String(page));
+            firstRender = true;
+            retryCount = 0;
+            updateLimitControls();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            loadNews();
+        });
     });
 
     if (searchInput) {
@@ -384,6 +428,7 @@
 
     updateSearchControls();
     updateDateControls();
+    updateLimitControls();
     loadNews({ quiet: hasServerRendered });
 
     var priorItemCount = 0;

@@ -519,6 +519,7 @@ h1 {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 10px;
     margin-top: 16px;
 }
@@ -539,7 +540,25 @@ h1 {
 .pagination__button:hover,
 .action-link:hover { border-color: var(--yellow); color: var(--yellow); }
 .pagination__button:disabled { opacity: 0.3; cursor: not-allowed; }
+.pagination__button.is-active {
+    border-color: var(--yellow);
+    color: var(--bg);
+    background: var(--yellow);
+}
 .pagination__status { color: var(--white); font-weight: bold; }
+
+.pagination__limit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.pagination__limit-label {
+    color: var(--text-dim);
+    font-size: var(--font-size-sm);
+}
 
 .section-stack { display: grid; gap: 12px; }
 .section-note { color: var(--white); font-weight: bold; }
