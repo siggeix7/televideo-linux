@@ -270,6 +270,8 @@ def refresh_worker() -> None:
 def refresh_section_if_stale(section: str, region: str = "") -> None:
     if getattr(settings, "RUNNING_TESTS", False):
         return
+    if section == "meteo" and settings.OPENWEATHER_API_KEY:
+        return
     normalized_region = normalize_region(region) if section == "regioni" else ""
     latest = (
         TelevideoPageSnapshot.objects.filter(section=section, region=normalized_region)
@@ -300,6 +302,8 @@ def section_refresh_worker(section: str, region: str) -> None:
 def refresh_all_sections() -> int:
     saved = 0
     sections = list(SECTION_DEFINITIONS.keys()) + ["regioni"]
+    if settings.OPENWEATHER_API_KEY:
+        sections = [section for section in sections if section != "meteo"]
     for section in sections:
         try:
             saved += update_section_snapshots(section)

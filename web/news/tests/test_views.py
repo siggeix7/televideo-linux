@@ -4,7 +4,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from news.models import Category, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
+from news.models import Category, NewsItem, OpenWeatherCity, SuperEnalottoDraw, TelevideoPageSnapshot
 
 
 class ViewTests(TestCase):
@@ -385,11 +385,50 @@ class ViewTests(TestCase):
         self.assertContains(response, "italy-map")
         self.assertNotContains(response, "Televideo Regionale - Lombardia")
 
+    @override_settings(OPENWEATHER_API_KEY="test-key")
     def test_region_detail(self):
+        OpenWeatherCity.objects.create(
+            city="Roma",
+            region_slug="lazio",
+            query="Roma,IT",
+            condition="Sereno",
+            temp=22,
+            fetched_at=timezone.now(),
+        )
         response = self.client.get(reverse("news:region", kwargs={"region_slug_value": "lazio"}))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Meteo capoluoghi - Lazio")
         self.assertContains(response, "Roma")
+        self.assertContains(response, "OpenWeatherMap")
+
+    @override_settings(OPENWEATHER_API_KEY="test-key")
+    def test_weather_page_uses_openweather_only_when_key_configured(self):
+        OpenWeatherCity.objects.create(
+            city="Roma",
+            region_slug="lazio",
+            query="Roma,IT",
+            condition="Sereno",
+            temp=22,
+            fetched_at=timezone.now(),
+        )
+        TelevideoPageSnapshot.objects.create(
+            section="meteo",
+            page=700,
+            subpage="01",
+            label="Meteo Televideo",
+            title="Meteo Televideo",
+            content_kind="article",
+            raw_text="SENTINEL_METEO_TELEVIDEO",
+            sort_order=1,
+        )
+
+        response = self.client.get(reverse("news:weather"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "OpenWeatherMap")
+        self.assertNotContains(response, "SENTINEL_METEO_TELEVIDEO")
+        self.assertNotContains(response, "weather-zone-grid")
+        self.assertNotContains(response, "temperature-grid")
 
     def test_invalid_section_returns_404(self):
         response = self.client.get("/nonexistent/")

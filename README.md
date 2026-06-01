@@ -17,7 +17,7 @@ notizie.
 - Paginazione automatica quando lo storico contiene molte notizie.
 - Pagina dedicata al SuperEnalotto da pagina 696, con storico estrazioni e andamento montepremi.
 - Sezioni Televideo dedicate per TV, cultura, ambiente/scienza, lavoro, sport, meteo, viaggi, giochi e regioni.
-- Mappa SVG interattiva dell'Italia nella sezione meteo: ogni regione e' cliccabile e apre il Televideo regionale.
+- Mappa SVG interattiva dell'Italia nella sezione meteo: ogni regione e' cliccabile e apre il Televideo regionale; con OpenWeatherMap configurato il meteo usa previsioni a 5 giorni, min/max e alba/tramonto.
 - Tabelle dati strutturate: classifica Serie A, risultati, palinsesto TV, Auditel, stazioni meteo, ruote Lotto.
 - Articoli multi-pagina: il parser fonde automaticamente le sottopagine Televideo in un unico articolo.
 - Cache SQLite delle pagine Televideo non-news, separata dallo storico notizie.
@@ -72,6 +72,11 @@ services:
       NEWS_FETCH_LIMIT: "${NEWS_FETCH_LIMIT:-30}"
       CATEGORY_FETCH_LIMIT: "${CATEGORY_FETCH_LIMIT:-2}"
       TELETEXT_SECTION_REFRESH_SECONDS: "${TELETEXT_SECTION_REFRESH_SECONDS:-1800}"
+      OPENWEATHER_API_KEY: "${OPENWEATHER_API_KEY:-}"
+      OPENWEATHER_REFRESH_CHECK_SECONDS: "${OPENWEATHER_REFRESH_CHECK_SECONDS:-600}"
+      OPENWEATHER_STALE_SECONDS: "${OPENWEATHER_STALE_SECONDS:-43200}"
+      OPENWEATHER_MAX_CALLS_PER_MINUTE: "${OPENWEATHER_MAX_CALLS_PER_MINUTE:-40}"
+      OPENWEATHER_BATCH_SIZE: "${OPENWEATHER_BATCH_SIZE:-40}"
       PUBLIC_SITE_URL: "${PUBLIC_SITE_URL:-}"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-false}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-*}"
@@ -98,6 +103,11 @@ NEWS_REFRESH_SECONDS=1800
 NEWS_FETCH_LIMIT=30
 CATEGORY_FETCH_LIMIT=2
 TELETEXT_SECTION_REFRESH_SECONDS=1800
+OPENWEATHER_API_KEY=
+OPENWEATHER_REFRESH_CHECK_SECONDS=600
+OPENWEATHER_STALE_SECONDS=43200
+OPENWEATHER_MAX_CALLS_PER_MINUTE=40
+OPENWEATHER_BATCH_SIZE=40
 PUBLIC_SITE_URL=https://televideo.example.com
 
 DJANGO_DEBUG=false
@@ -252,6 +262,11 @@ NEWS_REFRESH_SECONDS  frequenza aggiornamento notizie, default 1800
 NEWS_FETCH_LIMIT      quante notizie conservare a ogni giro, default 30
 CATEGORY_FETCH_LIMIT  quante notizie importare per ogni categoria Televideo, default 2
 TELETEXT_SECTION_REFRESH_SECONDS frequenza cache sezioni Televideo dedicate, default 1800
+OPENWEATHER_API_KEY chiave API OpenWeatherMap; se vuota il fallback meteo e' disabilitato
+OPENWEATHER_REFRESH_CHECK_SECONDS frequenza check fallback meteo, default 600
+OPENWEATHER_STALE_SECONDS eta' massima cache meteo OpenWeatherMap, default 43200
+OPENWEATHER_MAX_CALLS_PER_MINUTE limite interno richieste OpenWeatherMap, default 40
+OPENWEATHER_BATCH_SIZE massimo capoluoghi aggiornati per check, default 40
 APP_VERSION           tag mostrato nel footer, impostato automaticamente dalla release container
 DJANGO_DEBUG          debug Django, default false
 DJANGO_ALLOWED_HOSTS  host consentiti, default *
@@ -272,7 +287,7 @@ Il container avvia automaticamente:
 1. Controllo piano migrazioni Django.
 2. Migrazioni Django non distruttive sul database presente in `/data`.
 3. Primo fetch di notizie, categorie e SuperEnalotto.
-4. Worker in background per aggiornare SQLite (news e sezioni in parallelo).
+4. Worker in background per aggiornare SQLite (news, sezioni e, se configurato, OpenWeatherMap).
 5. Gunicorn per servire la web app.
 
 Il database non viene cancellato dall'entrypoint. Se `/data/chronica.sqlite3`
@@ -329,6 +344,30 @@ meteo, Lotto, Auditel) e mostrati in tabelle e card strutturate.
 Le pagine sezioni rispondono in ~150ms grazie alla cache SQLite pre-popolata
 dal worker `fetch_sections`, invece dei 30+ secondi di una chiamata diretta
 agli endpoint Rai.
+
+### Fallback Meteo OpenWeatherMap
+
+Senza `OPENWEATHER_API_KEY`, la mappa meteo usa i dati disponibili da Rai
+Televideo. Con `OPENWEATHER_API_KEY` configurata, le informazioni meteo vengono
+prese solo dalla cache OpenWeatherMap e la raccolta meteo Televideo viene
+saltata. I dati mostrati includono stato corrente, slot della giornata,
+previsioni dei giorni successivi, minime/massime e alba/tramonto.
+
+Per abilitare la funzione imposta nel file `.env` usato da Docker Compose:
+
+```env
+OPENWEATHER_API_KEY=la-tua-api-key-openweathermap
+```
+
+La chiave non va salvata nel repository. Senza `OPENWEATHER_API_KEY` il sito
+continua a usare solo Televideo per la sezione meteo.
+
+Il worker non chiama l'API durante le visite degli utenti: legge e aggiorna una
+cache SQLite. Ogni 10 minuti controlla se ci sono capoluoghi con dati piu'
+vecchi di 12 ore e, se necessario, aggiorna un batch da massimo
+`OPENWEATHER_BATCH_SIZE` capoluoghi. Il rate limiter interno resta sotto
+`OPENWEATHER_MAX_CALLS_PER_MINUTE` richieste al minuto (default 40), cosi' il
+piano gratuito non viene stressato.
 
 ## SuperEnalotto
 

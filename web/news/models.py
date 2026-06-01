@@ -116,6 +116,36 @@ class LottoDraw(models.Model):
         return f"Lotto del {self.draw_date.isoformat()}"
 
 
+class OpenWeatherCity(models.Model):
+    city = models.CharField(max_length=80, unique=True)
+    region_slug = models.SlugField(max_length=64, db_index=True)
+    query = models.CharField(max_length=120)
+    condition = models.CharField(max_length=120, blank=True)
+    temp = models.FloatField(null=True, blank=True)
+    temp_min = models.FloatField(null=True, blank=True)
+    temp_max = models.FloatField(null=True, blank=True)
+    wind_speed = models.FloatField(null=True, blank=True)
+    visibility_m = models.PositiveIntegerField(null=True, blank=True)
+    sunrise_at = models.DateTimeField(null=True, blank=True)
+    sunset_at = models.DateTimeField(null=True, blank=True)
+    timezone_offset = models.IntegerField(default=0)
+    today_forecast = models.JSONField(default=list, blank=True)
+    forecast_days = models.JSONField(default=list, blank=True)
+    raw = models.JSONField(default=dict, blank=True)
+    fetched_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    last_attempt_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    error_message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("city",)
+        verbose_name_plural = "OpenWeather cities"
+
+    def __str__(self) -> str:
+        return self.city
+
+
 class TelevideoPageSnapshot(models.Model):
     section = models.SlugField(max_length=32, db_index=True)
     page = models.PositiveSmallIntegerField(db_index=True)

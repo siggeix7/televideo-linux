@@ -40,6 +40,7 @@
                 <li class="italy-map__weather-item{% if not capital.available %} is-muted{% endif %}">
                     <span class="italy-map__weather-city">{{ capital.name }}</span>
                     <span class="italy-map__weather-summary">{{ capital.summary }}</span>
+                    {% if capital.source_label %}<span class="italy-map__weather-source">{{ capital.source_label }}</span>{% endif %}
                 </li>
                 {% endfor %}
             </ul>

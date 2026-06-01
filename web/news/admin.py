@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Category, NewsItem, SuperEnalottoDraw
+from .models import Category, NewsItem, OpenWeatherCity, SuperEnalottoDraw
 
 
 @admin.register(Category)
@@ -23,3 +23,11 @@ class SuperEnalottoDrawAdmin(admin.ModelAdmin):
     list_display = ("draw_number", "draw_date", "jackpot", "prize_pool", "fetched_at")
     search_fields = ("draw_number", "raw_text")
     readonly_fields = ("fetched_at",)
+
+
+@admin.register(OpenWeatherCity)
+class OpenWeatherCityAdmin(admin.ModelAdmin):
+    list_display = ("city", "region_slug", "condition", "temp", "sunrise_at", "sunset_at", "fetched_at", "last_attempt_at")
+    list_filter = ("region_slug",)
+    search_fields = ("city", "query", "condition")
+    readonly_fields = ("created_at", "updated_at", "fetched_at", "last_attempt_at")

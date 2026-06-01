@@ -31,6 +31,43 @@
                         {% if capital.temperature_range %}<div class="weather-station__detail">{{ capital.temperature_range }}</div>{% endif %}
                         {% if capital.wind %}<div class="weather-station__detail">{{ ui.wind_label }}: {{ capital.wind }}</div>{% endif %}
                         {% if capital.visibility %}<div class="weather-station__detail">{{ ui.visibility_label }}: {{ capital.visibility }}</div>{% endif %}
+                        {% if capital.sunrise or capital.sunset %}
+                        <div class="weather-station__astro">
+                            {% if capital.sunrise %}<span>Alba {{ capital.sunrise }}</span>{% endif %}
+                            {% if capital.sunset %}<span>Tramonto {{ capital.sunset }}</span>{% endif %}
+                        </div>
+                        {% endif %}
+                        {% if capital.today_forecast %}
+                        <div class="weather-forecast">
+                            <div class="weather-forecast__title">Oggi</div>
+                            <div class="weather-forecast__slots">
+                                {% for slot in capital.today_forecast %}
+                                <div class="weather-forecast__slot">
+                                    <span>{{ slot.time }}</span>
+                                    <strong>{{ slot.temp }}&deg;</strong>
+                                    {% if slot.condition %}<em>{{ slot.condition }}</em>{% endif %}
+                                    {% if slot.rain_probability is not None %}<small>Pioggia {{ slot.rain_probability }}%</small>{% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if capital.forecast_days %}
+                        <div class="weather-forecast">
+                            <div class="weather-forecast__title">Prossimi giorni</div>
+                            <div class="weather-forecast__days">
+                                {% for day in capital.forecast_days %}
+                                <div class="weather-forecast__day">
+                                    <span>{{ day.label }}</span>
+                                    <strong>{% if day.min is not None %}{{ day.min }}&deg;{% else %}n.d.{% endif %} / {% if day.max is not None %}{{ day.max }}&deg;{% else %}n.d.{% endif %}</strong>
+                                    {% if day.condition %}<em>{{ day.condition }}</em>{% endif %}
+                                    {% if day.rain_probability is not None %}<small>{{ day.rain_probability }}% pioggia</small>{% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% if capital.source_label %}<div class="weather-station__source">Fonte: {{ capital.source_label }}</div>{% endif %}
                     {% else %}
                         <div class="weather-station__detail">Dati non disponibili</div>
                     {% endif %}

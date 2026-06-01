@@ -2,7 +2,7 @@ from datetime import date
 
 from django.test import TestCase
 
-from news.models import Category, LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
+from news.models import Category, LottoDraw, NewsItem, OpenWeatherCity, SuperEnalottoDraw, TelevideoPageSnapshot
 
 
 class CategoryTests(TestCase):
@@ -74,6 +74,18 @@ class LottoDrawTests(TestCase):
             raw_text="Bari 1 2 3 4 5",
         )
         self.assertEqual(draw.wheels["Bari"], [1, 2, 3, 4, 5])
+
+
+class OpenWeatherCityTests(TestCase):
+    def test_create_city_cache(self):
+        city = OpenWeatherCity.objects.create(
+            city="Roma",
+            region_slug="lazio",
+            query="Roma,IT",
+            condition="Sereno",
+            temp=22,
+        )
+        self.assertEqual(str(city), "Roma")
 
 
 class TelevideoPageSnapshotTests(TestCase):

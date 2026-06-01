@@ -87,8 +87,9 @@ def find_by_city(city: str, lookup: dict[str, dict]) -> dict | None:
     return None
 
 
-def build_region_capital_weather(meteo_data: dict) -> dict[str, list[dict[str, object]]]:
-    stations, temperatures = flatten_weather_data(meteo_data)
+def build_region_capital_weather(meteo_data: dict, openweather_data: dict[str, dict] | None = None, *, openweather_only: bool = False) -> dict[str, list[dict[str, object]]]:
+    stations, temperatures = ({}, {}) if openweather_only else flatten_weather_data(meteo_data)
+    openweather_data = openweather_data or {}
     payload = {}
 
     for region_slug, capitals in REGION_CAPITALS.items():
@@ -96,6 +97,7 @@ def build_region_capital_weather(meteo_data: dict) -> dict[str, list[dict[str, o
         for capital in capitals:
             station = find_by_city(capital, stations) or {}
             temperature = find_by_city(capital, temperatures) or {}
+            openweather = find_by_city(capital, openweather_data) or {}
             row = {
                 "name": capital,
                 "condition": station.get("condition") or "",
@@ -104,13 +106,52 @@ def build_region_capital_weather(meteo_data: dict) -> dict[str, list[dict[str, o
                 "visibility": station.get("visibility") or "",
                 "min": temperature.get("min"),
                 "max": temperature.get("max"),
+                "sunrise": "",
+                "sunset": "",
+                "today_forecast": [],
+                "forecast_days": [],
             }
-            row["available"] = any(row.get(key) not in (None, "") for key in ("condition", "temp", "wind", "visibility", "min", "max"))
+            televideo_available = row_has_weather(row)
+            used_openweather = merge_openweather(row, openweather)
+            row["available"] = row_has_weather(row)
+            if televideo_available and used_openweather:
+                row["source_label"] = "Rai Televideo + OpenWeatherMap"
+            elif televideo_available:
+                row["source_label"] = "Rai Televideo"
+            elif used_openweather:
+                row["source_label"] = openweather.get("source_label") or "OpenWeatherMap"
+            else:
+                row["source_label"] = ""
+            row["source_at"] = openweather.get("source_at") if used_openweather else None
             row["temperature_range"] = temperature_range(row)
             row["summary"] = weather_summary(row)
             rows.append(row)
         payload[region_slug] = rows
     return payload
+
+
+def row_has_weather(row: dict) -> bool:
+    return any(row.get(key) not in (None, "") for key in ("condition", "temp", "wind", "visibility", "min", "max"))
+
+
+def merge_openweather(row: dict, openweather: dict) -> bool:
+    if not openweather:
+        return False
+
+    used = False
+    for key in ("condition", "temp", "wind", "visibility"):
+        if not row.get(key) and openweather.get(key) not in (None, ""):
+            row[key] = openweather[key]
+            used = True
+    for key in ("min", "max"):
+        if row.get(key) is None and openweather.get(key) is not None:
+            row[key] = openweather[key]
+            used = True
+    for key in ("sunrise", "sunset", "today_forecast", "forecast_days"):
+        if openweather.get(key):
+            row[key] = openweather[key]
+            used = True
+    return used
 
 
 def temperature_range(row: dict) -> str:

@@ -27,6 +27,11 @@ python web/manage.py fetch_televideo --loop --interval "${NEWS_REFRESH_SECONDS:-
 # Background worker: section snapshots (TV, sport, cultura, etc.)
 python web/manage.py fetch_sections --loop --interval "${TELETEXT_SECTION_REFRESH_SECONDS:-1800}" &
 
+# Optional OpenWeatherMap fallback for missing province-capital weather.
+if [ -n "${OPENWEATHER_API_KEY:-}" ]; then
+    python web/manage.py refresh_openweather --loop --interval "${OPENWEATHER_REFRESH_CHECK_SECONDS:-600}" &
+fi
+
 exec gunicorn chronica.wsgi:application \
     --chdir web \
     --bind "0.0.0.0:${PORT:-8000}" \

@@ -900,9 +900,40 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 .weather-station__cond[data-icon="fog"]::before { content: "="; color: var(--text-dim); }
 .weather-station__temp { margin-top: 4px; color: var(--yellow); font-weight: bold; font-size: var(--font-size-lg); }
 .weather-station__detail { margin-top: 2px; color: var(--text-dim); font-size: var(--font-size-sm); }
+.weather-station__source { margin-top: 6px; color: var(--cyan); font-size: 0.72rem; }
 .weather-station--muted { opacity: 0.68; }
 .weather-capitals h2 { color: var(--yellow); text-transform: uppercase; }
-.weather-grid--capitals { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.weather-grid--capitals { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.weather-station__astro {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin-top: 8px;
+    color: var(--yellow);
+    font-size: var(--font-size-sm);
+}
+.weather-forecast { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-dim); }
+.weather-forecast__title { color: var(--cyan); font-size: var(--font-size-sm); font-weight: bold; text-transform: uppercase; }
+.weather-forecast__slots,
+.weather-forecast__days { display: grid; gap: 5px; margin-top: 6px; }
+.weather-forecast__slot,
+.weather-forecast__day {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: 4px 6px;
+    align-items: baseline;
+    padding: 5px 6px;
+    border: 1px solid var(--border-dim);
+    background: rgba(0,255,0,0.035);
+}
+.weather-forecast__slot span,
+.weather-forecast__day span { color: var(--white); font-weight: bold; }
+.weather-forecast__slot strong,
+.weather-forecast__day strong { color: var(--yellow); }
+.weather-forecast__slot em,
+.weather-forecast__day em { color: var(--text-dim); font-size: var(--font-size-sm); font-style: normal; }
+.weather-forecast__slot small,
+.weather-forecast__day small { grid-column: 1 / -1; color: var(--text-dim); font-size: 0.72rem; }
 
 .temp-bar { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 8px; align-items: center; padding: 4px 0; }
 .temp-bar__label { color: var(--white); font-size: var(--font-size-sm); font-weight: bold; text-align: right; }
@@ -1176,6 +1207,7 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 .italy-map__weather-item.is-muted { opacity: 0.62; }
 .italy-map__weather-city { color: var(--white); font-weight: bold; }
 .italy-map__weather-summary { color: var(--text-dim); font-size: var(--font-size-sm); }
+.italy-map__weather-source { color: var(--cyan); font-size: 0.72rem; }
 
 .toolbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-color: var(--border-dim); margin-bottom: 10px; }
 .stale-banner {

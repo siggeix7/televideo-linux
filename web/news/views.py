@@ -28,6 +28,7 @@ from .formatters import (
 )
 from .models import LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
 from .map_paths import get_map_regions
+from .openweather import openweather_cache_by_city
 from .site_urls import public_absolute_url
 from .weather_capitals import build_region_capital_weather, enrich_map_regions
 from .services.parser import compact_text, display_snapshot_text, fix_mojibake, prose_paragraphs
@@ -356,18 +357,11 @@ def localize_article(article: dict, _language: str = "it") -> dict:
     return article.copy()
 
 
-def formatted_section_data(section: str, region: str = "") -> dict:
-    """Build structured/formatted data for a section using the formatters."""
-    source_snapshots = section_snapshots(section, region)
-    source_merged = merge_snapshot_pages(source_snapshots)
-    display_snapshots = [localize_snapshot_payload(snapshot) for snapshot in source_snapshots]
-    display_merged = merge_snapshot_pages(display_snapshots)
-    display_by_page = {snap.get("page"): snap for snap in display_merged}
-
-    data: dict = {
-        "raw": display_snapshots,
-        "merged": display_merged,
-        "cards": [snap for snap in display_merged if should_display_card(section, snap)],
+def empty_formatted_section_data() -> dict:
+    return {
+        "raw": [],
+        "merged": [],
+        "cards": [],
         "standings": None,
         "results": None,
         "films": [],
@@ -379,6 +373,20 @@ def formatted_section_data(section: str, region: str = "") -> dict:
         "round_info": None,
         "tv_channels": [],
     }
+
+
+def formatted_section_data(section: str, region: str = "") -> dict:
+    """Build structured/formatted data for a section using the formatters."""
+    source_snapshots = section_snapshots(section, region)
+    source_merged = merge_snapshot_pages(source_snapshots)
+    display_snapshots = [localize_snapshot_payload(snapshot) for snapshot in source_snapshots]
+    display_merged = merge_snapshot_pages(display_snapshots)
+    display_by_page = {snap.get("page"): snap for snap in display_merged}
+
+    data: dict = empty_formatted_section_data()
+    data["raw"] = display_snapshots
+    data["merged"] = display_merged
+    data["cards"] = [snap for snap in display_merged if should_display_card(section, snap)]
 
     for snap in source_merged:
         raw = snap.get("all_text", snap.get("raw_text", ""))
@@ -469,10 +477,16 @@ def formatted_section_data(section: str, region: str = "") -> dict:
 
 
 def meteo_map_context() -> dict[str, object]:
-    refresh_section_if_stale("meteo")
-    meteo_data = formatted_section_data("meteo")
-    region_weather = build_region_capital_weather(meteo_data)
-    latest = max((card["fetched_at"] for card in meteo_data["raw"]), default=None)
+    if settings.OPENWEATHER_API_KEY:
+        meteo_data = empty_formatted_section_data()
+        openweather_data = openweather_cache_by_city()
+        region_weather = build_region_capital_weather(meteo_data, openweather_data, openweather_only=True)
+        latest = max((item.get("source_at") for item in openweather_data.values() if item.get("source_at")), default=None)
+    else:
+        refresh_section_if_stale("meteo")
+        meteo_data = formatted_section_data("meteo")
+        region_weather = build_region_capital_weather(meteo_data)
+        latest = max((card["fetched_at"] for card in meteo_data["raw"]), default=None)
     return {
         "meteo_data": meteo_data,
         "meteo_latest": latest,
