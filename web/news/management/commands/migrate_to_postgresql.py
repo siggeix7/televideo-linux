@@ -1,9 +1,23 @@
 import sys
 import tempfile
 
+from django.apps import apps
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
-from django.db import connections
+from django.db import connections, connection
+
+
+def _fix_postgres_sequences():
+    cursor = connection.cursor()
+    for app_config in apps.get_app_configs():
+        for model in app_config.get_models():
+            table = model._meta.db_table
+            cursor.execute(
+                "SELECT setval(pg_get_serial_sequence(%s, 'id'), COALESCE(MAX(id), 0) + 1, false) FROM {}".format(table),
+                [table],
+            )
+            cursor.fetchall()
+    cursor.close()
 
 
 class Command(BaseCommand):
@@ -20,11 +34,12 @@ class Command(BaseCommand):
             )
             sys.exit(1)
 
-        self.stdout.write(self.style.NOTICE("Step 1/3: dumping SQLite data ..."))
+        self.stdout.write(self.style.NOTICE("Step 1/4: dumping SQLite data ..."))
         dump_file = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
         call_command(
             "dumpdata",
             "--database=sqlite",
+            "--indent=2",
             "--natural-foreign",
             "--natural-primary",
             "--exclude=contenttypes",
@@ -34,14 +49,17 @@ class Command(BaseCommand):
         )
         dump_file.close()
 
-        self.stdout.write(self.style.NOTICE("Step 2/3: migrating PostgreSQL ..."))
+        self.stdout.write(self.style.NOTICE("Step 2/4: migrating PostgreSQL ..."))
         call_command("migrate", "--database=default", interactive=False)
 
-        self.stdout.write(self.style.NOTICE("Step 3/3: loading data into PostgreSQL ..."))
+        self.stdout.write(self.style.NOTICE("Step 3/4: loading data into PostgreSQL ..."))
         try:
             call_command("loaddata", "--database=default", dump_file.name)
         finally:
             import os
             os.unlink(dump_file.name)
+
+        self.stdout.write(self.style.NOTICE("Step 4/4: fixing PostgreSQL sequences ..."))
+        _fix_postgres_sequences()
 
         self.stdout.write(self.style.SUCCESS("Migration to PostgreSQL completed."))
