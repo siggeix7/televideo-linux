@@ -21,7 +21,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y curl ca-certificates gnupg && \
     curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
-    apt-get update && apt-get install -y postgresql-18 && \
+    apt-get update && apt-get install -y postgresql-18 locales && \
+    sed -i '/en_US.UTF-8/s/^# //' /etc/locale.gen && locale-gen && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN adduser --disabled-password --gecos "" chronica \
