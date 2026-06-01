@@ -39,6 +39,15 @@ _MERGE = {
     "trentino-alto-adige": ["trentino", "altoadige"],
 }
 
+# Manually merged path for Trentino-Alto Adige.
+# The raw GeoJSON has slightly different shared-border vertices between the two
+# provinces, so we build one continuous outer boundary by hand.
+_TAA_MERGED_PATH = (
+    "M 232,10 L 252,6 L 272,8 L 286,14 L 290,24 L 288,36 L 280,46 "
+    "L 268,50 L 282,46 L 286,52 L 280,62 L 262,68 L 244,68 L 234,62 "
+    "L 230,50 L 230,40 L 230,38 L 230,22 Z"
+)
+
 # Render order: smaller/enclosed regions LAST so they render on top and remain clickable.
 # Higher index = drawn later = on top.
 _RENDER_ORDER = {
@@ -182,12 +191,15 @@ def get_map_regions():
     merged_slugs = set()
     for new_slug, source_slugs in _MERGE.items():
         merged_slugs.update(source_slugs)
-        # Keep each source region as a separate M...Z sub-path so both are rendered
-        cleaned_parts = []
-        for s in source_slugs:
-            if s in _DATA:
-                cleaned_parts.append(_clean_path(_DATA[s]["d"]))
-        combined_d = " ".join(cleaned_parts)
+        # Use manually merged path if available, otherwise concat cleaned paths
+        if new_slug == "trentino-alto-adige":
+            combined_d = _TAA_MERGED_PATH
+        else:
+            cleaned_parts = []
+            for s in source_slugs:
+                if s in _DATA:
+                    cleaned_parts.append(_clean_path(_DATA[s]["d"]))
+            combined_d = " ".join(cleaned_parts)
         # Average centroids
         cxs, cys = [], []
         for s in source_slugs:
