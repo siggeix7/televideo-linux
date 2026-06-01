@@ -1,24 +1,57 @@
 {% extends "news/_section_base.html" %}
 
 {% block section_content %}
-<nav class="toolbar" aria-label="{{ ui.region_select_label }}">
-    {% for region in regions %}
-    <a href="{{ region.url }}" class="site-nav__link{% if region.active %} is-active{% endif %}">{{ region.name }}</a>
-    {% endfor %}
-</nav>
-
 <main class="section-stack" id="main">
-    {% if data.cards %}
+    {% if is_region_landing %}
+        {% if map_regions %}
+        {% include "news/_meteo_map.html" %}
+        {% endif %}
+        <nav class="toolbar" aria-label="{{ ui.region_select_label }}">
+            {% for region in regions %}
+            <a href="{{ region.url }}" class="site-nav__link">{{ region.name }}</a>
+            {% endfor %}
+        </nav>
+    {% else %}
+        <nav class="toolbar" aria-label="{{ ui.region_select_label }}">
+            {% for region in regions %}
+            <a href="{{ region.url }}" class="site-nav__link{% if region.active %} is-active{% endif %}">{{ region.name }}</a>
+            {% endfor %}
+        </nav>
+
+        {% if capital_weather %}
+        <section class="content-card weather-capitals" aria-labelledby="capital-weather-title">
+            <h2 id="capital-weather-title">Meteo capoluoghi - {{ selected_region_display }}</h2>
+            <div class="weather-grid weather-grid--capitals">
+                {% for capital in capital_weather %}
+                <article class="weather-station{% if not capital.available %} weather-station--muted{% endif %}">
+                    <div class="weather-station__name">{{ capital.name }}</div>
+                    {% if capital.available %}
+                        {% if capital.condition %}<div class="weather-station__cond">{{ capital.condition }}</div>{% endif %}
+                        {% if capital.temp %}<div class="weather-station__temp">{{ capital.temp }}&deg;</div>{% endif %}
+                        {% if capital.temperature_range %}<div class="weather-station__detail">{{ capital.temperature_range }}</div>{% endif %}
+                        {% if capital.wind %}<div class="weather-station__detail">{{ ui.wind_label }}: {{ capital.wind }}</div>{% endif %}
+                        {% if capital.visibility %}<div class="weather-station__detail">{{ ui.visibility_label }}: {{ capital.visibility }}</div>{% endif %}
+                    {% else %}
+                        <div class="weather-station__detail">Dati non disponibili</div>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if data.cards %}
         <div class="content-grid content-grid--regional">
         {% for card in data.cards %}
             {% include "news/_content_card.html" with card=card %}
         {% endfor %}
         </div>
-    {% else %}
-    <div class="empty-state">
-        <h2>{{ ui.section_empty_title }}</h2>
-        <p>{{ ui.section_empty_message }}</p>
-    </div>
+        {% else %}
+        <div class="empty-state">
+            <h2>{{ ui.section_empty_title }}</h2>
+            <p>{{ ui.section_empty_message }}</p>
+        </div>
+        {% endif %}
     {% endif %}
 </main>
 {% endblock %}

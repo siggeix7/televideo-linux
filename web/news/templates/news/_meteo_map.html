@@ -1,8 +1,9 @@
-<section class="italy-map" aria-label="{{ ui.italy_map_label|default:'Mappa meteo regioni italiane' }}">
+<section class="italy-map" data-meteo-map aria-label="{{ ui.italy_map_label|default:'Mappa meteo regioni italiane' }}">
     <div class="italy-map__header">
         <h2 class="italy-map__title">{{ ui.italy_map_title|default:'Mappa meteo Italia' }}</h2>
-        <p class="italy-map__subtitle">{{ ui.italy_map_subtitle|default:'Clicca su una regione per il dettaglio meteo' }}</p>
+        <p class="italy-map__subtitle">{{ ui.italy_map_subtitle|default:'Sorvola una regione per il meteo, clicca per il dettaglio' }}</p>
     </div>
+    <div class="italy-map__body">
     <svg class="italy-map__svg" viewBox="0 0 800 960" xmlns="http://www.w3.org/2000/svg" aria-label="{{ ui.italy_map_label|default:'Mappa interattiva dell\'Italia' }}" role="img">
         <defs>
             <linearGradient id="sea-grad" x1="0" y1="0" x2="1" y2="1">
@@ -15,7 +16,7 @@
 
         <g class="italy-regions">
             {% for r in map_regions %}
-            <a href="{{ r.url }}" aria-label="{{ r.label }}" class="italy-region-link">
+            <a href="{{ r.url }}" aria-label="{{ r.label }}" aria-describedby="map-weather-{{ r.slug }}" data-region="{{ r.slug }}" class="italy-region-link">
                 <title>{{ r.label }}</title>
                 <path d="{{ r.path }}" fill="transparent" stroke="transparent" stroke-width="14" stroke-linejoin="round" class="italy-hitarea"/>
                 <path d="{{ r.path }}" fill="rgba(0,170,0,0.28)" stroke="rgba(0,255,0,0.65)" stroke-width="1.2" stroke-linejoin="round" class="italy-region"/>
@@ -29,4 +30,62 @@
             {% endfor %}
         </g>
     </svg>
+    <div class="italy-map__panels" aria-live="polite">
+        {% for r in map_regions %}
+        <div class="italy-map__hoverbox" id="map-weather-{{ r.slug }}" data-region-panel="{{ r.slug }}" role="tooltip" aria-hidden="true">
+            <div class="italy-map__hoverbox-title">{{ r.label }}</div>
+            <div class="italy-map__hoverbox-subtitle">Meteo capoluoghi</div>
+            <ul class="italy-map__weather-list">
+                {% for capital in r.weather_capitals %}
+                <li class="italy-map__weather-item{% if not capital.available %} is-muted{% endif %}">
+                    <span class="italy-map__weather-city">{{ capital.name }}</span>
+                    <span class="italy-map__weather-summary">{{ capital.summary }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+    </div>
+    </div>
+    <script>
+    (function(){
+        document.querySelectorAll("[data-meteo-map]").forEach(function(map){
+            var panels = Array.prototype.slice.call(map.querySelectorAll("[data-region-panel]"));
+            var hideTimer = null;
+
+            function hidePanels(){
+                panels.forEach(function(panel){
+                    panel.classList.remove("is-visible");
+                    panel.setAttribute("aria-hidden", "true");
+                });
+            }
+
+            function showPanel(slug){
+                window.clearTimeout(hideTimer);
+                hidePanels();
+                var panel = map.querySelector('[data-region-panel="' + slug + '"]');
+                if (!panel) return;
+                panel.classList.add("is-visible");
+                panel.setAttribute("aria-hidden", "false");
+            }
+
+            function scheduleHide(){
+                window.clearTimeout(hideTimer);
+                hideTimer = window.setTimeout(hidePanels, 120);
+            }
+
+            map.querySelectorAll(".italy-region-link[data-region]").forEach(function(link){
+                var slug = link.getAttribute("data-region");
+                link.addEventListener("mouseenter", function(){ showPanel(slug); });
+                link.addEventListener("focus", function(){ showPanel(slug); });
+                link.addEventListener("mouseleave", scheduleHide);
+                link.addEventListener("blur", scheduleHide);
+            });
+            panels.forEach(function(panel){
+                panel.addEventListener("mouseenter", function(){ window.clearTimeout(hideTimer); });
+                panel.addEventListener("mouseleave", scheduleHide);
+            });
+        });
+    })();
+    </script>
 </section>

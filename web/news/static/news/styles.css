@@ -900,6 +900,9 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 .weather-station__cond[data-icon="fog"]::before { content: "="; color: var(--text-dim); }
 .weather-station__temp { margin-top: 4px; color: var(--yellow); font-weight: bold; font-size: var(--font-size-lg); }
 .weather-station__detail { margin-top: 2px; color: var(--text-dim); font-size: var(--font-size-sm); }
+.weather-station--muted { opacity: 0.68; }
+.weather-capitals h2 { color: var(--yellow); text-transform: uppercase; }
+.weather-grid--capitals { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
 
 .temp-bar { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 8px; align-items: center; padding: 4px 0; }
 .temp-bar__label { color: var(--white); font-size: var(--font-size-sm); font-weight: bold; text-align: right; }
@@ -1079,6 +1082,7 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 .lotto-wheel__nums { margin-top: 4px; color: var(--white); font-weight: bold; letter-spacing: 0.05em; }
 
 .italy-map {
+    position: relative;
     margin-bottom: 10px;
     border: 1px solid var(--border-dim);
     background:
@@ -1089,6 +1093,11 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 .italy-map__header { padding: 12px 16px 6px; }
 .italy-map__title { color: var(--yellow); text-transform: uppercase; }
 .italy-map__subtitle { color: var(--text-dim); font-size: var(--font-size-sm); margin-top: 2px; }
+.italy-map__body {
+    position: relative;
+    display: grid;
+    justify-items: center;
+}
 .italy-map__svg {
     display: block;
     width: 100%;
@@ -1115,6 +1124,58 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
     stroke-width: 2 !important;
     filter: drop-shadow(0 0 8px rgba(255,255,0,0.45));
 }
+
+.italy-map__panels {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+.italy-map__hoverbox {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: min(320px, calc(100% - 32px));
+    max-height: calc(100% - 32px);
+    overflow: auto;
+    padding: 12px;
+    border: 1px solid var(--yellow-dim);
+    color: var(--text);
+    background:
+        linear-gradient(180deg, rgba(0,20,0,0.96), rgba(0,8,0,0.96)),
+        var(--bg-panel);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.48), 0 0 18px rgba(255,255,0,0.08);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(6px);
+    transition: opacity 120ms var(--ease), transform 120ms var(--ease), visibility 120ms var(--ease);
+    pointer-events: none;
+}
+.italy-map__hoverbox.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+.italy-map__hoverbox-title { color: var(--yellow); font-weight: bold; text-transform: uppercase; }
+.italy-map__hoverbox-subtitle { margin-top: 2px; color: var(--text-dim); font-size: var(--font-size-sm); }
+.italy-map__weather-list {
+    display: grid;
+    gap: 6px;
+    margin: 10px 0 0;
+    padding: 0;
+    list-style: none;
+}
+.italy-map__weather-item {
+    display: grid;
+    gap: 1px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border-dim);
+}
+.italy-map__weather-item:first-child { padding-top: 0; border-top: 0; }
+.italy-map__weather-item.is-muted { opacity: 0.62; }
+.italy-map__weather-city { color: var(--white); font-weight: bold; }
+.italy-map__weather-summary { color: var(--text-dim); font-size: var(--font-size-sm); }
 
 .toolbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-color: var(--border-dim); margin-bottom: 10px; }
 .stale-banner {
@@ -1246,6 +1307,14 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
     .site-nav a,
     .site-nav__link { min-height: 42px; }
     .toolbar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch; }
+    .italy-map__hoverbox {
+        top: auto;
+        right: 12px;
+        bottom: 12px;
+        left: 12px;
+        width: auto;
+        max-height: 42%;
+    }
     .toolbar .site-nav__link { flex: 0 0 auto; }
     .news-card--lead,
     .content-grid > .content-card:first-child,

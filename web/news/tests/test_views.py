@@ -382,10 +382,14 @@ class ViewTests(TestCase):
     def test_regions_page(self):
         response = self.client.get(reverse("news:regions"))
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "italy-map")
+        self.assertNotContains(response, "Televideo Regionale - Lombardia")
 
     def test_region_detail(self):
         response = self.client.get(reverse("news:region", kwargs={"region_slug_value": "lazio"}))
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Meteo capoluoghi - Lazio")
+        self.assertContains(response, "Roma")
 
     def test_invalid_section_returns_404(self):
         response = self.client.get("/nonexistent/")

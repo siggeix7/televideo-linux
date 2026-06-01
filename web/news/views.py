@@ -29,6 +29,7 @@ from .formatters import (
 from .models import LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
 from .map_paths import get_map_regions
 from .site_urls import public_absolute_url
+from .weather_capitals import build_region_capital_weather, enrich_map_regions
 from .services.parser import compact_text, display_snapshot_text, fix_mojibake, prose_paragraphs
 from .services import (
     REGION_CHOICES,
@@ -241,7 +242,7 @@ UI_TEXT = {
         "date_unavailable": "data non disponibile",
         "error_prefix": "Errore:",
         "italy_map_title": "Mappa meteo",
-        "italy_map_subtitle": "Clicca una regione per il dettaglio",
+        "italy_map_subtitle": "Sorvola una regione per il meteo, clicca per il dettaglio",
         "italy_map_label": "Mappa interattiva dell'Italia",
     },
 }
@@ -465,6 +466,19 @@ def formatted_section_data(section: str, region: str = "") -> dict:
                     data["articles"].append(localize_article(article))
 
     return data
+
+
+def meteo_map_context() -> dict[str, object]:
+    refresh_section_if_stale("meteo")
+    meteo_data = formatted_section_data("meteo")
+    region_weather = build_region_capital_weather(meteo_data)
+    latest = max((card["fetched_at"] for card in meteo_data["raw"]), default=None)
+    return {
+        "meteo_data": meteo_data,
+        "meteo_latest": latest,
+        "region_weather": region_weather,
+        "map_regions": enrich_map_regions(get_map_regions(), region_weather),
+    }
 
 
 def parse_limit(value: str | None, default: int = DEFAULT_NEWS_LIMIT) -> int:
@@ -790,8 +804,8 @@ def weather(request):
     if section not in SECTION_DEFINITIONS:
         raise Http404("Sezione non trovata")
     definition = localized_section_definition(section)
-    refresh_section_if_stale(section)
-    formatted = formatted_section_data(section)
+    meteo_context = meteo_map_context()
+    formatted = meteo_context["meteo_data"]
     latest = max((card["fetched_at"] for card in formatted["raw"]), default=None)
     ctx = {
         "section": {**definition, "key": section},
@@ -803,7 +817,7 @@ def weather(request):
         "languages": LANGUAGES,
         "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
         "ui": UI_TEXT["it"],
-        "map_regions": get_map_regions(),
+        "map_regions": meteo_context["map_regions"],
     }
     return render(request, "news/section_meteo.html", ctx)
 
@@ -838,33 +852,68 @@ def games(request):
 
 
 def regions(request, region_slug_value: str | None = None):
-    selected_region = normalize_region(region_slug_value or request.GET.get("regione"))
-    canonical_slug = region_slug(selected_region)
-    # Redirect old Trentino/Alto Adige slugs to the canonical one
-    if region_slug_value and region_slug_value != canonical_slug:
-        return redirect("news:region", region_slug_value=canonical_slug, permanent=True)
-    refresh_section_if_stale("regioni", selected_region)
-    formatted = formatted_section_data("regioni", selected_region)
-    latest = max((card["fetched_at"] for card in formatted["raw"]), default=None)
+    requested_region = region_slug_value or request.GET.get("regione")
     regions_payload = [
         {
             "name": region_display_name(region),
             "slug": region_slug(region),
             "url": reverse("news:region", kwargs={"region_slug_value": region_slug(region)}),
-            "active": region == selected_region,
+            "active": False,
         }
         for region in REGION_CHOICES
     ]
+
+    if not requested_region:
+        meteo_context = meteo_map_context()
+        definition = localized_section_definition("regioni")
+        return render(
+            request,
+            "news/regions.html",
+            {
+                "section": {**definition, "key": "regioni"},
+                "data": {"cards": []},
+                "latest": meteo_context["meteo_latest"],
+                "stale": is_stale_timestamp(meteo_context["meteo_latest"], settings.TELETEXT_SECTION_REFRESH_SECONDS),
+                "regions": regions_payload,
+                "selected_region": "",
+                "selected_region_display": "",
+                "capital_weather": [],
+                "is_region_landing": True,
+                "map_regions": meteo_context["map_regions"],
+                "nav_items": nav_items("regioni"),
+                "language": "it",
+                "languages": LANGUAGES,
+                "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
+                "ui": UI_TEXT["it"],
+            },
+        )
+
+    selected_region = normalize_region(requested_region)
+    canonical_slug = region_slug(selected_region)
+    # Redirect old Trentino/Alto Adige slugs to the canonical one
+    if region_slug_value and region_slug_value != canonical_slug:
+        return redirect("news:region", region_slug_value=canonical_slug, permanent=True)
+    meteo_context = meteo_map_context()
+    refresh_section_if_stale("regioni", selected_region)
+    formatted = formatted_section_data("regioni", selected_region)
+    latest = max((card["fetched_at"] for card in formatted["raw"]), default=None)
+    selected_region_display = region_display_name(selected_region)
+    for region in regions_payload:
+        region["active"] = region["slug"] == canonical_slug
     return render(
         request,
         "news/regions.html",
         {
-            "section": {**localized_section_definition("regioni"), "key": "regioni", "title": f"{localized_section_definition('regioni')['title']} - {selected_region}"},
+            "section": {**localized_section_definition("regioni"), "key": "regioni", "title": f"{localized_section_definition('regioni')['title']} - {selected_region_display}"},
             "data": formatted,
             "latest": latest,
             "stale": is_stale_timestamp(latest, settings.TELETEXT_SECTION_REFRESH_SECONDS),
             "regions": regions_payload,
             "selected_region": selected_region,
+            "selected_region_display": selected_region_display,
+            "capital_weather": meteo_context["region_weather"].get(canonical_slug, []),
+            "is_region_landing": False,
+            "map_regions": meteo_context["map_regions"],
             "nav_items": nav_items("regioni"),
             "language": "it",
             "languages": LANGUAGES,
