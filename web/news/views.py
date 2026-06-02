@@ -928,7 +928,7 @@ def weather(request):
     definition = localized_section_definition(section)
     meteo_context = meteo_map_context()
     formatted = meteo_context["meteo_data"]
-    latest = max((card["fetched_at"] for card in formatted["raw"]), default=None)
+    latest = meteo_context["meteo_latest"]
     ctx = {
         "section": {**definition, "key": section},
         "data": formatted,
