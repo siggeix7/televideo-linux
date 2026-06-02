@@ -79,24 +79,13 @@
         <g class="capital-markers-cards">
             {% for marker in weather_capital_markers %}
             <g class="capital-marker__card" data-card-for="{{ marker.slug }}" transform="translate({{ marker.card_x|unlocalize }} {{ marker.card_y|unlocalize }})">
-                <rect class="capital-marker__card-bg" width="{{ marker.card_width }}" height="{{ marker.card_height }}" rx="3"/>
-                <text class="capital-marker__card-title" x="9" y="16">{{ marker.name }}</text>
-                <text class="capital-marker__card-temp" x="{{ marker.card_width|add:'-9' }}" y="16" text-anchor="end">{{ marker.temp_label }}</text>
-                <text class="capital-marker__card-cond" x="9" y="30">{{ marker.condition }}</text>
-                {% if marker.temp_range %}<text class="capital-marker__card-range" x="{{ marker.card_width|add:'-9' }}" y="30" text-anchor="end">{{ marker.temp_range }}</text>{% endif %}
-                {% if marker.precipitation_badge %}<text class="capital-marker__card-precip" x="9" y="44">{{ marker.precipitation_badge }}</text>{% endif %}
-                {% if marker.wind != "n.d." %}<text class="capital-marker__card-wind" x="{{ marker.card_width|add:'-9' }}" y="44" text-anchor="end">&#x1F4A8; {{ marker.wind }}</text>{% endif %}
-                {% if marker.forecast_slots %}
-                <g class="capital-marker__card-forecast">
-                    {% for slot in marker.forecast_slots %}
-                    <text class="capital-marker__card-slot" x="{{ slot.x }}" y="62" text-anchor="middle">
-                        <tspan class="capital-marker__card-slot-time" x="{{ slot.x }}">{{ slot.time }}</tspan>
-                        <tspan class="capital-marker__card-slot-emoji" x="{{ slot.x }}" dy="12">{{ slot.emoji }}</tspan>
-                        {% if slot.temp is not None %}<tspan class="capital-marker__card-slot-temp" x="{{ slot.x }}" dy="13">{{ slot.temp }}°</tspan>{% endif %}
-                    </text>
-                    {% endfor %}
-                </g>
-                {% endif %}
+                <rect class="capital-marker__card-bg" width="{{ marker.card_width }}" height="{{ marker.card_height }}" rx="2"/>
+                <text class="capital-marker__card-title" x="8" y="15">{{ marker.name }}</text>
+                <text class="capital-marker__card-temp" x="{{ marker.card_width|add:'-8' }}" y="15" text-anchor="end">{{ marker.temp_label }}</text>
+                <text class="capital-marker__card-cond" x="8" y="29">{{ marker.condition }}</text>
+                {% if marker.temp_range %}<text class="capital-marker__card-range" x="{{ marker.card_width|add:'-8' }}" y="29" text-anchor="end">{{ marker.temp_range }}</text>{% endif %}
+                <text class="capital-marker__card-info" x="8" y="44">{% if marker.wind != "n.d." %}{{ marker.wind }}{% endif %}{% if marker.wind != "n.d." and marker.precipitation_badge %} &middot; {% endif %}{% if marker.precipitation_badge %}{{ marker.precipitation_badge }}{% endif %}</text>
+                {% if marker.source_label %}<text class="capital-marker__card-source" x="{{ marker.card_width|add:'-8' }}" y="44" text-anchor="end">{{ marker.source_label }}</text>{% endif %}
             </g>
             {% endfor %}
         </g>

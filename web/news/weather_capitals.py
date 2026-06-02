@@ -148,8 +148,8 @@ MAP_MIN_LAT = 35.49
 MAP_MAX_LAT = 47.10
 MAP_WIDTH = 800
 MAP_HEIGHT = 960
-MARKER_CARD_WIDTH = 210
-MARKER_CARD_HEIGHT = 84
+MARKER_CARD_WIDTH = 178
+MARKER_CARD_HEIGHT = 58
 
 
 CITY_ALIASES = {
@@ -425,13 +425,15 @@ def capital_marker_detail(row: dict) -> tuple[str, str, str]:
 
 
 def capital_marker_card_position(x: float, y: float) -> tuple[float, float]:
-    if x > MAP_WIDTH - MARKER_CARD_WIDTH - 20:
-        card_x = x - MARKER_CARD_WIDTH - 12
+    """Place card to right of marker, or left if near right edge."""
+    gap = 8
+    if x + MARKER_CARD_WIDTH + gap > MAP_WIDTH:
+        card_x = x - MARKER_CARD_WIDTH - gap
     else:
-        card_x = x + 12
-    card_y = y - (MARKER_CARD_HEIGHT / 2)
-    card_x = min(max(card_x, 4), MAP_WIDTH - MARKER_CARD_WIDTH - 4)
-    card_y = min(max(card_y, 4), MAP_HEIGHT - MARKER_CARD_HEIGHT - 4)
+        card_x = x + gap
+    card_y = y - MARKER_CARD_HEIGHT / 2
+    card_x = min(max(card_x, 3), MAP_WIDTH - MARKER_CARD_WIDTH - 3)
+    card_y = min(max(card_y, 3), MAP_HEIGHT - MARKER_CARD_HEIGHT - 3)
     return round(card_x, 1), round(card_y, 1)
 
 
@@ -447,11 +449,18 @@ def build_capital_weather_markers(region_weather: dict[str, list[dict]]) -> list
             x, y = position
             card_x, card_y = capital_marker_card_position(x, y)
 
-            # Avoid overlapping with already placed cards
-            for pcx, pcy, pcw, pch in placed_cards:
-                if abs(card_x - pcx) < (MARKER_CARD_WIDTH + pcw) / 2 + 4 and abs(card_y - pcy) < (MARKER_CARD_HEIGHT + pch) / 2 + 4:
-                    card_y = pcy + pch + 4
-                    card_y = min(card_y, MAP_HEIGHT - MARKER_CARD_HEIGHT - 4)
+            # Avoid overlapping: if this card overlaps a previously placed card, shift it down
+            for _ in range(8):  # max 8 shift attempts
+                overlap = False
+                for pcx, pcy, pcw, pch in placed_cards:
+                    if (card_x < pcx + pcw + 4 and card_x + MARKER_CARD_WIDTH + 4 > pcx and
+                        card_y < pcy + pch + 4 and card_y + MARKER_CARD_HEIGHT + 4 > pcy):
+                        card_y = pcy + pch + 5
+                        card_y = min(card_y, MAP_HEIGHT - MARKER_CARD_HEIGHT - 3)
+                        overlap = True
+                        break
+                if not overlap:
+                    break
             placed_cards.append((card_x, card_y, MARKER_CARD_WIDTH, MARKER_CARD_HEIGHT))
 
             emoji, temp_label, detail = capital_marker_detail(row)
@@ -462,16 +471,6 @@ def build_capital_weather_markers(region_weather: dict[str, list[dict]]) -> list
             temp_range = ""
             if min_val is not None and max_val is not None:
                 temp_range = f"{min_val}\u00b0 / {max_val}\u00b0"
-            forecast_slots = []
-            slot_index = 0
-            for slot in (row.get("today_forecast") or [])[:4]:
-                forecast_slots.append({
-                    "time": slot.get("time", ""),
-                    "emoji": slot.get("emoji", ""),
-                    "temp": slot.get("temp"),
-                    "x": 9 + slot_index * 48,
-                })
-                slot_index += 1
             aria_parts = [city]
             if condition:
                 aria_parts.append(condition)
@@ -502,9 +501,6 @@ def build_capital_weather_markers(region_weather: dict[str, list[dict]]) -> list
                 "detail": detail,
                 "condition": condition,
                 "source_label": row.get("source_label") or "",
-                "forecast_slots": forecast_slots,
-                "sunrise": row.get("sunrise") or "",
-                "sunset": row.get("sunset") or "",
                 "aria_label": ": ".join(aria_parts),
             })
     return sorted(markers, key=lambda marker: (marker["y"], marker["x"], marker["name"]))

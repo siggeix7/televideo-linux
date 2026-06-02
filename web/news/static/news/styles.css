@@ -1509,19 +1509,13 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 .capital-marker__card-title {
     fill: var(--white);
     font-family: var(--font-mono);
-    font-size: 13px;
-    font-weight: 800;
-}
-.capital-marker__card-precip {
-    fill: var(--cyan);
-    font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 800;
 }
 .capital-marker__card-temp {
     fill: var(--yellow);
     font-family: var(--font-mono);
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 800;
 }
 .capital-marker__card-cond {
@@ -1534,16 +1528,16 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
     font-family: var(--font-mono);
     font-size: 9px;
 }
-.capital-marker__card-wind {
+.capital-marker__card-info {
     fill: var(--text-dim);
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 9px;
 }
-.capital-marker__card-forecast { }
-.capital-marker__card-slot { font-family: var(--font-mono); }
-.capital-marker__card-slot-time { fill: var(--text-dim); font-size: 8px; }
-.capital-marker__card-slot-emoji { font-size: 14px; }
-.capital-marker__card-slot-temp { fill: var(--yellow); font-size: 9px; font-weight: bold; }
+.capital-marker__card-source {
+    fill: var(--cyan);
+    font-family: var(--font-mono);
+    font-size: 8px;
+}
 
 @keyframes capital-rain-pulse {
     0% { opacity: 0.75; transform: scale(0.72); }
