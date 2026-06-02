@@ -61,7 +61,7 @@
     </div>
     {% endif %}
 
-    {% if not data.weather_stations and not data.temperatures and not data.cards %}
+    {% if not data.weather_stations and not data.temperatures and not data.cards and not weather_capital_markers and not map_regions %}
     <div class="empty-state">
         <h2>{{ ui.section_empty_title }}</h2>
         <p>{{ ui.section_empty_message }}</p>
