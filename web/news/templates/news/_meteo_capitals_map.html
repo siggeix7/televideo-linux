@@ -1,8 +1,16 @@
 {% load l10n %}
-<section class="italy-map italy-map--capitals" data-capitals-map aria-label="Mappa meteo dei capoluoghi di provincia italiani">
+<section class="italy-map italy-map--capitals" data-capitals-map data-weather-tile-template="{{ weather_tile_template|default:'' }}" data-weather-tile-zoom="{{ weather_tile_zoom|default:'7' }}" data-map-min-lon="6.62" data-map-max-lon="18.52" data-map-min-lat="35.49" data-map-max-lat="47.10" aria-label="Mappa meteo dei capoluoghi di provincia italiani">
     <div class="italy-map__header">
         <h2 class="italy-map__title">Mappa meteo capoluoghi</h2>
-        <p class="italy-map__subtitle">Tocca o seleziona un marker per temperatura e vento</p>
+        <p class="italy-map__subtitle">Radar precipitazioni OpenWeather, marker capoluoghi e dettaglio locale</p>
+        <div class="italy-map__statusbar" aria-label="Stato precipitazioni sulla mappa">
+            <span class="italy-map__status-pill">Precipitazioni live</span>
+            {% if weather_map_summary.precipitating_count %}
+            <strong>{{ weather_map_summary.precipitating_count }} capoluoghi con pioggia/neve</strong>
+            {% else %}
+            <span>Nessun capoluogo in pioggia nella cache corrente</span>
+            {% endif %}
+        </div>
     </div>
     <div class="italy-map__body">
     <svg class="italy-map__svg italy-map__svg--capitals" viewBox="0 0 800 960" xmlns="http://www.w3.org/2000/svg" aria-label="Mappa interattiva dei capoluoghi italiani" role="img">
@@ -11,13 +19,23 @@
                 <stop offset="0%" stop-color="#082616" stop-opacity="0.68"/>
                 <stop offset="100%" stop-color="#001105" stop-opacity="0.92"/>
             </linearGradient>
+            <clipPath id="italy-weather-clip-capitals">
+                {% for r in map_regions %}
+                <path d="{{ r.path }}"/>
+                {% endfor %}
+            </clipPath>
+            <filter id="weather-radar-soften" x="-8%" y="-8%" width="116%" height="116%">
+                <feGaussianBlur stdDeviation="0.35"/>
+            </filter>
         </defs>
 
         <rect width="800" height="960" fill="url(#sea-grad-capitals)"/>
 
+        <g class="weather-radar" data-weather-radar clip-path="url(#italy-weather-clip-capitals)" filter="url(#weather-radar-soften)" aria-hidden="true"></g>
+
         <g class="italy-regions italy-regions--capitals" aria-hidden="true">
             {% for r in map_regions %}
-            <path d="{{ r.path }}" fill="rgba(0,170,0,0.20)" stroke="rgba(0,255,0,0.44)" stroke-width="1.1" stroke-linejoin="round" class="italy-region italy-region--capitals"/>
+            <path d="{{ r.path }}" fill="rgba(0,130,70,0.14)" stroke="rgba(0,255,180,0.5)" stroke-width="1.1" stroke-linejoin="round" class="italy-region italy-region--capitals"/>
             {% endfor %}
         </g>
 
@@ -29,8 +47,9 @@
 
         <g class="capital-markers-dots">
             {% for marker in weather_capital_markers %}
-            <g class="capital-marker{% if not marker.available %} capital-marker--muted{% endif %}" tabindex="0" role="img" aria-label="{{ marker.aria_label }}" data-capital-marker="{{ marker.slug }}" data-source-label="{{ marker.source_label }}">
+            <g class="capital-marker{% if not marker.available %} capital-marker--muted{% endif %}{% if marker.precipitating %} capital-marker--rain{% endif %}" tabindex="0" role="img" aria-label="{{ marker.aria_label }}" data-capital-marker="{{ marker.slug }}" data-source-label="{{ marker.source_label }}" data-precipitation="{{ marker.precipitation_badge }}">
                 <title>{{ marker.aria_label }}</title>
+                {% if marker.precipitating %}<circle class="capital-marker__pulse" cx="{{ marker.x|unlocalize }}" cy="{{ marker.y|unlocalize }}" r="25"/>{% endif %}
                 <circle class="capital-marker__halo" cx="{{ marker.x|unlocalize }}" cy="{{ marker.y|unlocalize }}" r="18"/>
                 <text class="capital-marker__glyph" x="{{ marker.x|unlocalize }}" y="{{ marker.emoji_y|unlocalize }}" text-anchor="middle">{{ marker.emoji }}</text>
             </g>
@@ -43,19 +62,93 @@
                 <rect class="capital-marker__card-bg" width="{{ marker.card_width }}" height="{{ marker.card_height }}" rx="0"/>
                 <text class="capital-marker__card-title" x="9" y="17">{{ marker.name }}</text>
                 <text class="capital-marker__card-detail" x="9" y="34">{{ marker.detail }}</text>
+                {% if marker.precipitation_badge %}<text class="capital-marker__card-precip" x="9" y="51">{{ marker.precipitation_badge }}</text>{% endif %}
             </g>
             {% endfor %}
         </g>
     </svg>
+    <div class="italy-map__legend" aria-label="Legenda mappa meteo">
+        <span><i class="italy-map__legend-swatch italy-map__legend-swatch--light"></i>Pioggia debole</span>
+        <span><i class="italy-map__legend-swatch italy-map__legend-swatch--strong"></i>Precipitazioni intense</span>
+        <span><i class="italy-map__legend-swatch italy-map__legend-swatch--marker"></i>Capoluogo con pioggia/neve</span>
+    </div>
     </div>
     <script>
     (function(){
         document.querySelectorAll("[data-capitals-map]").forEach(function(map){
+            var svg = map.querySelector("svg");
+            var radar = map.querySelector("[data-weather-radar]");
+            var tileTemplate = map.getAttribute("data-weather-tile-template") || "";
             var markerDots = Array.prototype.slice.call(map.querySelectorAll("[data-capital-marker]"));
             var cardsById = {};
             map.querySelectorAll("[data-card-for]").forEach(function(card){
                 cardsById[card.getAttribute("data-card-for")] = card;
             });
+
+            function numberAttr(name, fallback){
+                var value = parseFloat(map.getAttribute(name));
+                return isFinite(value) ? value : fallback;
+            }
+
+            function tileUrl(z, x, y){
+                return tileTemplate.replace("__z__", z).replace("__x__", x).replace("__y__", y);
+            }
+
+            function lonToTileX(lon, zoom){
+                return Math.floor((lon + 180) / 360 * Math.pow(2, zoom));
+            }
+
+            function latToTileY(lat, zoom){
+                var latRad = lat * Math.PI / 180;
+                return Math.floor((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * Math.pow(2, zoom));
+            }
+
+            function tileXToLon(x, zoom){
+                return x / Math.pow(2, zoom) * 360 - 180;
+            }
+
+            function tileYToLat(y, zoom){
+                var n = Math.PI - 2 * Math.PI * y / Math.pow(2, zoom);
+                return 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+            }
+
+            function renderRadar(){
+                if (!svg || !radar || !tileTemplate) return;
+                var minLon = numberAttr("data-map-min-lon", 6.62);
+                var maxLon = numberAttr("data-map-max-lon", 18.52);
+                var minLat = numberAttr("data-map-min-lat", 35.49);
+                var maxLat = numberAttr("data-map-max-lat", 47.10);
+                var zoom = parseInt(map.getAttribute("data-weather-tile-zoom") || "7", 10);
+                var box = svg.viewBox.baseVal;
+                var minTileX = lonToTileX(minLon, zoom);
+                var maxTileX = lonToTileX(maxLon, zoom);
+                var minTileY = latToTileY(maxLat, zoom);
+                var maxTileY = latToTileY(minLat, zoom);
+
+                function lonToSvg(lon){ return (lon - minLon) / (maxLon - minLon) * box.width + box.x; }
+                function latToSvg(lat){ return (maxLat - lat) / (maxLat - minLat) * box.height + box.y; }
+
+                for (var x = minTileX; x <= maxTileX; x += 1) {
+                    for (var y = minTileY; y <= maxTileY; y += 1) {
+                        var west = tileXToLon(x, zoom);
+                        var east = tileXToLon(x + 1, zoom);
+                        var north = tileYToLat(y, zoom);
+                        var south = tileYToLat(y + 1, zoom);
+                        var image = document.createElementNS("http://www.w3.org/2000/svg", "image");
+                        image.setAttribute("class", "weather-radar__tile");
+                        image.setAttribute("x", lonToSvg(west));
+                        image.setAttribute("y", latToSvg(north));
+                        image.setAttribute("width", lonToSvg(east) - lonToSvg(west));
+                        image.setAttribute("height", latToSvg(south) - latToSvg(north));
+                        image.setAttribute("preserveAspectRatio", "none");
+                        image.setAttribute("href", tileUrl(zoom, x, y));
+                        image.setAttributeNS("http://www.w3.org/1999/xlink", "href", tileUrl(zoom, x, y));
+                        radar.appendChild(image);
+                    }
+                }
+            }
+
+            renderRadar();
 
             function clearMarkers(){
                 markerDots.forEach(function(marker){ marker.classList.remove("is-active"); });

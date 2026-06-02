@@ -26,6 +26,7 @@ urlpatterns = [
     path("healthz/", views.healthcheck, name="healthcheck"),
     path("sw.js", views.service_worker_js, name="service_worker"),
     path("api/news/", views.news_api, name="news_api"),
+    path("api/meteo/openweather/<str:layer>/<int:z>/<int:x>/<int:y>.png", views.openweather_tile, name="openweather_tile"),
     path("api/superenalotto/", views.superenalotto_api, name="superenalotto_api"),
     path("api/superenalotto/montepremi/", views.montepremi_api, name="montepremi_api"),
     path("api/superenalotto/fanta-super/", views.fanta_super_api, name="fanta_super_api"),

@@ -29,7 +29,7 @@ from .formatters import (
 )
 from .models import LottoDraw, NewsItem, SuperEnalottoDraw, SuperEnalottoPrediction, TelevideoPageSnapshot
 from .map_paths import get_map_regions
-from .openweather import openweather_cache_by_city
+from .openweather import OPENWEATHER_TILE_CACHE_SECONDS, fetch_openweather_tile, openweather_cache_by_city
 from .predictions import create_prediction, generate_combinations, verify_predictions
 from .site_urls import public_absolute_url, public_base_url
 from .weather_capitals import build_capital_weather_markers, build_region_capital_weather, enrich_map_regions
@@ -504,13 +504,48 @@ def meteo_map_context() -> dict[str, object]:
         region_weather = build_region_capital_weather(meteo_data)
         latest = max((card["fetched_at"] for card in meteo_data["raw"]), default=None)
     map_regions = enrich_map_regions(get_map_regions(), region_weather)
+    weather_markers = build_capital_weather_markers(region_weather)
+    precipitating_markers = sorted(
+        (marker for marker in weather_markers if marker.get("precipitating")),
+        key=lambda marker: (-float(marker.get("precipitation_mm") or 0), marker["name"]),
+    )
     return {
         "meteo_data": meteo_data,
         "meteo_latest": latest,
         "region_weather": region_weather,
         "map_regions": map_regions,
-        "weather_capital_markers": build_capital_weather_markers(region_weather),
+        "weather_capital_markers": weather_markers,
+        "weather_map_summary": {
+            "available_count": sum(1 for marker in weather_markers if marker.get("available")),
+            "precipitating_count": len(precipitating_markers),
+            "precipitating_markers": precipitating_markers[:6],
+        },
+        "weather_tile_template": openweather_tile_template() if settings.OPENWEATHER_API_KEY else "",
+        "weather_tile_zoom": 7,
     }
+
+
+def openweather_tile_template() -> str:
+    tile_url = reverse(
+        "news:openweather_tile",
+        kwargs={"layer": "precipitation_new", "z": 0, "x": 0, "y": 0},
+    )
+    return tile_url.replace("/0/0/0.png", "/__z__/__x__/__y__.png")
+
+
+def openweather_tile(request, layer: str, z: int, x: int, y: int):
+    if not settings.OPENWEATHER_API_KEY:
+        raise Http404("OpenWeather tiles disabled")
+    try:
+        image = fetch_openweather_tile(layer, z, x, y, settings.OPENWEATHER_API_KEY)
+    except ValueError as exc:
+        raise Http404("OpenWeather tile not found") from exc
+    except RuntimeError:
+        return HttpResponse(status=502)
+
+    response = HttpResponse(image, content_type="image/png")
+    response["Cache-Control"] = f"public, max-age={OPENWEATHER_TILE_CACHE_SECONDS}"
+    return response
 
 
 def parse_limit(value: str | None, default: int = DEFAULT_NEWS_LIMIT) -> int:
@@ -941,6 +976,9 @@ def weather(request):
         "ui": UI_TEXT["it"],
         "map_regions": meteo_context["map_regions"],
         "weather_capital_markers": meteo_context["weather_capital_markers"],
+        "weather_map_summary": meteo_context["weather_map_summary"],
+        "weather_tile_template": meteo_context["weather_tile_template"],
+        "weather_tile_zoom": meteo_context["weather_tile_zoom"],
     }
     return render(request, "news/section_meteo.html", ctx)
 

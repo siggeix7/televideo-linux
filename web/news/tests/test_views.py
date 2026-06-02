@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -6,6 +7,20 @@ from django.utils import timezone
 
 from news.models import Category, NewsItem, OpenWeatherCity, SuperEnalottoDraw, SuperEnalottoPrediction, TelevideoPageSnapshot
 from news.weather_capitals import REGION_CAPITALS
+
+
+class TileResponse:
+    def __init__(self, body: bytes):
+        self.body = body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+    def read(self):
+        return self.body
 
 
 class ViewTests(TestCase):
@@ -621,6 +636,9 @@ class ViewTests(TestCase):
         self.assertContains(response, "Roma")
         self.assertContains(response, "22")
         self.assertContains(response, "OpenWeatherMap")
+        self.assertContains(response, "data-weather-radar")
+        self.assertContains(response, "data-weather-tile-template")
+        self.assertNotContains(response, "test-key")
         html = response.content.decode()
         expected_markers = sum(len(capitals) for capitals in REGION_CAPITALS.values())
         self.assertEqual(html.count("data-capital-marker="), expected_markers)
@@ -631,6 +649,50 @@ class ViewTests(TestCase):
         self.assertNotContains(response, "SENTINEL_METEO_TELEVIDEO")
         self.assertNotContains(response, "weather-zone-grid")
         self.assertNotContains(response, "temperature-grid")
+
+    @override_settings(OPENWEATHER_API_KEY="test-key")
+    def test_weather_page_marks_precipitating_capitals(self):
+        OpenWeatherCity.objects.create(
+            city="Roma",
+            region_slug="lazio",
+            query="Roma,IT",
+            condition="Pioggia leggera",
+            temp=18,
+            fetched_at=timezone.now(),
+            raw={"list": [{"rain": {"3h": 1.4}, "pop": 0.9}]},
+        )
+
+        response = self.client.get(reverse("news:weather"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "capital-marker--rain")
+        self.assertContains(response, "1 capoluoghi con pioggia/neve")
+        self.assertContains(response, "pioggia 1.4 mm/3h")
+
+    @override_settings(OPENWEATHER_API_KEY="test-key")
+    def test_openweather_tile_proxy_hides_api_key(self):
+        with patch("news.openweather.urlopen", return_value=TileResponse(b"png-bytes")) as mocked:
+            response = self.client.get(reverse(
+                "news:openweather_tile",
+                kwargs={"layer": "precipitation_new", "z": 7, "x": 66, "y": 46},
+            ))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "image/png")
+        self.assertEqual(response.content, b"png-bytes")
+        self.assertIn("max-age=600", response["Cache-Control"])
+        upstream_url = mocked.call_args.args[0]
+        self.assertIn("tile.openweathermap.org/map/precipitation_new/7/66/46.png", upstream_url)
+        self.assertIn("appid=test-key", upstream_url)
+
+    @override_settings(OPENWEATHER_API_KEY="test-key")
+    def test_openweather_tile_proxy_rejects_unknown_layers(self):
+        response = self.client.get(reverse(
+            "news:openweather_tile",
+            kwargs={"layer": "temp_new", "z": 7, "x": 66, "y": 46},
+        ))
+
+        self.assertEqual(response.status_code, 404)
 
     def test_atom_feed_returns_valid_xml(self):
         response = self.client.get(reverse("news:atom_feed"))

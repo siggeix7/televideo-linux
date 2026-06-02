@@ -148,8 +148,8 @@ MAP_MIN_LAT = 35.49
 MAP_MAX_LAT = 47.10
 MAP_WIDTH = 800
 MAP_HEIGHT = 960
-MARKER_CARD_WIDTH = 158
-MARKER_CARD_HEIGHT = 46
+MARKER_CARD_WIDTH = 178
+MARKER_CARD_HEIGHT = 62
 
 
 CITY_ALIASES = {
@@ -177,6 +177,9 @@ WEATHER_EMOJI = [
     (r"(?i)\bpoco\s+nuvoloso\b|\bpoche\s+nuvole\b", "\U0001f324\ufe0f"),
     (r"(?i)\bsereno\b|\bsole\b|\bsoleggiato\b", "\u2600\ufe0f"),
 ]
+PRECIPITATION_RE = re.compile(
+    r"(?i)\b(pioggia|pioviggine|rovesc|temporale|grandine|neve|rain|drizzle|shower|thunderstorm|snow|sleet)\b"
+)
 
 
 def weather_emoji(condition: str) -> str:
@@ -274,6 +277,8 @@ def build_region_capital_weather(meteo_data: dict, openweather_data: dict[str, d
             condition_text = str(row.get("condition") or "")
             row["emoji"] = weather_emoji(condition_text)
             row["temperature_range"] = temperature_range(row)
+            row["is_precipitating"] = is_precipitating(row)
+            row["precipitation_badge"] = precipitation_badge(row)
             row["summary"] = weather_summary(row)
             rows.append(row)
         payload[region_slug] = rows
@@ -297,7 +302,11 @@ def merge_openweather(row: dict, openweather: dict) -> bool:
         if row.get(key) is None and openweather.get(key) is not None:
             row[key] = openweather[key]
             used = True
-    for key in ("sunrise", "sunset", "today_forecast", "forecast_days"):
+    for key in (
+        "sunrise", "sunset", "today_forecast", "forecast_days",
+        "rain_probability", "rain_mm", "snow_mm", "precipitation_mm",
+        "precipitation_period", "precipitation_label",
+    ):
         if openweather.get(key):
             row[key] = openweather[key]
             used = True
@@ -307,6 +316,30 @@ def merge_openweather(row: dict, openweather: dict) -> bool:
 def temperature_range(row: dict) -> str:
     if row.get("min") is not None and row.get("max") is not None:
         return f"min {row['min']}\u00b0 / max {row['max']}\u00b0"
+    return ""
+
+
+def _positive_number(value) -> float:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return number if number > 0 else 0.0
+
+
+def is_precipitating(row: dict) -> bool:
+    if _positive_number(row.get("precipitation_mm")) > 0:
+        return True
+    return bool(PRECIPITATION_RE.search(str(row.get("condition") or "")))
+
+
+def precipitation_badge(row: dict) -> str:
+    label = str(row.get("precipitation_label") or "")
+    if label:
+        return label
+    probability = row.get("rain_probability")
+    if probability not in (None, ""):
+        return f"prob. pioggia {probability}%"
     return ""
 
 
@@ -320,6 +353,8 @@ def weather_summary(row: dict) -> str:
         parts.append(str(row["temperature_range"]))
     if row.get("wind"):
         parts.append(f"vento {row['wind']}")
+    if row.get("precipitation_badge"):
+        parts.append(str(row["precipitation_badge"]))
     return " \u00b7 ".join(parts) if parts else NO_DATA
 
 
@@ -372,6 +407,8 @@ def build_capital_weather_markers(region_weather: dict[str, list[dict]]) -> list
             if condition:
                 aria_parts.append(condition)
             aria_parts.append(detail)
+            if row.get("precipitation_badge"):
+                aria_parts.append(str(row["precipitation_badge"]))
             markers.append({
                 "slug": capital_marker_slug(city),
                 "name": city,
@@ -384,6 +421,9 @@ def build_capital_weather_markers(region_weather: dict[str, list[dict]]) -> list
                 "card_width": MARKER_CARD_WIDTH,
                 "card_height": MARKER_CARD_HEIGHT,
                 "available": bool(row.get("available")),
+                "precipitating": bool(row.get("is_precipitating")),
+                "precipitation_badge": row.get("precipitation_badge") or "",
+                "precipitation_mm": _positive_number(row.get("precipitation_mm")),
                 "emoji": emoji,
                 "temp_label": temp_label,
                 "wind": row.get("wind") or NO_DATA,

@@ -5,6 +5,7 @@ import logging
 import time
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone as datetime_timezone
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
@@ -18,6 +19,10 @@ from .weather_capitals import REGION_CAPITALS, normalize_name, weather_emoji
 logger = logging.getLogger(__name__)
 
 OPENWEATHER_FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast"
+OPENWEATHER_TILE_URL = "https://tile.openweathermap.org/map/{layer}/{z}/{x}/{y}.png"
+OPENWEATHER_TILE_LAYERS = {"precipitation_new"}
+OPENWEATHER_TILE_CACHE_SECONDS = 600
+OPENWEATHER_TILE_MAX_ZOOM = 10
 
 
 def iter_capitals() -> list[dict[str, str]]:
@@ -74,6 +79,52 @@ def _percent(value) -> int | None:
     return int(round(float(value) * 100))
 
 
+def _precipitation_value(entry: dict, kind: str) -> tuple[float | None, str]:
+    bucket = entry.get(kind) or {}
+    if not isinstance(bucket, dict):
+        return None, ""
+    for period in ("1h", "3h"):
+        value = bucket.get(period)
+        if value is None:
+            continue
+        try:
+            amount = float(value)
+        except (TypeError, ValueError):
+            continue
+        if amount > 0:
+            return round(amount, 1), period
+    return None, ""
+
+
+def _format_precipitation_amount(value: float) -> str:
+    return f"{value:.1f}".rstrip("0").rstrip(".")
+
+
+def _precipitation_fields(entry: dict) -> dict[str, object]:
+    rain_mm, rain_period = _precipitation_value(entry, "rain")
+    snow_mm, snow_period = _precipitation_value(entry, "snow")
+    period = rain_period or snow_period
+    amounts = [amount for amount in (rain_mm, snow_mm) if amount is not None]
+    precipitation_mm = round(sum(amounts), 1) if amounts else None
+
+    labels = []
+    if rain_mm is not None:
+        labels.append(f"pioggia {_format_precipitation_amount(rain_mm)} mm")
+    if snow_mm is not None:
+        labels.append(f"neve {_format_precipitation_amount(snow_mm)} mm")
+    precipitation_label = " + ".join(labels)
+    if precipitation_label and period:
+        precipitation_label = f"{precipitation_label}/{period}"
+
+    return {
+        "rain_mm": rain_mm,
+        "snow_mm": snow_mm,
+        "precipitation_mm": precipitation_mm,
+        "precipitation_period": period,
+        "precipitation_label": precipitation_label,
+    }
+
+
 def _utc_datetime(value) -> datetime | None:
     if value is None:
         return None
@@ -96,7 +147,7 @@ def _forecast_entry(entry: dict, offset: int) -> dict[str, object]:
     wind = entry.get("wind") or {}
     local_dt = _local_datetime(entry["dt"], offset)
     cond = _condition(entry)
-    return {
+    payload = {
         "time": local_dt.strftime("%H:%M"),
         "date": local_dt.date().isoformat(),
         "condition": cond,
@@ -107,6 +158,8 @@ def _forecast_entry(entry: dict, offset: int) -> dict[str, object]:
         "rain_probability": _percent(entry.get("pop")),
         "wind": f"{float(wind['speed']):.1f} m/s" if wind.get("speed") is not None else "",
     }
+    payload.update(_precipitation_fields(entry))
+    return payload
 
 
 def build_today_forecast(entries: list[dict], offset: int) -> list[dict[str, object]]:
@@ -212,6 +265,12 @@ def openweather_city_payload(city: OpenWeatherCity) -> dict[str, object]:
     sunrise = timezone.localtime(city.sunrise_at).strftime("%H:%M") if city.sunrise_at else ""
     sunset = timezone.localtime(city.sunset_at).strftime("%H:%M") if city.sunset_at else ""
 
+    raw = city.raw if isinstance(city.raw, dict) else {}
+    entries = raw.get("list") if isinstance(raw.get("list"), list) else []
+    current_entry = entries[0] if entries else {}
+    precipitation = _precipitation_fields(current_entry)
+    rain_probability = _percent(current_entry.get("pop")) if current_entry.get("pop") is not None else None
+
     return {
         "city": city.city,
         "condition": city.condition,
@@ -224,9 +283,29 @@ def openweather_city_payload(city: OpenWeatherCity) -> dict[str, object]:
         "sunset": sunset,
         "today_forecast": city.today_forecast or [],
         "forecast_days": city.forecast_days or [],
+        "rain_probability": rain_probability,
+        **precipitation,
         "source_label": "OpenWeatherMap",
         "source_at": city.fetched_at,
     }
+
+
+def fetch_openweather_tile(layer: str, z: int, x: int, y: int, api_key: str) -> bytes:
+    if layer not in OPENWEATHER_TILE_LAYERS:
+        raise ValueError("Unsupported OpenWeather tile layer")
+    if z < 0 or z > OPENWEATHER_TILE_MAX_ZOOM:
+        raise ValueError("Unsupported OpenWeather tile zoom")
+    max_tile = 2 ** z
+    if x < 0 or y < 0 or x >= max_tile or y >= max_tile:
+        raise ValueError("OpenWeather tile coordinates out of range")
+
+    params = urlencode({"appid": api_key})
+    url = f"{OPENWEATHER_TILE_URL.format(layer=layer, z=z, x=x, y=y)}?{params}"
+    try:
+        with urlopen(url, timeout=settings.OPENWEATHER_TIMEOUT) as response:
+            return response.read()
+    except (HTTPError, URLError, TimeoutError) as exc:
+        raise RuntimeError("OpenWeather tile fetch failed") from exc
 
 
 def latest_openweather_attempt():

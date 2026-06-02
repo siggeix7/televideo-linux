@@ -140,3 +140,18 @@ class OpenWeatherServiceTests(TestCase):
         self.assertTrue(payload["sunset"])
         self.assertEqual(payload["forecast_days"][0]["label"], "Oggi")
         self.assertEqual(payload["forecast_days"][1]["label"], "Domani")
+
+    def test_openweather_payload_exposes_current_precipitation(self):
+        city = OpenWeatherCity.objects.create(city="Roma", region_slug="lazio", query="Roma,IT")
+        payload = forecast_payload()
+        payload["list"][0]["rain"] = {"3h": 1.4}
+        payload["list"][0]["pop"] = 0.9
+        from news.openweather import store_openweather_payload
+
+        store_openweather_payload(city, payload, now=timezone.now())
+        cached = openweather_city_payload(city)
+
+        self.assertEqual(cached["rain_mm"], 1.4)
+        self.assertEqual(cached["precipitation_mm"], 1.4)
+        self.assertEqual(cached["precipitation_label"], "pioggia 1.4 mm/3h")
+        self.assertEqual(cached["rain_probability"], 90)
