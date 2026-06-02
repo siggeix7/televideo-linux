@@ -31,7 +31,7 @@
             {% endif %}
         </div>
     </div>
-     <div class="italy-map__body">
+    <div class="italy-map__body">
     <svg class="italy-map__svg italy-map__svg--capitals" viewBox="0 0 800 960" xmlns="http://www.w3.org/2000/svg" aria-label="Mappa interattiva dei capoluoghi italiani" role="img">
         <defs>
             <linearGradient id="sea-grad-capitals" x1="0" y1="0" x2="1" y2="1">
@@ -44,39 +44,36 @@
                 <stop offset="50%" stop-color="#082c44" stop-opacity="0.35"/>
                 <stop offset="100%" stop-color="#041a28" stop-opacity="0.18"/>
             </linearGradient>
-            <clipPath id="italy-weather-clip-capitals">
-                {% for r in map_regions %}
-                <path d="{{ r.path }}"/>
-                {% endfor %}
-            </clipPath>
             <filter id="weather-radar-soften" x="-8%" y="-8%" width="116%" height="116%">
                 <feGaussianBlur stdDeviation="0.35"/>
             </filter>
         </defs>
 
         <rect width="800" height="960" fill="url(#sea-grad-capitals)"/>
+        <rect width="800" height="960" fill="url(#sea-deep-capitals)"/>
 
-        <g class="sea-waves" aria-hidden="true" fill="none" stroke="rgba(0,200,255,0.12)" stroke-width="0.7">
-            <path d="M0 100 Q50 90 100 100 T200 100 T300 100 T400 100 T500 100 T600 100 T700 100 T800 100"/>
-            <path d="M0 140 Q40 128 80 140 T160 140 T240 140 T320 140 T400 140 T480 140 T560 140 T640 140 T720 140 T800 140"/>
-            <path d="M0 800 Q60 810 120 800 T240 800 T360 800 T480 800 T600 800 T720 800 T800 800"/>
-            <path d="M0 840 Q50 830 100 840 T200 840 T300 840 T400 840 T500 840 T600 840 T700 840 T800 840"/>
-            <path d="M0 880 Q70 870 140 880 T280 880 T420 880 T560 880 T700 880 T800 880"/>
+        <g class="sea-waves" aria-hidden="true" fill="none" stroke="rgba(0,220,255,0.16)" stroke-width="0.7">
+            <path d="M14 86 Q58 74 104 86 T196 86 T288 86 T380 86 T472 86 T564 86 T656 86 T748 86"/>
+            <path d="M32 172 Q78 158 124 172 T216 172 T308 172 T400 172 T492 172 T584 172 T676 172 T768 172"/>
+            <path d="M22 736 Q78 750 134 736 T246 736 T358 736 T470 736 T582 736 T694 736 T806 736"/>
+            <path d="M4 814 Q58 800 112 814 T220 814 T328 814 T436 814 T544 814 T652 814 T760 814"/>
+            <path d="M20 886 Q84 872 148 886 T276 886 T404 886 T532 886 T660 886 T788 886"/>
         </g>
 
         <g class="sea-labels" pointer-events="none" aria-hidden="true">
-            <text x="120" y="55" class="sea-label">Mar Ligure</text>
-            <text x="360" y="35" class="sea-label">Mar Adriatico</text>
-            <text x="620" y="60" class="sea-label">Mar Ionio</text>
-            <text x="680" y="600" class="sea-label">Mar Mediterraneo</text>
+            <text x="88" y="310" class="sea-label">Mar Ligure</text>
+            <text x="168" y="575" class="sea-label">Mar Tirreno</text>
+            <text x="598" y="438" class="sea-label" transform="rotate(68 598 438)">Mar Adriatico</text>
+            <text x="548" y="775" class="sea-label">Mar Ionio</text>
+            <text x="164" y="878" class="sea-label">Mediterraneo</text>
         </g>
 
-        <g class="weather-radar" data-weather-radar data-layer="precipitation" clip-path="url(#italy-weather-clip-capitals)" filter="url(#weather-radar-soften)" aria-hidden="true"></g>
-        <g class="weather-radar" data-weather-radar data-layer="clouds" clip-path="url(#italy-weather-clip-capitals)" filter="url(#weather-radar-soften)" aria-hidden="true" style="display:none"></g>
+        <g class="weather-radar weather-radar--precipitation" data-weather-radar data-layer="precipitation" filter="url(#weather-radar-soften)" aria-hidden="true"></g>
+        <g class="weather-radar weather-radar--clouds" data-weather-radar data-layer="clouds" filter="url(#weather-radar-soften)" aria-hidden="true" style="display:none"></g>
 
         <g class="italy-regions italy-regions--capitals" aria-hidden="true">
             {% for r in map_regions %}
-            <path d="{{ r.path }}" fill="rgba(0,130,70,0.14)" stroke="rgba(0,255,180,0.5)" stroke-width="1.1" stroke-linejoin="round" class="italy-region italy-region--capitals"/>
+            <path d="{{ r.path }}" fill="rgba(0,120,76,0.34)" stroke="rgba(70,255,190,0.68)" stroke-width="1" stroke-linejoin="round" class="italy-region italy-region--capitals"/>
             {% endfor %}
         </g>
 
@@ -88,28 +85,45 @@
 
         <g class="capital-markers-dots">
             {% for marker in weather_capital_markers %}
-            <g class="capital-marker{% if not marker.available %} capital-marker--muted{% endif %}{% if marker.precipitating %} capital-marker--rain{% endif %}" tabindex="0" role="img" aria-label="{{ marker.aria_label }}" data-capital-marker="{{ marker.slug }}" data-source-label="{{ marker.source_label }}" data-precipitation="{{ marker.precipitation_badge }}" data-temp="{{ marker.temp_value|default:'' }}">
+            <g class="capital-marker{% if not marker.available %} capital-marker--muted{% endif %}{% if marker.precipitating %} capital-marker--rain{% endif %}" tabindex="0" role="button" aria-label="{{ marker.aria_label }}" data-capital-marker="{{ marker.slug }}" data-name="{{ marker.name }}" data-emoji="{{ marker.emoji }}" data-condition="{{ marker.condition }}" data-temp-label="{{ marker.temp_label }}" data-temp-range="{{ marker.temp_range }}" data-wind="{{ marker.wind }}" data-source-label="{{ marker.source_label }}" data-precipitation="{{ marker.precipitation_badge }}" data-temp="{{ marker.temp_value|default:'' }}" data-available="{% if marker.available %}true{% else %}false{% endif %}">
                 <title>{{ marker.aria_label }}</title>
-                <circle class="capital-marker__halo" cx="{{ marker.x|unlocalize }}" cy="{{ marker.y|unlocalize }}" r="18" fill="{{ marker.temp_color }}" stroke="{% if marker.precipitating %}rgba(0,255,255,0.9){% else %}rgba(0,255,0,0.24){% endif %}"/>
+                <circle class="capital-marker__hit" cx="{{ marker.x|unlocalize }}" cy="{{ marker.y|unlocalize }}" r="22"/>
+                <circle class="capital-marker__ring" cx="{{ marker.x|unlocalize }}" cy="{{ marker.y|unlocalize }}" r="12" fill="{{ marker.temp_color }}" stroke="{% if marker.precipitating %}rgba(0,220,255,0.95){% else %}rgba(120,255,160,0.42){% endif %}"/>
+                <circle class="capital-marker__core" cx="{{ marker.x|unlocalize }}" cy="{{ marker.y|unlocalize }}" r="3.6"/>
                 <text class="capital-marker__glyph" x="{{ marker.x|unlocalize }}" y="{{ marker.emoji_y|unlocalize }}" text-anchor="middle">{{ marker.emoji }}</text>
             </g>
             {% endfor %}
         </g>
-
-        <g class="capital-markers-cards">
-            {% for marker in weather_capital_markers %}
-            <g class="capital-marker__card" data-card-for="{{ marker.slug }}" transform="translate({{ marker.card_x|unlocalize }} {{ marker.card_y|unlocalize }})">
-                <rect class="capital-marker__card-bg" width="{{ marker.card_width }}" height="{{ marker.card_height }}" rx="2"/>
-                <text class="capital-marker__card-title" x="8" y="15">{{ marker.name }}</text>
-                <text class="capital-marker__card-temp" x="{{ marker.card_width|add:'-8' }}" y="15" text-anchor="end">{{ marker.temp_label }}</text>
-                <text class="capital-marker__card-cond" x="8" y="29">{{ marker.condition }}</text>
-                {% if marker.temp_range %}<text class="capital-marker__card-range" x="{{ marker.card_width|add:'-8' }}" y="29" text-anchor="end">{{ marker.temp_range }}</text>{% endif %}
-                <text class="capital-marker__card-info" x="8" y="44">{% if marker.wind != "n.d." %}{{ marker.wind }}{% endif %}{% if marker.wind != "n.d." and marker.precipitation_badge %} &middot; {% endif %}{% if marker.precipitation_badge %}{{ marker.precipitation_badge }}{% endif %}</text>
-                {% if marker.source_label %}<text class="capital-marker__card-source" x="{{ marker.card_width|add:'-8' }}" y="44" text-anchor="end">{{ marker.source_label }}</text>{% endif %}
-            </g>
-            {% endfor %}
-        </g>
     </svg>
+    <article class="capital-hovercard" data-capital-hovercard hidden aria-live="polite">
+        <button class="capital-hovercard__close" type="button" aria-label="Chiudi dettaglio meteo" data-hover-close>&times;</button>
+        <div class="capital-hovercard__header">
+            <span class="capital-hovercard__emoji" data-hover-emoji aria-hidden="true"></span>
+            <div class="capital-hovercard__title-group">
+                <strong class="capital-hovercard__name" data-hover-name></strong>
+                <span class="capital-hovercard__condition" data-hover-condition></span>
+            </div>
+            <span class="capital-hovercard__temp" data-hover-temp></span>
+        </div>
+        <dl class="capital-hovercard__metrics">
+            <div class="capital-hovercard__metric" data-hover-row="range">
+                <dt>Min / Max</dt>
+                <dd data-hover-range></dd>
+            </div>
+            <div class="capital-hovercard__metric" data-hover-row="wind">
+                <dt>Vento</dt>
+                <dd data-hover-wind></dd>
+            </div>
+            <div class="capital-hovercard__metric" data-hover-row="precipitation">
+                <dt>Pioggia</dt>
+                <dd data-hover-precipitation></dd>
+            </div>
+        </dl>
+        <div class="capital-hovercard__footer">
+            <span data-hover-source></span>
+            <span data-hover-availability></span>
+        </div>
+    </article>
     <div class="italy-map__legend" aria-label="Legenda mappa meteo">
         <span><i class="italy-map__legend-dot" style="background:rgba(100,180,255,0.55)"></i>&lt;0°</span>
         <span><i class="italy-map__legend-dot" style="background:rgba(160,220,240,0.50)"></i>0-10°</span>
@@ -126,13 +140,13 @@
     (function(){
         document.querySelectorAll("[data-capitals-map]").forEach(function(map){
             var svg = map.querySelector("svg");
+            var body = map.querySelector(".italy-map__body");
+            var hovercard = map.querySelector("[data-capital-hovercard]");
             var tileTemplate = map.getAttribute("data-weather-tile-template") || "";
             var cloudTemplate = map.getAttribute("data-weather-cloud-template") || "";
             var markerDots = Array.prototype.slice.call(map.querySelectorAll("[data-capital-marker]"));
-            var cardsById = {};
-            map.querySelectorAll("[data-card-for]").forEach(function(card){
-                cardsById[card.getAttribute("data-card-for")] = card;
-            });
+            var activeMarker = null;
+            var lockedMarker = null;
 
             function numberAttr(name, fallback){
                 var value = parseFloat(map.getAttribute(name));
@@ -207,7 +221,6 @@
                 if (cloudLayer) renderRadar(cloudLayer, cloudTemplate);
             }
 
-            // Layer toggle controls
             map.querySelectorAll("[data-layer-toggle]").forEach(function(toggle){
                 toggle.addEventListener("change", function(){
                     var layer = toggle.getAttribute("data-layer-toggle");
@@ -218,41 +231,123 @@
                 });
             });
 
-            function clearMarkers(){
-                markerDots.forEach(function(marker){ marker.classList.remove("is-active"); });
-                Object.values(cardsById).forEach(function(card){ card.classList.remove("is-active"); });
+            function text(selector, value){
+                var el = hovercard ? hovercard.querySelector(selector) : null;
+                if (el) el.textContent = value || "";
             }
 
-            function showCard(slug){
-                var card = cardsById[slug];
-                if (card) {
-                    card.classList.add("is-active");
+            function metric(name, value){
+                if (!hovercard) return;
+                var row = hovercard.querySelector("[data-hover-row='" + name + "']");
+                var valueEl = hovercard.querySelector("[data-hover-" + name + "]");
+                if (!row || !valueEl) return;
+                if (value) {
+                    valueEl.textContent = value;
+                    row.hidden = false;
+                } else {
+                    valueEl.textContent = "";
+                    row.hidden = true;
                 }
             }
 
-            function activate(markerDot){
-                clearMarkers();
-                var slug = markerDot.getAttribute("data-capital-marker");
+            function clamp(value, min, max){
+                return Math.min(Math.max(value, min), Math.max(min, max));
+            }
+
+            function isSmallScreen(){
+                return window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
+            }
+
+            function positionHovercard(marker){
+                if (!body || !hovercard || !marker) return;
+                if (isSmallScreen()) {
+                    hovercard.classList.add("is-docked");
+                    hovercard.style.transform = "";
+                    return;
+                }
+                hovercard.classList.remove("is-docked");
+                hovercard.style.transform = "translate(0, 0)";
+                var bodyRect = body.getBoundingClientRect();
+                var markerRect = marker.getBoundingClientRect();
+                var contentWidth = Math.max(body.scrollWidth, body.clientWidth);
+                var contentHeight = Math.max(body.scrollHeight, body.clientHeight);
+                var cardWidth = hovercard.offsetWidth || 300;
+                var cardHeight = hovercard.offsetHeight || 150;
+                var gap = 14;
+                var markerX = markerRect.left - bodyRect.left + body.scrollLeft + markerRect.width / 2;
+                var markerY = markerRect.top - bodyRect.top + body.scrollTop + markerRect.height / 2;
+                var left = markerX + gap;
+                var top = markerY - cardHeight / 2;
+                var maxLeft = contentWidth - cardWidth - 8;
+                var maxTop = contentHeight - cardHeight - 8;
+
+                if (left > maxLeft) left = markerX - cardWidth - gap;
+                if (top > maxTop) top = markerY - cardHeight - gap;
+                hovercard.style.transform = "translate(" + Math.round(clamp(left, 8, maxLeft)) + "px, " + Math.round(clamp(top, 8, maxTop)) + "px)";
+            }
+
+            function fillHovercard(marker){
+                if (!hovercard || !marker) return;
+                var available = marker.getAttribute("data-available") === "true";
+                var condition = marker.getAttribute("data-condition") || "Meteo non disponibile";
+                var source = marker.getAttribute("data-source-label") || "";
+                var footer = hovercard.querySelector(".capital-hovercard__footer");
+
+                text("[data-hover-emoji]", marker.getAttribute("data-emoji") || "");
+                text("[data-hover-name]", marker.getAttribute("data-name") || "");
+                text("[data-hover-condition]", condition);
+                text("[data-hover-temp]", marker.getAttribute("data-temp-label") || "n.d.");
+                text("[data-hover-source]", source);
+                text("[data-hover-availability]", available ? "" : "dato non aggiornato");
+                if (footer) footer.hidden = !source && available;
+                var wind = marker.getAttribute("data-wind") || "";
+                if (wind === "n.d.") wind = "";
+                metric("range", marker.getAttribute("data-temp-range") || "");
+                metric("wind", wind);
+                metric("precipitation", marker.getAttribute("data-precipitation") || "");
+                hovercard.classList.toggle("capital-hovercard--rain", marker.classList.contains("capital-marker--rain"));
+                hovercard.classList.toggle("capital-hovercard--muted", !available);
+            }
+
+            function clearMarkers(){
+                activeMarker = null;
+                lockedMarker = null;
+                markerDots.forEach(function(marker){ marker.classList.remove("is-active"); });
+                if (hovercard) {
+                    hovercard.classList.remove("is-visible", "is-docked", "capital-hovercard--rain", "capital-hovercard--muted");
+                    hovercard.hidden = true;
+                    hovercard.style.transform = "";
+                }
+            }
+
+            function activate(markerDot, locked){
+                markerDots.forEach(function(marker){ marker.classList.remove("is-active"); });
+                activeMarker = markerDot;
+                lockedMarker = locked ? markerDot : null;
                 markerDot.classList.add("is-active");
-                showCard(slug);
+                fillHovercard(markerDot);
+                if (hovercard) {
+                    hovercard.hidden = false;
+                    hovercard.classList.add("is-visible");
+                    positionHovercard(markerDot);
+                }
             }
 
             markerDots.forEach(function(marker){
                 marker.addEventListener("click", function(event){
                     event.stopPropagation();
-                    activate(marker);
+                    activate(marker, true);
                 });
-                marker.addEventListener("focus", function(){ activate(marker); });
-                marker.addEventListener("blur", function(){ clearMarkers(); });
+                marker.addEventListener("focus", function(){ activate(marker, false); });
+                marker.addEventListener("blur", function(){ if (!lockedMarker) clearMarkers(); });
                 marker.addEventListener("mouseenter", function(){
-                    clearMarkers();
-                    showCard(marker.getAttribute("data-capital-marker"));
+                    activate(marker, false);
                 });
-                marker.addEventListener("mouseleave", function(){ clearMarkers(); });
+                marker.addEventListener("mouseleave", function(){ if (!lockedMarker) clearMarkers(); });
                 marker.addEventListener("keydown", function(event){
                     if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-                        activate(marker);
+                        activate(marker, true);
                     }
                     if (event.key === "Escape") {
                         clearMarkers();
@@ -260,6 +355,26 @@
                 });
             });
 
+            if (hovercard) {
+                var close = hovercard.querySelector("[data-hover-close]");
+                if (close) close.addEventListener("click", function(event){
+                    event.stopPropagation();
+                    clearMarkers();
+                });
+            }
+
+            window.addEventListener("resize", function(){
+                if (activeMarker && hovercard && !hovercard.hidden) positionHovercard(activeMarker);
+            });
+            map.addEventListener("scroll", function(){
+                if (activeMarker && hovercard && !hovercard.hidden) positionHovercard(activeMarker);
+            });
+            map.addEventListener("click", function(event){
+                var target = event.target;
+                if (target.closest && target.closest("[data-capital-marker]")) return;
+                if (hovercard && hovercard.contains(target)) return;
+                clearMarkers();
+            });
             document.addEventListener("click", function(event){
                 if (!map.contains(event.target)) clearMarkers();
             });
