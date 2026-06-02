@@ -335,6 +335,7 @@ class ViewTests(TestCase):
         self.assertNotContains(response, "TG Sport Mattina 23 Maggio")
         self.assertContains(response, "NESSUN PROGRAMMA CODIFICATO")
         self.assertContains(response, "FILM CLUB")
+        self.assertNotContains(response, "raw-block")
 
     def test_robots_and_sitemap(self):
         robots = self.client.get(reverse("news:robots"))

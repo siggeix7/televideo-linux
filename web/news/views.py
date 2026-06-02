@@ -23,6 +23,7 @@ from .formatters import (
     parse_round_info,
     parse_serie_a_standings,
     parse_temperatures,
+    parse_televideo_card,
     parse_tv_channel_schedule,
     parse_weather_observation,
 )
@@ -323,6 +324,17 @@ def localize_snapshot_payload(snapshot: dict[str, object], _language: str = "it"
     return snapshot.copy()
 
 
+def structured_snapshot_payload(snapshot: dict[str, object]) -> dict[str, object]:
+    payload = snapshot.copy()
+    payload["structured"] = parse_televideo_card(
+        str(payload.get("all_text") or payload.get("raw_text") or ""),
+        title=str(payload.get("title") or ""),
+        label=str(payload.get("label") or ""),
+        content_kind=str(payload.get("content_kind") or ""),
+    )
+    return payload
+
+
 def section_snapshots(section: str, region: str = "") -> list[dict[str, object]]:
     queryset = TelevideoPageSnapshot.objects.filter(section=section, region=region).order_by(
         "sort_order",
@@ -380,7 +392,7 @@ def formatted_section_data(section: str, region: str = "") -> dict:
     source_snapshots = section_snapshots(section, region)
     source_merged = merge_snapshot_pages(source_snapshots)
     display_snapshots = [localize_snapshot_payload(snapshot) for snapshot in source_snapshots]
-    display_merged = merge_snapshot_pages(display_snapshots)
+    display_merged = [structured_snapshot_payload(snapshot) for snapshot in merge_snapshot_pages(display_snapshots)]
     display_by_page = {snap.get("page"): snap for snap in display_merged}
 
     data: dict = empty_formatted_section_data()

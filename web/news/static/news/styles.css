@@ -785,6 +785,60 @@ h1 {
 .prose-block { color: var(--text); font-size: var(--font-size-md); line-height: 1.68; }
 .prose-block p + p { margin-top: 0.72em; }
 .content-card--article .prose-block { max-width: 72ch; }
+.televideo-blocks { display: grid; gap: 12px; margin-top: 8px; }
+.televideo-index-list { display: grid; gap: 0; }
+.televideo-index-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: baseline;
+    padding: 7px 0;
+    border-top: 1px solid var(--border-dim);
+}
+.televideo-index-item:first-child { border-top: 0; }
+.televideo-index-item__label { color: var(--white); font-weight: bold; }
+.televideo-index-item__page {
+    color: var(--yellow);
+    font-size: var(--font-size-sm);
+    font-weight: bold;
+    white-space: nowrap;
+}
+.televideo-program-list { display: grid; gap: 10px; }
+.televideo-program-group {
+    padding-top: 9px;
+    border-top: 1px solid var(--border-dim);
+}
+.televideo-program-group:first-child { border-top: 0; padding-top: 0; }
+.televideo-program-group__kicker {
+    color: var(--text-dim);
+    font-size: var(--font-size-sm);
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.televideo-program-group h3 {
+    margin: 2px 0 6px;
+    color: var(--cyan);
+    font-size: var(--font-size-md);
+    text-transform: uppercase;
+}
+.televideo-program-group ul { display: grid; gap: 4px; margin: 0; padding-left: 1.1em; }
+.televideo-program-group li { color: var(--text); line-height: 1.5; }
+.televideo-notes {
+    padding-top: 9px;
+    border-top: 1px solid var(--border-dim);
+    color: var(--text-dim);
+}
+.televideo-fact-list { display: grid; gap: 6px; margin: 10px 0; }
+.televideo-fact-list div {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+    padding: 5px 0;
+    border-top: 1px solid var(--border-dim);
+}
+.televideo-fact-list div:first-child { border-top: 0; }
+.televideo-fact-list dt { color: var(--text-dim); font-size: var(--font-size-sm); font-weight: bold; text-transform: uppercase; }
+.televideo-fact-list dd { color: var(--white); font-weight: bold; }
 .raw-block {
     width: 100%;
     overflow-x: auto;

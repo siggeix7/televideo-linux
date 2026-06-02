@@ -4,15 +4,52 @@
         {% if card.label %}<span>{{ card.label }}</span>{% endif %}
     </div>
     <h2>{{ card.title }}</h2>
-    {% if card.content_kind == "article" %}
-        <div class="prose-block">
-            {% if card.paragraphs %}
-                {% for paragraph in card.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
-            {% else %}
-                {{ card.all_text|default:card.raw_text|linebreaksbr }}
+    {% with structured=card.structured %}
+    {% if structured.has_content %}
+        <div class="televideo-blocks">
+            {% if structured.paragraphs and not structured.index_items %}
+            <div class="prose-block">
+                {% for paragraph in structured.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+            </div>
+            {% endif %}
+
+            {% if structured.index_items %}
+            <div class="televideo-index-list" aria-label="Indice pagina {{ card.page }}">
+                {% for item in structured.index_items %}
+                <div class="televideo-index-item">
+                    <span class="televideo-index-item__label">{{ item.label }}</span>
+                    <span class="televideo-index-item__page">pag. {{ item.page_label }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if structured.schedule_groups %}
+            <div class="televideo-program-list">
+                {% for group in structured.schedule_groups %}
+                <section class="televideo-program-group">
+                    {% if group.kicker %}<p class="televideo-program-group__kicker">{{ group.kicker }}</p>{% endif %}
+                    <h3>{{ group.title }}</h3>
+                    <ul>
+                        {% for item in group.items %}<li>{{ item }}</li>{% endfor %}
+                    </ul>
+                </section>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if structured.paragraphs and structured.index_items %}
+            <div class="televideo-notes prose-block">
+                {% for paragraph in structured.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+            </div>
             {% endif %}
         </div>
+    {% elif card.paragraphs %}
+        <div class="prose-block">
+            {% for paragraph in card.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+        </div>
     {% else %}
-        <pre class="raw-block">{{ card.all_text|default:card.raw_text }}</pre>
+        <div class="prose-block"><p>{{ card.all_text|default:card.raw_text }}</p></div>
     {% endif %}
+    {% endwith %}
 </article>

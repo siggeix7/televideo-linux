@@ -9,6 +9,265 @@ from datetime import date as date_type
 from .services.parser import compact_text, display_snapshot_text, prose_paragraphs
 
 
+DAY_HEADING_RE = re.compile(
+    r"^(DOMENICA|LUNEDI'?|MARTEDI|MERCOLEDI|GIOVEDI|VENERDI|SABATO)\s+\d{1,2}\s+[A-ZÀÈÉÌÒÙ']+",
+    re.IGNORECASE,
+)
+TRAILING_PAGE_RE = re.compile(
+    r"^(?P<label>.+?)\s+(?:p\.?\s*)?(?P<page>\d{3})(?:\s*(?:>|-|/)\s*(?P<end>\d{3}))?(?:\s+[jJ])?\s*$",
+    re.IGNORECASE,
+)
+LEADING_PAGE_RE = re.compile(
+    r"^(?P<page>\d{3})(?:\s*(?:>|-|/)\s*(?P<end>\d{3}))?\s+(?P<label>.+?)\s*$",
+    re.IGNORECASE,
+)
+
+
+def parse_televideo_card(raw_text: str, title: str = "", label: str = "", content_kind: str = "") -> dict:
+    """Parse generic Televideo pages into displayable blocks."""
+    lines = normalized_televideo_lines(raw_text, title=title, label=label)
+    index_items, index_used = parse_index_items(lines)
+    schedule_groups, schedule_used = parse_program_groups(lines, index_used, content_kind)
+    used_indexes = index_used | schedule_used
+    paragraphs = paragraphs_from_lines(lines, used_indexes, skip_headings=bool(index_items))
+
+    if not (index_items or schedule_groups or paragraphs):
+        paragraphs = prose_paragraphs(raw_text)
+
+    return {
+        "index_items": index_items,
+        "schedule_groups": schedule_groups,
+        "paragraphs": paragraphs,
+        "has_content": bool(index_items or schedule_groups or paragraphs),
+    }
+
+
+def normalized_televideo_lines(raw_text: str, *, title: str = "", label: str = "") -> list[dict]:
+    title_keys = {line_key(title), line_key(label)} - {""}
+    lines = []
+    previous_key = ""
+
+    for raw_line in display_snapshot_text(raw_text).splitlines():
+        text = clean_display_line(raw_line)
+        key = line_key(text)
+        if not text or not key:
+            continue
+        if key in title_keys:
+            continue
+        if key == previous_key:
+            continue
+        if is_noise_line(text):
+            continue
+        lines.append({"raw": raw_line.rstrip(), "text": text})
+        previous_key = key
+    return lines
+
+
+def clean_display_line(raw_line: str) -> str:
+    text = compact_text(raw_line).strip()
+    text = text.strip(' "')
+    text = re.sub(r"\s+[jJ]\s*$", "", text)
+    return text.strip()
+
+
+def line_key(value: str) -> str:
+    return re.sub(r"\W+", "", compact_text(value).casefold(), flags=re.UNICODE)
+
+
+def is_noise_line(text: str) -> bool:
+    if len(text) <= 2 and not re.search(r"\d{3}", text):
+        return True
+    return not re.search(r"[A-Za-zÀ-ÿ0-9]", text)
+
+
+def parse_index_items(lines: list[dict]) -> tuple[list[dict], set[int]]:
+    items = []
+    used = set()
+    seen = set()
+    last_item = None
+
+    for index, line in enumerate(lines):
+        entry = parse_index_entry(line["text"])
+        if entry:
+            key = (entry["page"], entry.get("end_page"), line_key(entry["label"]))
+            if key not in seen:
+                items.append(entry)
+                seen.add(key)
+                last_item = entry
+            used.add(index)
+            continue
+
+        if last_item and continuation_for_index(line, last_item):
+            last_item["label"] = f"{last_item['label']} {clean_index_label(line['text'])}"
+            used.add(index)
+            continue
+
+        last_item = None
+
+    return items, used
+
+
+def parse_index_entry(text: str) -> dict | None:
+    trailing = TRAILING_PAGE_RE.match(text)
+    if trailing:
+        label = clean_index_label(trailing.group("label"))
+        if valid_index_label(label):
+            return build_index_entry(label, trailing.group("page"), trailing.group("end"))
+
+    leading = LEADING_PAGE_RE.match(text)
+    if leading:
+        label = clean_index_label(leading.group("label"))
+        if valid_index_label(label):
+            return build_index_entry(label, leading.group("page"), leading.group("end"))
+    return None
+
+
+def build_index_entry(label: str, page: str, end_page: str | None = None) -> dict:
+    return {
+        "label": label,
+        "page": page,
+        "end_page": end_page or "",
+        "page_label": f"{page}-{end_page}" if end_page else page,
+    }
+
+
+def clean_index_label(label: str) -> str:
+    label = compact_text(label)
+    label = re.sub(r"\s+[jJ]\s*$", "", label)
+    label = re.sub(r"\s+[.\"`£òùè0]{1,4}$", "", label)
+    return label.strip(" -")
+
+
+def valid_index_label(label: str) -> bool:
+    if len(label) < 3:
+        return False
+    if re.search(r"\bpag\.?$|\bpagina$", label, re.IGNORECASE):
+        return False
+    return bool(re.search(r"[A-Za-zÀ-ÿ]", label))
+
+
+def continuation_for_index(line: dict, last_item: dict) -> bool:
+    text = line["text"]
+    if parse_index_entry(text):
+        return False
+    if len(last_item.get("label", "")) > 18 or len(text) > 18:
+        return False
+    return line["raw"].startswith(" ") and text.isupper()
+
+
+def parse_program_groups(lines: list[dict], index_used: set[int], content_kind: str) -> tuple[list[dict], set[int]]:
+    if content_kind != "schedule" and not any(is_day_heading(line["text"]) for line in lines):
+        return [], set()
+
+    groups = []
+    used = set()
+    current_group = None
+    current_channel = ""
+    current_week = ""
+    saw_schedule_marker = False
+
+    for index, line in enumerate(lines):
+        if index in index_used:
+            continue
+
+        text = line["text"]
+        if is_week_heading(text):
+            current_week = text
+            saw_schedule_marker = True
+            used.add(index)
+            continue
+
+        if is_channel_heading(text):
+            current_channel = text
+            saw_schedule_marker = True
+            used.add(index)
+            continue
+
+        if is_day_heading(text):
+            title = f"{current_channel} · {text}" if current_channel else text
+            current_group = {"title": title, "kicker": current_week, "items": []}
+            groups.append(current_group)
+            saw_schedule_marker = True
+            used.add(index)
+            continue
+
+        if current_group and saw_schedule_marker:
+            append_program_item(current_group, line)
+            used.add(index)
+
+    groups = [group for group in groups if group["items"]]
+    if not groups:
+        return [], set()
+    return groups, used
+
+
+def is_week_heading(text: str) -> bool:
+    return bool(re.match(r"^SETTIMANA\s+DAL\b", text, re.IGNORECASE))
+
+
+def is_day_heading(text: str) -> bool:
+    return bool(DAY_HEADING_RE.match(text))
+
+
+def is_channel_heading(text: str) -> bool:
+    if parse_index_entry(text):
+        return False
+    return bool(re.match(r"^RAI\s+(?:\d|SPORT|MOVIE|PREMIUM|YOYO|GULP|STORIA|SCUOLA|RADIO)\b", text, re.IGNORECASE))
+
+
+def append_program_item(group: dict, line: dict) -> None:
+    text = line["text"]
+    items = group["items"]
+    if items and (line["raw"].startswith(" ") or items[-1].endswith("-")):
+        if items[-1].endswith("-"):
+            items[-1] = items[-1][:-1] + text
+        else:
+            items[-1] = f"{items[-1]} {text}"
+        return
+    items.append(text)
+
+
+def paragraphs_from_lines(lines: list[dict], used_indexes: set[int], *, skip_headings: bool = False) -> list[str]:
+    paragraphs = []
+    current = ""
+
+    def flush() -> None:
+        nonlocal current
+        text = compact_text(current)
+        if text:
+            paragraphs.append(text)
+        current = ""
+
+    for index, line in enumerate(lines):
+        if index in used_indexes:
+            flush()
+            continue
+        text = line["text"]
+        if skip_headings and looks_like_standalone_heading(text):
+            flush()
+            continue
+        if current.endswith("-"):
+            current = current[:-1] + text
+        elif current:
+            current += " " + text
+        else:
+            current = text
+    flush()
+    return paragraphs
+
+
+def looks_like_standalone_heading(text: str) -> bool:
+    if parse_index_entry(text):
+        return False
+    if len(text) > 44:
+        return False
+    letters = re.findall(r"[A-Za-zÀ-ÿ]", text)
+    if not letters:
+        return False
+    uppercase = re.findall(r"[A-ZÀÈÉÌÒÙ]", text)
+    return len(uppercase) / len(letters) > 0.78
+
+
 def parse_serie_a_standings(raw_text: str) -> list[dict] | None:
     """Parse Serie A standings table from raw Televideo text."""
     rows = []

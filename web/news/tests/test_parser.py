@@ -1,5 +1,6 @@
 from django.test import SimpleTestCase
 
+from news.formatters import parse_televideo_card
 from news.services.parser import parse_article_content
 
 
@@ -14,3 +15,63 @@ class TelevideoParserTests(SimpleTestCase):
         )
 
         self.assertIsNone(parse_article_content(content, "Ultime News"))
+
+    def test_parses_generic_index_entries(self):
+        content = "\n".join(
+            [
+                "Indice lavoro",
+                "INFO GAZZETTA UFFICIALE 466",
+                "SICUREZZA SUL LAVORO 467",
+                "AGENZIE PER IL LAVORO 468",
+                "RAI RADIO TECHETE' 543",
+                "TUTTA LA GAZZETTA SU: www.ipzs.it",
+                "Scienza e Salute p.475",
+            ]
+        )
+
+        parsed = parse_televideo_card(content, title="Indice lavoro", label="Indice lavoro", content_kind="index")
+
+        self.assertEqual([item["page_label"] for item in parsed["index_items"]], ["466", "467", "468", "543", "475"])
+        self.assertEqual(parsed["index_items"][0]["label"], "INFO GAZZETTA UFFICIALE")
+        self.assertEqual(parsed["index_items"][3]["label"], "RAI RADIO TECHETE'")
+        self.assertIn("TUTTA LA GAZZETTA", parsed["paragraphs"][0])
+
+    def test_parses_programmi_criptati_groups(self):
+        content = "\n".join(
+            [
+                "Programmi criptati",
+                "I programmi della RAI",
+                "vengono trasmessi in tecnica digitale",
+                "SETTIMANA DAL 31/05 AL 06/06",
+                "RAI 1",
+                "MERCOLEDI 03 GIUGNO",
+                "Calcio: Uefa Friendly Match 2026",
+                "        Lussemburgo - Italia",
+                "RAI 3",
+                "SABATO 06 GIUGNO",
+                "Film: Mediterranee",
+            ]
+        )
+
+        parsed = parse_televideo_card(content, title="Programmi criptati", label="Programmi criptati", content_kind="schedule")
+
+        self.assertEqual(len(parsed["schedule_groups"]), 2)
+        self.assertEqual(parsed["schedule_groups"][0]["title"], "RAI 1 · MERCOLEDI 03 GIUGNO")
+        self.assertEqual(parsed["schedule_groups"][0]["items"][0], "Calcio: Uefa Friendly Match 2026 Lussemburgo - Italia")
+        self.assertIn("I programmi della RAI", parsed["paragraphs"][0])
+
+    def test_descriptive_schedule_falls_back_to_paragraphs(self):
+        content = "\n".join(
+            [
+                "FILM CLUB",
+                "Ogni venerdi Evie e Noa condividono la",
+                "visione di un classico del cinema.",
+                "Serie in 6 episodi",
+            ]
+        )
+
+        parsed = parse_televideo_card(content, title="FILM CLUB", label="RaiPlay", content_kind="schedule")
+
+        self.assertFalse(parsed["index_items"])
+        self.assertFalse(parsed["schedule_groups"])
+        self.assertEqual(parsed["paragraphs"][0], "Ogni venerdi Evie e Noa condividono la visione di un classico del cinema. Serie in 6 episodi")

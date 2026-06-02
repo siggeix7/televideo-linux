@@ -23,12 +23,13 @@
         </article>
 
         <article class="trend-card">
-            <h2>{{ ui.latest_news }}</h2>
-            {% for snap in data.merged %}
-            {% if snap.page == 696 %}
-            <pre class="raw-block raw-block--scroll">{{ snap.all_text }}</pre>
-            {% endif %}
-            {% endfor %}
+            <h2>Dati estrazione</h2>
+            <dl class="televideo-fact-list">
+                <div><dt>Pagina</dt><dd>696</dd></div>
+                <div><dt>Fonte</dt><dd>Rai Televideo</dd></div>
+                <div><dt>Archivio</dt><dd>{{ ui.archive_super }}</dd></div>
+            </dl>
+            <p class="news-card__summary">La combinazione e i valori principali sono raccolti dalla pagina Televideo e presentati in forma sintetica.</p>
         </article>
     </section>
     {% endif %}
