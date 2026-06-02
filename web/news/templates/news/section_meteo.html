@@ -17,8 +17,8 @@
                 <div class="weather-station__name">{{ station.name }}</div>
                 {% if station.condition %}<div class="weather-station__cond">{{ station.condition }}</div>{% endif %}
                 {% if station.temp %}<div class="weather-station__temp">{{ station.temp }}</div>{% endif %}
-                {% if station.wind %}<div class="weather-station__detail">{{ ui.wind_label }}: {{ station.wind }}</div>{% endif %}
-                {% if station.visibility %}<div class="weather-station__detail">{{ ui.visibility_label }}: {{ station.visibility }}</div>{% endif %}
+                {% if station.wind %}<div class="weather-station__detail">&#x1F4A8; {{ station.wind }}</div>{% endif %}
+                {% if station.visibility %}<div class="weather-station__detail">&#x1F441; {{ station.visibility }}</div>{% endif %}
             </div>
             {% endfor %}
         </div>

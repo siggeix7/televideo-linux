@@ -42,6 +42,31 @@ CITY_ALIASES = {
 
 NO_DATA = "n.d."
 
+WEATHER_EMOJI = [
+    (r"(?i)\btemporale\b", "\u26c8\ufe0f"),
+    (r"(?i)\bpioggia\b|\bpioviggine\b|\brovescio\b", "\U0001f327\ufe0f"),
+    (r"(?i)\bneve\b", "\u2744\ufe0f"),
+    (r"(?i)\bgrandine\b", "\U0001f328\ufe0f"),
+    (r"(?i)\bnebbia\b", "\U0001f32b\ufe0f"),
+    (r"(?i)\bfoschia\b", "\U0001f301"),
+    (r"(?i)\bcoperto\b|\bmolto\s+nuvoloso\b", "\u2601\ufe0f"),
+    (r"(?i)\bnuvoloso\b|\bnubi\b|\bparz.*nuv\b", "\u26c5"),
+    (r"(?i)\bpoco\s+nuvoloso\b|\bpoche\s+nuvole\b", "\U0001f324\ufe0f"),
+    (r"(?i)\bsereno\b|\bsole\b|\bsoleggiato\b", "\u2600\ufe0f"),
+]
+
+
+def weather_emoji(condition: str) -> str:
+    if not condition:
+        return ""
+    for pattern, emoji in WEATHER_EMOJI:
+        if re.search(pattern, condition):
+            return emoji
+    return "\U0001f321\ufe0f"
+
+
+DEFAULT_EMOJI = "\U0001f321\ufe0f"
+
 
 def normalize_name(value: str) -> str:
     value = unicodedata.normalize("NFKD", value or "")
@@ -123,6 +148,8 @@ def build_region_capital_weather(meteo_data: dict, openweather_data: dict[str, d
             else:
                 row["source_label"] = ""
             row["source_at"] = openweather.get("source_at") if used_openweather else None
+            condition_text = str(row.get("condition") or "")
+            row["emoji"] = weather_emoji(condition_text)
             row["temperature_range"] = temperature_range(row)
             row["summary"] = weather_summary(row)
             rows.append(row)

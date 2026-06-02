@@ -24,17 +24,22 @@
             <div class="weather-grid weather-grid--capitals">
                 {% for capital in capital_weather %}
                 <article class="weather-station{% if not capital.available %} weather-station--muted{% endif %}">
-                    <div class="weather-station__name">{{ capital.name }}</div>
+                    <div class="weather-station__header">
+                        {% if capital.emoji %}<span class="weather-station__emoji">{{ capital.emoji }}</span>{% endif %}
+                        <div class="weather-station__name">{{ capital.name }}</div>
+                    </div>
                     {% if capital.available %}
-                        {% if capital.condition %}<div class="weather-station__cond">{{ capital.condition }}</div>{% endif %}
                         {% if capital.temp %}<div class="weather-station__temp">{{ capital.temp }}&deg;</div>{% endif %}
-                        {% if capital.temperature_range %}<div class="weather-station__detail">{{ capital.temperature_range }}</div>{% endif %}
-                        {% if capital.wind %}<div class="weather-station__detail">{{ ui.wind_label }}: {{ capital.wind }}</div>{% endif %}
-                        {% if capital.visibility %}<div class="weather-station__detail">{{ ui.visibility_label }}: {{ capital.visibility }}</div>{% endif %}
+                        {% if capital.condition %}<div class="weather-station__cond">{{ capital.condition }}</div>{% endif %}
+                        <div class="weather-station__details">
+                            {% if capital.temperature_range %}<div class="weather-station__detail">{{ capital.temperature_range }}</div>{% endif %}
+                            {% if capital.wind %}<div class="weather-station__detail">&#x1F4A8; {{ capital.wind }}</div>{% endif %}
+                            {% if capital.visibility %}<div class="weather-station__detail">&#x1F441; {{ capital.visibility }}</div>{% endif %}
+                        </div>
                         {% if capital.sunrise or capital.sunset %}
                         <div class="weather-station__astro">
-                            {% if capital.sunrise %}<span>Alba {{ capital.sunrise }}</span>{% endif %}
-                            {% if capital.sunset %}<span>Tramonto {{ capital.sunset }}</span>{% endif %}
+                            {% if capital.sunrise %}<span>&#x1F305; Alba {{ capital.sunrise }}</span>{% endif %}
+                            {% if capital.sunset %}<span>&#x1F307; Tramonto {{ capital.sunset }}</span>{% endif %}
                         </div>
                         {% endif %}
                         {% if capital.today_forecast %}
@@ -44,9 +49,10 @@
                                 {% for slot in capital.today_forecast %}
                                 <div class="weather-forecast__slot">
                                     <span>{{ slot.time }}</span>
+                                    <span class="weather-forecast__slot-emoji">{% if slot.emoji %}{{ slot.emoji }}{% endif %}</span>
                                     <strong>{{ slot.temp }}&deg;</strong>
                                     {% if slot.condition %}<em>{{ slot.condition }}</em>{% endif %}
-                                    {% if slot.rain_probability is not None %}<small>Pioggia {{ slot.rain_probability }}%</small>{% endif %}
+                                    {% if slot.rain_probability is not None %}<small>&#x1F4A7; Pioggia {{ slot.rain_probability }}%</small>{% endif %}
                                 </div>
                                 {% endfor %}
                             </div>
@@ -59,9 +65,10 @@
                                 {% for day in capital.forecast_days %}
                                 <div class="weather-forecast__day">
                                     <span>{{ day.label }}</span>
+                                    <span class="weather-forecast__day-emoji">{% if day.emoji %}{{ day.emoji }}{% endif %}</span>
                                     <strong>{% if day.min is not None %}{{ day.min }}&deg;{% else %}n.d.{% endif %} / {% if day.max is not None %}{{ day.max }}&deg;{% else %}n.d.{% endif %}</strong>
                                     {% if day.condition %}<em>{{ day.condition }}</em>{% endif %}
-                                    {% if day.rain_probability is not None %}<small>{{ day.rain_probability }}% pioggia</small>{% endif %}
+                                    {% if day.rain_probability is not None %}<small>&#x1F4A7; {{ day.rain_probability }}% pioggia</small>{% endif %}
                                 </div>
                                 {% endfor %}
                             </div>

@@ -12,7 +12,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from .models import OpenWeatherCity
-from .weather_capitals import REGION_CAPITALS, normalize_name
+from .weather_capitals import REGION_CAPITALS, normalize_name, weather_emoji
 
 
 logger = logging.getLogger(__name__)
@@ -95,10 +95,12 @@ def _forecast_entry(entry: dict, offset: int) -> dict[str, object]:
     main = entry.get("main") or {}
     wind = entry.get("wind") or {}
     local_dt = _local_datetime(entry["dt"], offset)
+    cond = _condition(entry)
     return {
         "time": local_dt.strftime("%H:%M"),
         "date": local_dt.date().isoformat(),
-        "condition": _condition(entry),
+        "condition": cond,
+        "emoji": weather_emoji(cond),
         "temp": _rounded(main.get("temp")),
         "min": _rounded(main.get("temp_min")),
         "max": _rounded(main.get("temp_max")),
@@ -141,10 +143,12 @@ def build_forecast_days(entries: list[dict], offset: int) -> list[dict[str, obje
         elif day == first_day + timedelta(days=1):
             label = "Domani"
 
+        cond = Counter(conditions).most_common(1)[0][0] if conditions else ""
         days.append({
             "date": day.isoformat(),
             "label": label,
-            "condition": Counter(conditions).most_common(1)[0][0] if conditions else "",
+            "condition": cond,
+            "emoji": weather_emoji(cond),
             "min": _rounded(min(mins)) if mins else None,
             "max": _rounded(max(maxs)) if maxs else None,
             "rain_probability": _percent(max(pop_values)) if pop_values else None,
