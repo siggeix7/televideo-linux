@@ -1,4 +1,4 @@
-<article class="content-card content-card--{{ card.content_kind }}{% if card.content_kind == 'article' %} content-card--article{% endif %}">
+<article class="content-card content-card--{{ card.content_kind }}">
     <h2>{{ card.title }}</h2>
     {% with structured=card.structured %}
     {% if structured.has_content %}

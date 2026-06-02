@@ -16,8 +16,15 @@
         <div class="weather-grid">
             {% for station in zone.stations %}
             <div class="weather-station">
-                <div class="weather-station__name">{{ station.name }}</div>
-                {% if station.condition %}<div class="weather-station__cond">{{ station.condition }}</div>{% endif %}
+                <div class="weather-station__header">
+                    {% if station.condition %}
+                        {% with station.condition|lower as cond %}
+                        <div class="weather-station__cond"
+                            data-icon="{% if 'temporale' in cond or 'storm' in cond %}storm{% elif 'pioggia' in cond or 'pioviggine' in cond or 'rovesc' in cond or 'rain' in cond or 'drizzle' in cond %}rain{% elif 'neve' in cond or 'snow' in cond %}snow{% elif 'nebbia' in cond or 'fog' in cond or 'foschia' in cond %}fog{% elif 'coperto' in cond or 'nuvoloso' in cond or 'nubi' in cond or 'cloud' in cond %}cloud{% elif 'sereno' in cond or 'sole' in cond or 'sun' in cond or 'clear' in cond %}sun{% endif %}">{{ station.condition }}</div>
+                        {% endwith %}
+                    {% endif %}
+                    <div class="weather-station__name">{{ station.name }}</div>
+                </div>
                 {% if station.temp %}<div class="weather-station__temp">{{ station.temp }}</div>{% endif %}
                 {% if station.wind %}<div class="weather-station__detail">&#x1F4A8; {{ station.wind }}</div>{% endif %}
                 {% if station.visibility %}<div class="weather-station__detail">&#x1F441; {{ station.visibility }}</div>{% endif %}
@@ -39,7 +46,9 @@
             <span class="temp-bar__label">{{ city.city }}</span>
             <div class="temp-bar__body">
                 <div class="temp-bar__track">
+                    {% if city.bar_left is not None and city.bar_width is not None %}
                     <div class="temp-bar__fill" style="left:{{ city.bar_left }}%;width:{{ city.bar_width }}%"></div>
+                    {% endif %}
                 </div>
                 <div class="temp-bar__vals">
                     <span>{{ city.min }}&deg;</span>

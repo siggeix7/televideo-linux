@@ -117,7 +117,6 @@
     (function(){
         document.querySelectorAll("[data-capitals-map]").forEach(function(map){
             var svg = map.querySelector("svg");
-            var radarLayers = Array.prototype.slice.call(map.querySelectorAll("[data-weather-radar]"));
             var tileTemplate = map.getAttribute("data-weather-tile-template") || "";
             var cloudTemplate = map.getAttribute("data-weather-cloud-template") || "";
             var markerDots = Array.prototype.slice.call(map.querySelectorAll("[data-capital-marker]"));

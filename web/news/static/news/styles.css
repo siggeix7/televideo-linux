@@ -3,6 +3,7 @@
     --bg: #000000;
     --bg-panel: #0a0a0a;
     --bg-header: #001a00;
+    --black: #000000;
     --surface: rgba(0, 20, 8, 0.92);
     --surface-strong: rgba(0, 34, 12, 0.96);
     --surface-soft: rgba(0, 255, 120, 0.035);
@@ -49,6 +50,7 @@
     --bg: #e8e4d8;
     --bg-panel: #f0ece0;
     --bg-header: #d4d0c4;
+    --black: #111100;
     --bg-card-lead: #e6e0cc;
     --bg-table-header: #d4d0c4;
     --bg-stale: #f5f0d0;
@@ -550,16 +552,6 @@ h1 {
     content: "";
 }
 
-.status-dot {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    margin-right: 4px;
-    background: var(--text);
-    vertical-align: middle;
-}
-.status-dot--loading { background: var(--yellow); animation: blink 0.8s steps(2, start) infinite; }
-.status-dot--error { background: var(--red); }
 @keyframes blink { 50% { opacity: 0; } }
 
 .news-grid { display: grid; gap: 14px; }
@@ -959,7 +951,7 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 .weather-station__temp { margin-top: 4px; color: var(--yellow); font-weight: bold; font-size: var(--font-size-lg); }
 .weather-station__detail { margin-top: 2px; color: var(--text-dim); font-size: var(--font-size-sm); }
 .weather-station__source { margin-top: 6px; color: var(--cyan); font-size: 0.72rem; }
-.weather-station--muted { opacity: 0.68; }
+.weather-station--muted { opacity: 0.65; }
 .weather-capitals h2 { color: var(--yellow); text-transform: uppercase; }
 .weather-grid--capitals { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 .weather-station__astro {
@@ -1229,6 +1221,8 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
     align-items: center;
     gap: 5px;
     cursor: pointer;
+    -webkit-user-select: none;
+    -moz-user-select: none;
     user-select: none;
     font-size: var(--font-size-sm);
 }
@@ -1343,7 +1337,7 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
     border-top: 1px solid var(--border-dim);
 }
 .italy-map__weather-item:first-child { padding-top: 0; border-top: 0; }
-.italy-map__weather-item.is-muted { opacity: 0.62; }
+.italy-map__weather-item.is-muted { opacity: 0.65; }
 .italy-map__weather-city { color: var(--white); font-weight: bold; }
 .italy-map__weather-emoji {
     font-size: 1.1rem;
@@ -1354,7 +1348,8 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 .italy-map__weather-source { color: var(--cyan); font-size: 0.72rem; }
 
 .italy-map--capitals {
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: clip;
     border-color: rgba(0,255,255,0.28);
     background:
         radial-gradient(circle at 48% 22%, rgba(0,255,255,0.12), transparent 30rem),
@@ -1363,8 +1358,8 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 }
 .italy-map--capitals .italy-map__body {
     padding: 0 8px 10px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow-x: visible;
+    overflow-y: visible;
 }
 .italy-map__svg--capitals {
     max-width: 1300px;
@@ -1517,12 +1512,6 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
     font-size: 13px;
     font-weight: 800;
 }
-.capital-marker__card-detail {
-    fill: var(--text);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 700;
-}
 .capital-marker__card-precip {
     fill: var(--cyan);
     font-family: var(--font-mono);
@@ -1591,7 +1580,6 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 .skeleton--short { width: 5em; height: 0.8rem; }
 .skeleton--half { width: 40%; }
 .skeleton--title { width: 65%; height: 1.3em; margin-bottom: 0.6em; }
-.skeleton--pill { display: inline-block; width: 6em; height: 1.8em; }
 .skeleton--card { min-height: 170px; }
 
 .site-footer {

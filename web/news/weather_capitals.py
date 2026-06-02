@@ -437,6 +437,7 @@ def capital_marker_card_position(x: float, y: float) -> tuple[float, float]:
 
 def build_capital_weather_markers(region_weather: dict[str, list[dict]]) -> list[dict[str, object]]:
     markers = []
+    placed_cards: list[tuple[float, float, float, float]] = []
     for region_slug, rows in region_weather.items():
         for row in rows:
             city = str(row.get("name") or "")
@@ -445,6 +446,14 @@ def build_capital_weather_markers(region_weather: dict[str, list[dict]]) -> list
                 continue
             x, y = position
             card_x, card_y = capital_marker_card_position(x, y)
+
+            # Avoid overlapping with already placed cards
+            for pcx, pcy, pcw, pch in placed_cards:
+                if abs(card_x - pcx) < (MARKER_CARD_WIDTH + pcw) / 2 + 4 and abs(card_y - pcy) < (MARKER_CARD_HEIGHT + pch) / 2 + 4:
+                    card_y = pcy + pch + 4
+                    card_y = min(card_y, MAP_HEIGHT - MARKER_CARD_HEIGHT - 4)
+            placed_cards.append((card_x, card_y, MARKER_CARD_WIDTH, MARKER_CARD_HEIGHT))
+
             emoji, temp_label, detail = capital_marker_detail(row)
             condition = str(row.get("condition") or "")
             temp_val = _temp_float(row.get("temp"))
