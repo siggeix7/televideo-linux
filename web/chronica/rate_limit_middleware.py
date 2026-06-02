@@ -18,6 +18,10 @@ class RateLimitMiddleware:
         if not request.path.startswith("/api/"):
             return self.get_response(request)
 
+        # Weather tiles generate one request per tile square; skip rate-limiting them
+        if request.path.startswith("/api/meteo/openweather/"):
+            return self.get_response(request)
+
         ip = self._client_ip(request)
         key = f"rl:{ip}"
         now = int(time.time())
