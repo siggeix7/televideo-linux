@@ -3,7 +3,7 @@
 <html lang="{{ ui.html_lang }}">
 <head>
     {% include "news/_head.html" with title_og="Fanta-Super SuperEnalotto" %}
-    <title>Fanta-Super - {{ ui.site_name }}</title>
+    <title>Fanta-Super &mdash; {{ ui.site_name }}</title>
     <link rel="stylesheet" href="{% static 'news/styles.css' %}">
     <script defer src="{% static 'news/fanta_super.js' %}"></script>
 </head>
@@ -15,7 +15,7 @@
                 <div class="hero__copy">
                     <p class="eyebrow">{{ ui.data_provider }}</p>
                     <h1>Fanta-Super</h1>
-                    <p class="lede">6 combinazioni predittive per il SuperEnalotto, generate analizzando lo storico dal 2009 con algoritmi di pattern recognition. Ricalcolate dopo ogni concorso.</p>
+                    <p class="lede">6 combinazioni per il SuperEnalotto generate con 4 algoritmi di pattern recognition sullo storico completo. Ricalcolate dopo ogni concorso.</p>
                 </div>
                 <div class="seal" aria-hidden="true">&#9672;</div>
             </div>
@@ -23,17 +23,16 @@
                 {% include "news/_site_nav.html" %}
             </div>
         </header>
-
         <main id="main">
             {% include "news/_super_subnav.html" with active="fanta" %}
             <div id="prediction-section"></div>
             <div id="prediction-loading" class="empty-state">
-                <h2>Analisi in corso...</h2>
-                <p>Sto elaborando lo storico delle estrazioni per generare i pronostici.</p>
+                <h2>Analisi in corso&hellip;</h2>
+                <p>Elaborazione dello storico estrazioni per generare i pronostici.</p>
             </div>
             <div id="prediction-empty" class="empty-state" hidden>
-                <h2>Nessun pronostico</h2>
-                <p>Non ci sono ancora dati sufficienti per generare pronostici.</p>
+                <h2>Nessun pronostico disponibile</h2>
+                <p>Dati insufficienti. Attendere la prossima estrazione.</p>
             </div>
             <div id="prediction-error" class="error-state" hidden>
                 <h2>Errore</h2>
@@ -41,7 +40,6 @@
             </div>
         </main>
     </div>
-
     {% include "news/_footer.html" %}
 </body>
 </html>
