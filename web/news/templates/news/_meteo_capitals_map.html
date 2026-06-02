@@ -1,3 +1,4 @@
+{% load l10n %}
 <section class="italy-map italy-map--capitals" data-capitals-map aria-label="Mappa meteo dei capoluoghi di provincia italiani">
     <div class="italy-map__header">
         <h2 class="italy-map__title">Mappa meteo capoluoghi</h2>
@@ -30,10 +31,10 @@
             {% for marker in weather_capital_markers %}
             <g class="capital-marker{% if not marker.available %} capital-marker--muted{% endif %}" tabindex="0" role="img" aria-label="{{ marker.aria_label }}" data-capital-marker="{{ marker.slug }}" data-source-label="{{ marker.source_label }}">
                 <title>{{ marker.aria_label }}</title>
-                <circle class="capital-marker__halo" cx="{{ marker.x }}" cy="{{ marker.y }}" r="12"/>
-                <circle class="capital-marker__dot" cx="{{ marker.x }}" cy="{{ marker.y }}" r="5.5"/>
-                <text class="capital-marker__glyph" x="{{ marker.x }}" y="{{ marker.emoji_y }}" text-anchor="middle">{{ marker.emoji }}</text>
-                <g class="capital-marker__card" transform="translate({{ marker.card_x }} {{ marker.card_y }})">
+                <circle class="capital-marker__halo" cx="{{ marker.x|unlocalize }}" cy="{{ marker.y|unlocalize }}" r="12"/>
+                <circle class="capital-marker__dot" cx="{{ marker.x|unlocalize }}" cy="{{ marker.y|unlocalize }}" r="5.5"/>
+                <text class="capital-marker__glyph" x="{{ marker.x|unlocalize }}" y="{{ marker.emoji_y|unlocalize }}" text-anchor="middle">{{ marker.emoji }}</text>
+                <g class="capital-marker__card" transform="translate({{ marker.card_x|unlocalize }} {{ marker.card_y|unlocalize }})">
                     <rect class="capital-marker__card-bg" width="{{ marker.card_width }}" height="{{ marker.card_height }}" rx="0"/>
                     <text class="capital-marker__card-title" x="9" y="17">{{ marker.name }}</text>
                     <text class="capital-marker__card-detail" x="9" y="34">{{ marker.detail }}</text>

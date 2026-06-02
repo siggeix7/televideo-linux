@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from news.models import Category, NewsItem, OpenWeatherCity, SuperEnalottoDraw, TelevideoPageSnapshot
+from news.weather_capitals import REGION_CAPITALS
 
 
 class ViewTests(TestCase):
@@ -618,6 +619,11 @@ class ViewTests(TestCase):
         self.assertContains(response, "Roma")
         self.assertContains(response, "22")
         self.assertContains(response, "OpenWeatherMap")
+        html = response.content.decode()
+        expected_markers = sum(len(capitals) for capitals in REGION_CAPITALS.values())
+        self.assertEqual(html.count("data-capital-marker="), expected_markers)
+        self.assertNotRegex(html, r'\b(?:cx|cy|x|y)="\d+,\d')
+        self.assertNotRegex(html, r'transform="translate\(\d+,\d')
         self.assertNotContains(response, "data-meteo-map")
         self.assertNotContains(response, "SENTINEL_METEO_TELEVIDEO")
         self.assertNotContains(response, "weather-zone-grid")
