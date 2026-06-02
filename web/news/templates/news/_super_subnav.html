@@ -1,0 +1,11 @@
+<nav class="super-subnav" aria-label="Navigazione SuperEnalotto">
+    <a class="super-subnav__link{% if active == 'estrazioni' %} is-active{% endif %}" href="{% url 'news:superenalotto' %}">
+        &#9636; Storico estrazioni
+    </a>
+    <a class="super-subnav__link{% if active == 'montepremi' %} is-active{% endif %}" href="{% url 'news:storico_montepremi' %}">
+        &#9733; Storico montepremi
+    </a>
+    <a class="super-subnav__link{% if active == 'fanta' %} is-active{% endif %}" href="{% url 'news:fanta_super' %}">
+        &#9672; Fanta-Super
+    </a>
+</nav>

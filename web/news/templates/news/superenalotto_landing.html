@@ -1,0 +1,49 @@
+{% load static %}
+<!doctype html>
+<html lang="{{ ui.html_lang }}">
+<head>
+    {% include "news/_head.html" with title_og="SuperEnalotto" %}
+    <title>SuperEnalotto - {{ ui.site_name }}</title>
+    <link rel="stylesheet" href="{% static 'news/styles.css' %}">
+</head>
+<body>
+    <a href="#main" class="skip-link">{{ ui.skip_to_content }}</a>
+    <div class="page-shell">
+        <header class="site-header">
+            <div class="hero hero--compact">
+                <div class="hero__copy">
+                    <p class="eyebrow">{{ ui.data_provider }}</p>
+                    <h1>SuperEnalotto</h1>
+                    <p class="lede">Archivio storico, andamento montepremi e pronostici matematici.</p>
+                </div>
+                <div class="seal" aria-hidden="true">6</div>
+            </div>
+            <div class="topbar">
+                {% include "news/_site_nav.html" %}
+            </div>
+        </header>
+
+        <main id="main">
+            <nav class="super-nav">
+                <a class="super-nav__card" href="{% url 'news:superenalotto' %}">
+                    <span class="super-nav__icon" aria-hidden="true">&#9636;</span>
+                    <span class="super-nav__label">Storico estrazioni</span>
+                    <span class="super-nav__desc">Tutte le combinazioni vincenti dal 2009 a oggi.</span>
+                </a>
+                <a class="super-nav__card" href="{% url 'news:storico_montepremi' %}">
+                    <span class="super-nav__icon" aria-hidden="true">&#9733;</span>
+                    <span class="super-nav__label">Storico montepremi</span>
+                    <span class="super-nav__desc">Grafico interattivo dell'andamento del jackpot nel tempo.</span>
+                </a>
+                <a class="super-nav__card" href="{% url 'news:fanta_super' %}">
+                    <span class="super-nav__icon" aria-hidden="true">&#9672;</span>
+                    <span class="super-nav__label">Fanta-Super</span>
+                    <span class="super-nav__desc">6 combinazioni generate matematicamente per la prossima estrazione.</span>
+                </a>
+            </nav>
+        </main>
+    </div>
+
+    {% include "news/_footer.html" %}
+</body>
+</html>

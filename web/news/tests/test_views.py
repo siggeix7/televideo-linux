@@ -4,7 +4,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from news.models import Category, NewsItem, OpenWeatherCity, SuperEnalottoDraw, TelevideoPageSnapshot
+from news.models import Category, NewsItem, OpenWeatherCity, SuperEnalottoDraw, SuperEnalottoPrediction, TelevideoPageSnapshot
 from news.weather_capitals import REGION_CAPITALS
 
 
@@ -645,3 +645,107 @@ class ViewTests(TestCase):
     def test_page_not_found_handler(self):
         response = self.client.get("/this-does-not-exist/")
         self.assertEqual(response.status_code, 404)
+
+    def test_superenalotto_landing_page(self):
+        response = self.client.get(reverse("news:superenalotto_landing"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Storico estrazioni")
+        self.assertContains(response, "Storico montepremi")
+        self.assertContains(response, "Fanta-Super")
+        self.assertContains(response, "super-nav__card")
+
+    def test_storico_montepremi_page(self):
+        SuperEnalottoDraw.objects.create(
+            draw_number=1, draw_date=date(2026, 1, 1),
+            winning_numbers=[1, 2, 3, 4, 5, 6],
+            jackpot=50000000, prize_pool=10000000,
+        )
+        response = self.client.get(reverse("news:storico_montepremi"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "montepremi-chart")
+        self.assertContains(response, "toggle-jackpot")
+
+    def test_montepremi_api_returns_data(self):
+        SuperEnalottoDraw.objects.create(
+            draw_number=1, draw_date=date(2026, 1, 1),
+            winning_numbers=[1, 2, 3, 4, 5, 6],
+            jackpot=50000000, prize_pool=10000000,
+        )
+        response = self.client.get(reverse("news:montepremi_api"))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data["draws"]), 1)
+        self.assertEqual(data["draws"][0]["jackpot"], 50000000)
+        self.assertEqual(data["draws"][0]["prize_pool"], 10000000)
+
+    def test_montepremi_api_sorted_by_date(self):
+        SuperEnalottoDraw.objects.create(
+            draw_number=1, draw_date=date(2026, 1, 1),
+            winning_numbers=[1, 2, 3, 4, 5, 6], jackpot=10000000,
+        )
+        SuperEnalottoDraw.objects.create(
+            draw_number=2, draw_date=date(2026, 1, 3),
+            winning_numbers=[7, 8, 9, 10, 11, 12], jackpot=20000000,
+        )
+        response = self.client.get(reverse("news:montepremi_api"))
+        data = response.json()
+        self.assertEqual(data["draws"][0]["draw_date"], "2026-01-01")
+        self.assertEqual(data["draws"][1]["draw_date"], "2026-01-03")
+
+    def test_fanta_super_page(self):
+        response = self.client.get(reverse("news:fanta_super"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Fanta-Super")
+        self.assertContains(response, "fanta_super.js")
+
+    def test_fanta_super_api_returns_prediction(self):
+        SuperEnalottoDraw.objects.create(
+            draw_number=1, draw_date=date(2026, 6, 1),
+            winning_numbers=[1, 2, 3, 4, 5, 6],
+            jolly_number=7, superstar_number=8,
+            jackpot=10000000, prize_pool=5000000,
+        )
+        response = self.client.get(reverse("news:fanta_super_api"))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("prediction", data)
+        self.assertIn("combinations", data["prediction"])
+        self.assertEqual(len(data["prediction"]["combinations"]), 6)
+        for combo in data["prediction"]["combinations"]:
+            self.assertIn("numbers", combo)
+            self.assertIn("label", combo)
+            self.assertEqual(len(combo["numbers"]), 6)
+            self.assertIn("jolly", combo)
+            self.assertIn("superstar", combo)
+
+    def test_fanta_super_api_verifies_after_draw(self):
+        SuperEnalottoDraw.objects.create(
+            draw_number=1, draw_date=date(2026, 6, 1),
+            winning_numbers=[1, 2, 3, 4, 5, 6],
+            jolly_number=7, superstar_number=8,
+            jackpot=10000000, prize_pool=5000000,
+        )
+        prediction = SuperEnalottoPrediction.objects.create(
+            target_draw_date=date(2026, 6, 4),
+            draw_number=2,
+            combinations=[
+                {"numbers": [1, 2, 3, 10, 11, 12], "jolly": 7, "superstar": 8, "label": "Test"},
+            ],
+        )
+        new_draw = SuperEnalottoDraw.objects.create(
+            draw_number=2, draw_date=date(2026, 6, 4),
+            winning_numbers=[1, 2, 3, 10, 20, 30],
+            jolly_number=7, superstar_number=8,
+        )
+        from news.predictions import verify_predictions
+        verify_predictions(new_draw)
+        prediction.refresh_from_db()
+        self.assertTrue(prediction.is_verified)
+        self.assertEqual(prediction.matched_counts[0]["matches"], 4)
+        self.assertTrue(prediction.matched_counts[0]["jolly_match"])
+        self.assertTrue(prediction.matched_counts[0]["superstar_match"])
+
+    def test_sitemap_includes_new_routes(self):
+        response = self.client.get(reverse("news:sitemap"))
+        self.assertContains(response, "storico-montepremi")
+        self.assertContains(response, "fanta-super")

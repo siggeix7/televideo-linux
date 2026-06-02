@@ -27,9 +27,10 @@ from .formatters import (
     parse_tv_channel_schedule,
     parse_weather_observation,
 )
-from .models import LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
+from .models import LottoDraw, NewsItem, SuperEnalottoDraw, SuperEnalottoPrediction, TelevideoPageSnapshot
 from .map_paths import get_map_regions
 from .openweather import openweather_cache_by_city
+from .predictions import create_prediction, generate_combinations, verify_predictions
 from .site_urls import public_absolute_url, public_base_url
 from .weather_capitals import build_capital_weather_markers, build_region_capital_weather, enrich_map_regions
 from .services.parser import compact_text, display_snapshot_text, fix_mojibake, prose_paragraphs
@@ -772,7 +773,7 @@ def superenalotto(request):
             pass
     return render(
         request,
-        "news/superenalotto.html",
+        "news/storico_estrazioni.html",
         {
             "language": "it",
             "languages": LANGUAGES,
@@ -781,6 +782,96 @@ def superenalotto(request):
             "nav_items": nav_items("giochi"),
         },
     )
+
+
+def superenalotto_landing(request):
+    return render(
+        request,
+        "news/superenalotto_landing.html",
+        {
+            "language": "it",
+            "languages": LANGUAGES,
+            "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
+            "ui": UI_TEXT["it"],
+            "nav_items": nav_items("giochi"),
+        },
+    )
+
+
+def storico_montepremi(request):
+    return render(
+        request,
+        "news/storico_montepremi.html",
+        {
+            "language": "it",
+            "languages": LANGUAGES,
+            "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
+            "ui": UI_TEXT["it"],
+            "nav_items": nav_items("giochi"),
+        },
+    )
+
+
+def fanta_super(request):
+    return render(
+        request,
+        "news/fanta_super.html",
+        {
+            "language": "it",
+            "languages": LANGUAGES,
+            "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
+            "ui": UI_TEXT["it"],
+            "nav_items": nav_items("giochi"),
+        },
+    )
+
+
+def montepremi_api(request):
+    draws = SuperEnalottoDraw.objects.order_by("draw_date").values(
+        "draw_date", "draw_number", "jackpot", "prize_pool"
+    )
+    data = []
+    for draw in draws:
+        item = {
+            "draw_date": draw["draw_date"].isoformat() if draw["draw_date"] else "",
+            "draw_number": draw["draw_number"],
+            "jackpot": float(draw["jackpot"]) if draw["jackpot"] is not None else None,
+            "prize_pool": float(draw["prize_pool"]) if draw["prize_pool"] is not None else None,
+        }
+        data.append(item)
+    return JsonResponse({"draws": data})
+
+
+def fanta_super_api(request):
+    try:
+        refresh_if_stale()
+    except RuntimeError:
+        pass
+
+    prediction = SuperEnalottoPrediction.objects.filter(is_verified=False).first()
+    if not prediction:
+        prediction = create_prediction()
+
+    history = SuperEnalottoPrediction.objects.filter(is_verified=True).order_by("-created_at")[:12]
+
+    return JsonResponse({
+        "prediction": _prediction_payload(prediction),
+        "history": [_prediction_payload(p) for p in history],
+    })
+
+
+def _prediction_payload(prediction: SuperEnalottoPrediction) -> dict:
+    return {
+        "id": prediction.id,
+        "created_at": prediction.created_at.isoformat(),
+        "target_draw_date": prediction.target_draw_date.isoformat() if prediction.target_draw_date else "",
+        "draw_number": prediction.draw_number,
+        "combinations": prediction.combinations,
+        "matched_counts": prediction.matched_counts,
+        "is_verified": prediction.is_verified,
+        "matched_draw_date": prediction.matched_draw.draw_date.isoformat() if prediction.matched_draw else "",
+        "matched_draw_number": prediction.matched_draw.draw_number if prediction.matched_draw else None,
+    }
 
 
 def televideo_section(request, section: str, active: str):
@@ -1061,7 +1152,10 @@ def sitemap_xml(request):
         "travel",
         "games",
         "regions",
+        "superenalotto_landing",
         "superenalotto",
+        "storico_montepremi",
+        "fanta_super",
     ]
     urls = [public_absolute_url(request, reverse(f"news:{name}")) for name in route_names]
     urls.append(public_absolute_url(request, reverse("news:atom_feed")))

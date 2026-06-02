@@ -3,7 +3,7 @@ from datetime import date
 from django.conf import settings
 from django.test import TestCase
 
-from news.models import Category, LottoDraw, NewsItem, OpenWeatherCity, SuperEnalottoDraw, TelevideoPageSnapshot
+from news.models import Category, LottoDraw, NewsItem, OpenWeatherCity, SuperEnalottoDraw, SuperEnalottoPrediction, TelevideoPageSnapshot
 
 
 class CategoryTests(TestCase):
@@ -113,3 +113,38 @@ class SettingsDefaultsTests(TestCase):
 
     def test_openweather_batch_size_defaults_to_200(self):
         self.assertEqual(settings.OPENWEATHER_BATCH_SIZE, 200)
+
+
+class SuperEnalottoPredictionTests(TestCase):
+    def test_create_prediction(self):
+        prediction = SuperEnalottoPrediction.objects.create(
+            target_draw_date=date(2026, 6, 4),
+            draw_number=100,
+            combinations=[
+                {"numbers": [1, 2, 3, 4, 5, 6], "jolly": 7, "superstar": 8, "label": "Test"},
+                {"numbers": [10, 20, 30, 40, 50, 60], "jolly": 15, "superstar": 25, "label": "Test 2"},
+            ],
+        )
+        self.assertEqual(prediction.draw_number, 100)
+        self.assertEqual(len(prediction.combinations), 2)
+        self.assertFalse(prediction.is_verified)
+
+    def test_prediction_matched_counts(self):
+        draw = SuperEnalottoDraw.objects.create(
+            draw_number=1, draw_date=date(2026, 1, 1),
+            winning_numbers=[1, 2, 3, 4, 5, 6],
+            jolly_number=7, superstar_number=8,
+        )
+        prediction = SuperEnalottoPrediction.objects.create(
+            target_draw_date=date(2026, 1, 1),
+            draw_number=1,
+            combinations=[
+                {"numbers": [1, 2, 3, 10, 11, 12], "jolly": 7, "superstar": 8, "label": "Test"},
+            ],
+            matched_draw=draw,
+            matched_counts=[{"matches": 3, "jolly_match": True, "superstar_match": True}],
+            is_verified=True,
+        )
+        self.assertTrue(prediction.is_verified)
+        self.assertEqual(prediction.matched_counts[0]["matches"], 3)
+        self.assertEqual(str(prediction), "Pronostico SuperEnalotto per il 2026-01-01")

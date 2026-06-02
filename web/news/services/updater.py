@@ -37,6 +37,7 @@ from .parser import (
 from .translator import build_translated_item
 
 from news.models import Category, LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapshot
+from news.predictions import create_prediction, verify_predictions
 
 
 _REFRESH_LOCK = threading.Lock()
@@ -177,9 +178,12 @@ def update_superenalotto() -> int:
     defaults = parse_superenalotto_content(content)
     draw_number = int(defaults.pop("draw_number"))
     draw_date = defaults.pop("draw_date")
-    SuperEnalottoDraw.objects.update_or_create(
+    draw, created = SuperEnalottoDraw.objects.update_or_create(
         draw_number=draw_number, draw_date=draw_date, defaults=defaults,
     )
+    if created:
+        verify_predictions(draw)
+        create_prediction()
     return 1
 
 

@@ -1,0 +1,46 @@
+{% load static %}
+<!doctype html>
+<html lang="{{ ui.html_lang }}">
+<head>
+    {% include "news/_head.html" with title_og="Fanta-Super SuperEnalotto" %}
+    <title>Fanta-Super - {{ ui.site_name }}</title>
+    <link rel="stylesheet" href="{% static 'news/styles.css' %}">
+    <script defer src="{% static 'news/fanta_super.js' %}"></script>
+</head>
+<body data-api-url="{% url 'news:fanta_super_api' %}" data-refresh-seconds="{{ refresh_seconds }}">
+    <a href="#main" class="skip-link">{{ ui.skip_to_content }}</a>
+    <div class="page-shell">
+        <header class="site-header">
+            <div class="hero hero--compact">
+                <div class="hero__copy">
+                    <p class="eyebrow">{{ ui.data_provider }}</p>
+                    <h1>Fanta-Super</h1>
+                    <p class="lede">6 combinazioni calcolate matematicamente per la prossima estrazione. Ricalcolate dopo ogni concorso.</p>
+                </div>
+                <div class="seal" aria-hidden="true">6</div>
+            </div>
+            <div class="topbar">
+                {% include "news/_site_nav.html" %}
+            </div>
+        </header>
+
+        <main id="main">
+            {% include "news/_super_subnav.html" with active="fanta" %}
+            <div id="prediction-section"></div>
+            <div id="prediction-loading" class="empty-state">
+                <h2>Carico i pronostici...</h2>
+            </div>
+            <div id="prediction-empty" class="empty-state" hidden>
+                <h2>Nessun pronostico</h2>
+                <p>Non ci sono ancora dati sufficienti per generare pronostici.</p>
+            </div>
+            <div id="prediction-error" class="error-state" hidden>
+                <h2>Errore</h2>
+                <p id="prediction-error-msg"></p>
+            </div>
+        </main>
+    </div>
+
+    {% include "news/_footer.html" %}
+</body>
+</html>

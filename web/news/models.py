@@ -103,6 +103,23 @@ class SuperEnalottoDraw(models.Model):
         return f"Concorso {self.draw_number} del {self.draw_date.isoformat()}"
 
 
+class SuperEnalottoPrediction(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    target_draw_date = models.DateField(null=True, blank=True, db_index=True)
+    draw_number = models.PositiveIntegerField(null=True, blank=True)
+    combinations = models.JSONField(default=list)
+    matched_draw = models.ForeignKey(SuperEnalottoDraw, null=True, blank=True, on_delete=models.SET_NULL, related_name="predictions")
+    matched_counts = models.JSONField(default=list)
+    is_verified = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ("-created_at",)
+
+    def __str__(self) -> str:
+        target = f" per il {self.target_draw_date.isoformat()}" if self.target_draw_date else ""
+        return f"Pronostico SuperEnalotto{target}"
+
+
 class LottoDraw(models.Model):
     draw_date = models.DateField(unique=True, db_index=True)
     wheels = models.JSONField(default=dict)

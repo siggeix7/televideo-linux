@@ -1,0 +1,58 @@
+{% load static %}
+<!doctype html>
+<html lang="{{ ui.html_lang }}">
+<head>
+    {% include "news/_head.html" with title_og="Storico Montepremi SuperEnalotto" %}
+    <title>Storico Montepremi - {{ ui.site_name }}</title>
+    <link rel="stylesheet" href="{% static 'news/styles.css' %}">
+    <script defer src="{% static 'news/storico_montepremi.js' %}"></script>
+</head>
+<body data-api-url="{% url 'news:montepremi_api' %}" data-refresh-seconds="{{ refresh_seconds }}">
+    <a href="#main" class="skip-link">{{ ui.skip_to_content }}</a>
+    <div class="page-shell">
+        <header class="site-header">
+            <div class="hero hero--compact">
+                <div class="hero__copy">
+                    <p class="eyebrow">{{ ui.data_provider }}</p>
+                    <h1>Storico montepremi</h1>
+                    <p class="lede">Andamento del jackpot e del montepremi nel tempo. Clicca e trascina per navigare.</p>
+                </div>
+                <div class="seal" aria-hidden="true">6</div>
+            </div>
+            <div class="topbar">
+                {% include "news/_site_nav.html" %}
+            </div>
+        </header>
+
+        <main id="main">
+            {% include "news/_super_subnav.html" with active="montepremi" %}
+            <div class="chart-controls">
+                <label class="toggle-row">
+                    <input type="checkbox" id="toggle-jackpot" checked>
+                    <span class="toggle-label toggle-label--jackpot">Jackpot</span>
+                </label>
+                <label class="toggle-row">
+                    <input type="checkbox" id="toggle-prize-pool">
+                    <span class="toggle-label toggle-label--prize">Montepremi</span>
+                </label>
+                <div class="chart-zoom">
+                    <button type="button" id="zoom-in" class="year-btn" title="Zoom avanti">+</button>
+                    <button type="button" id="zoom-out" class="year-btn" title="Zoom indietro">&minus;</button>
+                    <button type="button" id="zoom-reset" class="year-btn" title="Reimposta vista">Reset</button>
+                </div>
+            </div>
+            <div class="chart-container" id="chart-container">
+                <svg id="chart-svg" class="montepremi-chart" viewBox="0 0 960 500" preserveAspectRatio="xMidYMid meet" aria-label="Grafico andamento montepremi SuperEnalotto">
+                </svg>
+                <div id="chart-tooltip" class="chart-tooltip" hidden></div>
+            </div>
+            <div id="chart-empty" class="empty-state" hidden>
+                <h2>Nessun dato</h2>
+                <p>Non ci sono ancora estrazioni salvate nel database.</p>
+            </div>
+        </main>
+    </div>
+
+    {% include "news/_footer.html" %}
+</body>
+</html>

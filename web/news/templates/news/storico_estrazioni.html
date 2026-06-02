@@ -1,0 +1,78 @@
+{% load static %}
+<!doctype html>
+<html lang="{{ ui.html_lang }}">
+<head>
+    {% include "news/_head.html" with title_og="Storico Estrazioni SuperEnalotto" %}
+    <title>Storico Estrazioni - {{ ui.site_name }}</title>
+    <link rel="stylesheet" href="{% static 'news/styles.css' %}">
+    <script defer src="{% static 'news/storico_estrazioni.js' %}"></script>
+</head>
+<body data-api-url="{% url 'news:superenalotto_api' %}" data-initial-language="{{ language }}" data-refresh-seconds="{{ refresh_seconds }}" data-timeout-error="{{ ui.timeout_error }}" data-unknown-error="{{ ui.unknown_error }}">
+    <a href="#main" class="skip-link">{{ ui.skip_to_content }}</a>
+    <div class="page-shell">
+        <header class="site-header">
+            <div class="hero hero--compact">
+                <div class="hero__copy">
+                    <p class="eyebrow">{{ ui.data_provider }}</p>
+                    <h1>Storico estrazioni</h1>
+                    <p class="lede">Tutte le combinazioni SuperEnalotto raccolte dal 2009 a oggi.</p>
+                </div>
+                <div class="seal" aria-hidden="true">6</div>
+            </div>
+            <div class="topbar">
+                {% include "news/_site_nav.html" %}
+            </div>
+        </header>
+
+        <main id="main">
+            {% include "news/_super_subnav.html" with active="estrazioni" %}
+            <section class="lottery-layout">
+                <div class="lottery-controls">
+                    <label class="status-label" for="year-select" data-ui="select_year">{{ ui.select_year }}</label>
+                    <div id="year-buttons" class="year-buttons"></div>
+                </div>
+
+                <div class="draws-table-wrapper">
+                    <table id="draws-table" class="draws-table">
+                        <thead>
+                            <tr>
+                                <th data-ui="draw_number_label">{{ ui.draw_number_label }}</th>
+                                <th data-ui="draw_date_label_short">{{ ui.draw_date_label_short }}</th>
+                                <th data-ui="numbers_label_short">{{ ui.numbers_label_short }}</th>
+                                <th data-ui="jolly_label">{{ ui.jolly_label }}</th>
+                                <th data-ui="superstar_label">{{ ui.superstar_label }}</th>
+                            </tr>
+                        </thead>
+                        <tbody id="draws-tbody">
+                        </tbody>
+                    </table>
+                    <p id="draw-count" class="draw-count"></p>
+                </div>
+
+                <article id="draw-detail" class="lottery-card" hidden>
+                    <label class="status-label" data-ui="select_date">{{ ui.select_date }}</label>
+                    <h2 id="draw-heading"></h2>
+                    <p class="news-card__meta" id="draw-date-text"></p>
+                    <div class="number-row" id="winning-numbers"></div>
+                    <dl class="lottery-stats">
+                        <div><dt data-ui="jolly_label">{{ ui.jolly_label }}</dt><dd id="jolly-number">&mdash;</dd></div>
+                        <div><dt data-ui="superstar_label">{{ ui.superstar_label }}</dt><dd id="superstar-number">&mdash;</dd></div>
+                        <div><dt data-ui="jackpot_label">{{ ui.jackpot_label }}</dt><dd id="jackpot">&mdash;</dd></div>
+                        <div><dt data-ui="prize_pool_label">{{ ui.prize_pool_label }}</dt><dd id="prize-pool">&mdash;</dd></div>
+                    </dl>
+                </article>
+            </section>
+
+            <div id="empty-state" class="empty-state" hidden>
+                <h2 data-ui="no_draws">{{ ui.no_draws }}</h2>
+            </div>
+            <div id="error-state" class="error-state" hidden>
+                <h2 data-ui="load_error_title">{{ ui.load_error_title }}</h2>
+                <p id="error-message"></p>
+            </div>
+        </main>
+    </div>
+
+    {% include "news/_footer.html" %}
+</body>
+</html>
