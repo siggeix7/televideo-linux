@@ -1789,12 +1789,25 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
+    gap: 8px 16px;
     margin-bottom: 12px;
-    padding: 8px 12px;
+    padding: 8px 14px;
     border: 1px solid var(--border-dim);
     background: var(--bg-panel);
 }
+.chart-legend {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.chart-legend__swatch {
+    display: inline-block;
+    width: 14px;
+    height: 4px;
+    border-radius: 2px;
+}
+.chart-legend__swatch--jackpot { background: var(--yellow); box-shadow: 0 0 6px rgba(255,255,0,0.5); }
+.chart-legend__swatch--prize { background: var(--cyan); box-shadow: 0 0 6px rgba(0,255,255,0.5); }
 .toggle-row {
     display: inline-flex;
     align-items: center;
@@ -1814,16 +1827,46 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
     width: 100%;
     height: auto;
     cursor: crosshair;
+    outline: none;
 }
-.chart-line { stroke-width: 2; fill: none; }
+.montepremi-chart:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: -2px;
+}
+.chart-crosshair {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+.chart-crosshair-line {
+    stroke: rgba(255,255,255,0.3);
+    stroke-width: 1;
+    stroke-dasharray: 4 3;
+    pointer-events: none;
+}
+.chart-crosshair-handle {
+    fill: var(--white);
+    pointer-events: none;
+}
+.chart-area { opacity: 0.14; }
+.chart-area--jackpot { fill: url(#jackpot-gradient) var(--yellow); }
+.chart-area--prize { fill: url(#prize-gradient) var(--cyan); }
+.chart-line { stroke-width: 2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
 .chart-line--jackpot { stroke: var(--yellow); }
 .chart-line--prize { stroke: var(--cyan); }
-.chart-dot { cursor: pointer; }
+.chart-dot { cursor: pointer; transition: r 0.1s ease; }
 .chart-dot--jackpot { fill: var(--yellow); }
 .chart-dot--prize { fill: var(--cyan); }
-.chart-dot:hover { r: 6; stroke: var(--white); stroke-width: 2; }
+.chart-dot:hover { r: 5.5; stroke: var(--white); stroke-width: 1.5; }
+.chart-grid { pointer-events: none; }
+.chart-grid--major { stroke: rgba(0,255,0,0.08); stroke-width: 0.7; }
+.chart-grid--minor { stroke: rgba(0,255,0,0.04); stroke-width: 0.4; }
+.chart-axis { stroke: rgba(0,255,0,0.3); stroke-width: 1.2; }
 .chart-axis-label { fill: var(--text-dim); font-size: 10px; font-family: var(--font-mono); }
-.chart-axis { stroke: rgba(0,255,0,0.35); }
+.chart-axis-title { fill: var(--text-soft); font-size: 9px; font-family: var(--font-mono); font-weight: bold; }
 
 .chart-tooltip {
     position: absolute;
@@ -1831,15 +1874,44 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
     padding: 10px 14px;
     border: 1px solid var(--yellow);
     color: var(--text);
-    font-size: 0.82rem;
-    background: rgba(0,12,4,0.97);
-    box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    background: rgba(0,14,4,0.97);
+    box-shadow: 0 12px 28px rgba(0,0,0,0.6), 0 0 14px rgba(255,255,0,0.08);
     white-space: nowrap;
+    z-index: 10;
     transform: translate(-50%, -100%);
+    border-radius: 2px;
 }
-.chart-tooltip strong { display: block; color: var(--white); margin-bottom: 4px; }
+.chart-tooltip strong { display: block; color: var(--white); margin-bottom: 2px; font-size: 0.85rem; }
+.chart-tooltip em { color: var(--text-dim); font-size: 0.72rem; font-style: normal; }
+.chart-tooltip__values { margin-top: 6px; display: grid; gap: 3px; }
 .chart-tooltip--jackpot { color: var(--yellow); font-weight: bold; }
 .chart-tooltip--prize { color: var(--cyan); font-weight: bold; }
+
+.chart-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 260px;
+    padding: 40px;
+    border: 1px solid var(--border-dim);
+    background: var(--bg-panel);
+    color: var(--text-dim);
+    font-size: var(--font-size-sm);
+}
+.chart-loading__spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border-dim);
+    border-top-color: var(--yellow);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.chart-loading[hidden] { display: none; }
 
 .prediction-header { margin-bottom: 16px; }
 .prediction-header .status-label { font-size: 0.9rem; }

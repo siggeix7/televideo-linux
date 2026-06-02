@@ -15,7 +15,7 @@
                 <div class="hero__copy">
                     <p class="eyebrow">{{ ui.data_provider }}</p>
                     <h1>Storico montepremi</h1>
-                    <p class="lede">Andamento del jackpot e del montepremi nel tempo. Clicca e trascina per navigare.</p>
+                    <p class="lede">Andamento del jackpot e del montepremi nel tempo. Trascina per navigare, scroll per zoomare, frecce per scorrere.</p>
                 </div>
                 <div class="seal" aria-hidden="true">6</div>
             </div>
@@ -27,24 +27,46 @@
         <main id="main">
             {% include "news/_super_subnav.html" with active="montepremi" %}
             <div class="chart-controls">
-                <label class="toggle-row">
-                    <input type="checkbox" id="toggle-jackpot" checked>
-                    <span class="toggle-label toggle-label--jackpot">Jackpot</span>
-                </label>
-                <label class="toggle-row">
-                    <input type="checkbox" id="toggle-prize-pool">
-                    <span class="toggle-label toggle-label--prize">Montepremi</span>
-                </label>
+                <span class="chart-legend">
+                    <span class="chart-legend__swatch chart-legend__swatch--jackpot"></span>
+                    <label class="toggle-row">
+                        <input type="checkbox" id="toggle-jackpot" checked>
+                        <span class="toggle-label toggle-label--jackpot">Jackpot</span>
+                    </label>
+                </span>
+                <span class="chart-legend">
+                    <span class="chart-legend__swatch chart-legend__swatch--prize"></span>
+                    <label class="toggle-row">
+                        <input type="checkbox" id="toggle-prize-pool">
+                        <span class="toggle-label toggle-label--prize">Montepremi</span>
+                    </label>
+                </span>
                 <div class="chart-zoom">
-                    <button type="button" id="zoom-in" class="year-btn" title="Zoom avanti">+</button>
-                    <button type="button" id="zoom-out" class="year-btn" title="Zoom indietro">&minus;</button>
-                    <button type="button" id="zoom-reset" class="year-btn" title="Reimposta vista">Reset</button>
+                    <button type="button" id="zoom-out" class="year-btn" title="Zoom indietro (scroll giu')">&minus;</button>
+                    <button type="button" id="zoom-in" class="year-btn" title="Zoom avanti (scroll su)">+</button>
+                    <button type="button" id="zoom-reset" class="year-btn" title="Reimposta vista (tasto 0)">Reset</button>
                 </div>
             </div>
-            <div class="chart-container" id="chart-container">
-                <svg id="chart-svg" class="montepremi-chart" viewBox="0 0 960 500" preserveAspectRatio="xMidYMid meet" aria-label="Grafico andamento montepremi SuperEnalotto">
+            <div class="chart-container" id="chart-container" hidden>
+                <svg id="chart-svg" class="montepremi-chart" viewBox="0 0 960 520" preserveAspectRatio="xMidYMid meet" aria-label="Grafico andamento montepremi SuperEnalotto" tabindex="0">
+                    <defs>
+                        <linearGradient id="jackpot-gradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="var(--yellow, #ffff00)" stop-opacity="0.28"/>
+                            <stop offset="100%" stop-color="var(--yellow, #ffff00)" stop-opacity="0.01"/>
+                        </linearGradient>
+                        <linearGradient id="prize-gradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="var(--cyan, #00ffff)" stop-opacity="0.28"/>
+                            <stop offset="100%" stop-color="var(--cyan, #00ffff)" stop-opacity="0.01"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <svg id="chart-crosshair" class="chart-crosshair" viewBox="0 0 960 520" preserveAspectRatio="xMidYMid meet" aria-hidden="true" hidden>
                 </svg>
                 <div id="chart-tooltip" class="chart-tooltip" hidden></div>
+            </div>
+            <div id="chart-loading" class="chart-loading">
+                <div class="chart-loading__spinner"></div>
+                <p>Caricamento dati...</p>
             </div>
             <div id="chart-empty" class="empty-state" hidden>
                 <h2>Nessun dato</h2>
