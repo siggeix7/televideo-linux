@@ -1,11 +1,21 @@
-const CACHE_NAME = "televideo-v9";
+const CACHE_NAME = "televideo-v10";
 const STATIC_ASSETS = [
     "/",
     "/static/news/styles.css",
     "/static/news/app.js",
     "/static/news/superenalotto.js",
+    "/static/news/storico_estrazioni.js",
+    "/static/news/storico_montepremi.js",
+    "/static/news/fanta_super.js",
     "/feed.xml",
 ];
+
+function cacheCopy(request, response) {
+    if (!response || !response.ok) return response;
+    const clone = response.clone();
+    caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+    return response;
+}
 
 self.addEventListener("install", (event) => {
     event.waitUntil(
@@ -36,21 +46,25 @@ self.addEventListener("fetch", (event) => {
         return;
     }
 
+    const sameOrigin = url.origin === self.location.origin;
+    const acceptsHtml = event.request.headers.get("Accept")?.includes("text/html");
+
+    if (event.request.mode === "navigate" || acceptsHtml) {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => sameOrigin ? cacheCopy(event.request, response) : response)
+                .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/") || new Response("Offline", { status: 503 })))
+        );
+        return;
+    }
+
     event.respondWith(
         caches.match(event.request).then((cached) => {
-            const fetchPromise = fetch(event.request)
-                .then((response) => {
-                    if (response.ok && url.origin === self.location.origin) {
-                        const clone = response.clone();
-                        caches.open(CACHE_NAME).then((cache) =>
-                            cache.put(event.request, clone)
-                        );
-                    }
-                    return response;
-                })
+            const network = fetch(event.request)
+                .then((response) => sameOrigin ? cacheCopy(event.request, response) : response)
                 .catch(() => cached || new Response("Offline", { status: 503 }));
 
-            return cached || fetchPromise;
+            return cached || network;
         })
     );
 });

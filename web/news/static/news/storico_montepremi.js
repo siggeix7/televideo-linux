@@ -19,6 +19,7 @@
     var draws = [];
     var viewRange = { start: 0, end: 1 };
     var isDragging = false;
+    var hasLoaded = false;
     var dragStart = 0;
     var dragRangeStart = 0;
     var SVG_W = 960;
@@ -29,32 +30,66 @@
     var DOT_R = 2.8;
     var DOT_R_HOVER = 5.5;
 
+    function escapeText(value) {
+        return String(value == null ? "" : value)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+    }
+
+    function clampViewRange(range, length) {
+        if (!length) return { start: 0, end: 1 };
+        var width = Math.max(1, Math.min(length - 1, range.end - range.start));
+        var start = Math.max(0, Math.min(length - 1 - width, range.start));
+        return { start: start, end: start + width };
+    }
+
+    function setLoadingState(isLoading) {
+        if (loadingEl) loadingEl.hidden = !isLoading;
+        if (container) container.setAttribute("aria-busy", isLoading ? "true" : "false");
+    }
+
     function loadData() {
-        if (loadingEl) loadingEl.hidden = false;
-        if (container) container.hidden = true;
+        var previousLength = draws.length;
+        setLoadingState(!hasLoaded);
+        if (container && !hasLoaded) container.hidden = true;
         if (emptyState) emptyState.hidden = true;
 
-        fetch(apiUrl)
-            .then(function (r) { return r.json(); })
+        fetch(apiUrl, { headers: { Accept: "application/json" } })
+            .then(function (r) {
+                if (!r.ok) throw new Error("HTTP " + r.status);
+                return r.json();
+            })
             .then(function (payload) {
-                draws = payload.draws || [];
-                if (loadingEl) loadingEl.hidden = true;
-                if (draws.length === 0) {
+                var nextDraws = payload.draws || [];
+                setLoadingState(false);
+                if (nextDraws.length === 0) {
+                    draws = [];
                     if (emptyState) emptyState.hidden = false;
                     if (container) container.hidden = true;
                     return;
                 }
                 if (emptyState) emptyState.hidden = true;
                 if (container) container.hidden = false;
-                viewRange = { start: 0, end: draws.length - 1 };
+                draws = nextDraws;
+                if (!hasLoaded || previousLength === 0 || viewRange.end > draws.length - 1) {
+                    viewRange = { start: 0, end: draws.length - 1 };
+                } else {
+                    viewRange = clampViewRange(viewRange, draws.length);
+                }
+                hasLoaded = true;
                 render();
             })
-            .catch(function () {
-                if (loadingEl) loadingEl.hidden = true;
-                if (emptyState) {
+            .catch(function (error) {
+                setLoadingState(false);
+                if (emptyState && !hasLoaded) {
                     emptyState.hidden = false;
                     emptyState.querySelector("h2").textContent = "Errore caricamento";
-                    emptyState.querySelector("p").textContent = "Impossibile caricare i dati montepremi.";
+                    emptyState.querySelector("p").textContent = "Impossibile caricare i dati montepremi" + (error && error.message ? ": " + error.message : ".");
+                } else if (emptyState) {
+                    emptyState.hidden = true;
                 }
             });
     }
@@ -206,7 +241,7 @@
             if (x - lastLabelX < (useShort ? 40 : 62)) continue;
             lastLabelX = x;
             var label = useShort ? formatDateShort(draws[i].draw_date) : formatDate(draws[i].draw_date);
-            parts.push('<text x="' + x.toFixed(1) + '" y="' + (SVG_H - 18) + '" class="chart-axis-label" text-anchor="middle">' + label + '</text>');
+            parts.push('<text x="' + x.toFixed(1) + '" y="' + (SVG_H - 18) + '" class="chart-axis-label" text-anchor="middle">' + escapeText(label) + '</text>');
             parts.push('<line x1="' + x.toFixed(1) + '" y1="' + (MARGIN.top + PLOT_H) + '" x2="' + x.toFixed(1) + '" y2="' + (MARGIN.top + PLOT_H + 5) + '" stroke="rgba(0,255,0,0.15)" stroke-width="0.5"/>');
         }
         return parts.join("");
@@ -244,7 +279,16 @@
         var showPrize = togglePrizePool.checked;
         var yTicks = buildYTicks(maxVal);
 
-        var html = '<g class="chart-layer">';
+        var html = '<defs>' +
+            '<linearGradient id="jackpot-gradient" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="var(--yellow, #ffff00)" stop-opacity="0.28"/>' +
+            '<stop offset="100%" stop-color="var(--yellow, #ffff00)" stop-opacity="0.01"/>' +
+            '</linearGradient>' +
+            '<linearGradient id="prize-gradient" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0%" stop-color="var(--cyan, #00ffff)" stop-opacity="0.28"/>' +
+            '<stop offset="100%" stop-color="var(--cyan, #00ffff)" stop-opacity="0.01"/>' +
+            '</linearGradient>' +
+            '</defs><g class="chart-layer">';
 
         // Plot background
         html += '<rect x="' + MARGIN.left + '" y="' + MARGIN.top + '" width="' + PLOT_W + '" height="' + PLOT_H + '" fill="rgba(0,40,10,0.18)" rx="2"/>';
@@ -305,8 +349,6 @@
         var svgX = (evt.clientX - rect.left) * scaleX;
         var svgY = (evt.clientY - rect.top) * scaleY;
         var dotX = xScale(idx);
-        var maxVal = effectiveMax();
-
         crosshair.innerHTML =
             '<line x1="' + dotX.toFixed(1) + '" y1="' + MARGIN.top + '" x2="' + dotX.toFixed(1) + '" y2="' + (MARGIN.top + PLOT_H) + '" class="chart-crosshair-line"/>' +
             '<circle cx="' + dotX.toFixed(1) + '" cy="' + (MARGIN.top + 2) + '" r="3" class="chart-crosshair-handle"/>';
@@ -314,10 +356,10 @@
 
         // Tooltip
         tooltip.innerHTML =
-            '<strong>' + formatDate(draw.draw_date) + '</strong> <em>N.' + draw.draw_number + '</em>' +
+            '<strong>' + escapeText(formatDate(draw.draw_date)) + '</strong> <em>N.' + escapeText(draw.draw_number) + '</em>' +
             '<div class="chart-tooltip__values">' +
-            '<span class="chart-tooltip--jackpot">\u2605 Jackpot ' + formatEURFull(draw.jackpot) + '</span>' +
-            '<span class="chart-tooltip--prize">\u25C6 Montepremi ' + formatEURFull(draw.prize_pool) + '</span>' +
+            '<span class="chart-tooltip--jackpot">\u2605 Jackpot ' + escapeText(formatEURFull(draw.jackpot)) + '</span>' +
+            '<span class="chart-tooltip--prize">\u25C6 Montepremi ' + escapeText(formatEURFull(draw.prize_pool)) + '</span>' +
             '</div>';
         tooltip.hidden = false;
 

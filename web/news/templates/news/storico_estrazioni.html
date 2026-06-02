@@ -28,12 +28,17 @@
             {% include "news/_super_subnav.html" with active="estrazioni" %}
             <section class="lottery-layout">
                 <div class="lottery-controls">
-                    <label class="status-label" for="year-select" data-ui="select_year">{{ ui.select_year }}</label>
-                    <div id="year-buttons" class="year-buttons"></div>
+                    <span id="year-buttons-label" class="status-label" data-ui="select_year">{{ ui.select_year }}</span>
+                    <div id="year-buttons" class="year-buttons" role="group" aria-labelledby="year-buttons-label" aria-busy="true"></div>
                 </div>
 
-                <div class="draws-table-wrapper">
-                    <table id="draws-table" class="draws-table">
+                <div id="lottery-loading" class="lottery-loading" role="status" aria-live="polite">
+                    <span class="lottery-loading__pulse" aria-hidden="true"></span>
+                    <span>Caricamento estrazioni...</span>
+                </div>
+
+                <div id="draws-table-wrapper" class="draws-table-wrapper" aria-busy="true">
+                    <table id="draws-table" class="draws-table" aria-describedby="draw-count">
                         <thead>
                             <tr>
                                 <th data-ui="draw_number_label">{{ ui.draw_number_label }}</th>

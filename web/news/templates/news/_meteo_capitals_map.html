@@ -85,7 +85,7 @@
 
         <g class="capital-markers-dots">
             {% for marker in weather_capital_markers %}
-            <g class="capital-marker{% if not marker.available %} capital-marker--muted{% endif %}{% if marker.precipitating %} capital-marker--rain{% endif %}" tabindex="0" role="button" aria-label="{{ marker.aria_label }}" data-capital-marker="{{ marker.slug }}" data-name="{{ marker.name }}" data-emoji="{{ marker.emoji }}" data-condition="{{ marker.condition }}" data-temp-label="{{ marker.temp_label }}" data-temp-range="{{ marker.temp_range }}" data-wind="{{ marker.wind }}" data-source-label="{{ marker.source_label }}" data-precipitation="{{ marker.precipitation_badge }}" data-temp="{{ marker.temp_value|default:'' }}" data-available="{% if marker.available %}true{% else %}false{% endif %}">
+            <g class="capital-marker{% if not marker.available %} capital-marker--muted{% endif %}{% if marker.precipitating %} capital-marker--rain{% endif %}" tabindex="0" role="button" aria-label="{{ marker.aria_label }}" aria-controls="capital-hovercard" aria-expanded="false" data-capital-marker="{{ marker.slug }}" data-name="{{ marker.name }}" data-emoji="{{ marker.emoji }}" data-condition="{{ marker.condition }}" data-temp-label="{{ marker.temp_label }}" data-temp-range="{{ marker.temp_range }}" data-wind="{{ marker.wind }}" data-source-label="{{ marker.source_label }}" data-precipitation="{{ marker.precipitation_badge }}" data-temp="{{ marker.temp_value|default:'' }}" data-available="{% if marker.available %}true{% else %}false{% endif %}">
                 <title>{{ marker.aria_label }}</title>
                 <circle class="capital-marker__hit" cx="{{ marker.x|unlocalize }}" cy="{{ marker.y|unlocalize }}" r="22"/>
                 <circle class="capital-marker__ring" cx="{{ marker.x|unlocalize }}" cy="{{ marker.y|unlocalize }}" r="12" fill="{{ marker.temp_color }}" stroke="{% if marker.precipitating %}rgba(0,220,255,0.95){% else %}rgba(120,255,160,0.42){% endif %}"/>
@@ -95,7 +95,7 @@
             {% endfor %}
         </g>
     </svg>
-    <article class="capital-hovercard" data-capital-hovercard hidden aria-live="polite">
+    <article class="capital-hovercard" data-capital-hovercard id="capital-hovercard" hidden aria-live="polite" tabindex="-1">
         <button class="capital-hovercard__close" type="button" aria-label="Chiudi dettaglio meteo" data-hover-close>&times;</button>
         <div class="capital-hovercard__header">
             <span class="capital-hovercard__emoji" data-hover-emoji aria-hidden="true"></span>
@@ -312,7 +312,10 @@
             function clearMarkers(){
                 activeMarker = null;
                 lockedMarker = null;
-                markerDots.forEach(function(marker){ marker.classList.remove("is-active"); });
+                markerDots.forEach(function(marker){
+                    marker.classList.remove("is-active");
+                    marker.setAttribute("aria-expanded", "false");
+                });
                 if (hovercard) {
                     hovercard.classList.remove("is-visible", "is-docked", "capital-hovercard--rain", "capital-hovercard--muted");
                     hovercard.hidden = true;
@@ -320,34 +323,44 @@
                 }
             }
 
-            function activate(markerDot, locked){
-                markerDots.forEach(function(marker){ marker.classList.remove("is-active"); });
+            function activate(markerDot, locked, focusCard){
+                markerDots.forEach(function(marker){
+                    marker.classList.remove("is-active");
+                    marker.setAttribute("aria-expanded", "false");
+                });
                 activeMarker = markerDot;
                 lockedMarker = locked ? markerDot : null;
                 markerDot.classList.add("is-active");
+                markerDot.setAttribute("aria-expanded", "true");
                 fillHovercard(markerDot);
                 if (hovercard) {
                     hovercard.hidden = false;
                     hovercard.classList.add("is-visible");
                     positionHovercard(markerDot);
+                    if (locked && focusCard) {
+                        window.requestAnimationFrame(function(){
+                            var close = hovercard.querySelector("[data-hover-close]");
+                            (close || hovercard).focus({ preventScroll: true });
+                        });
+                    }
                 }
             }
 
             markerDots.forEach(function(marker){
                 marker.addEventListener("click", function(event){
                     event.stopPropagation();
-                    activate(marker, true);
+                    activate(marker, true, false);
                 });
-                marker.addEventListener("focus", function(){ activate(marker, false); });
+                marker.addEventListener("focus", function(){ activate(marker, false, false); });
                 marker.addEventListener("blur", function(){ if (!lockedMarker) clearMarkers(); });
                 marker.addEventListener("mouseenter", function(){
-                    activate(marker, false);
+                    activate(marker, false, false);
                 });
                 marker.addEventListener("mouseleave", function(){ if (!lockedMarker) clearMarkers(); });
                 marker.addEventListener("keydown", function(event){
                     if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-                        activate(marker, true);
+                        activate(marker, true, true);
                     }
                     if (event.key === "Escape") {
                         clearMarkers();

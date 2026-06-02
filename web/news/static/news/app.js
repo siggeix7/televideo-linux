@@ -29,9 +29,9 @@
     const hasServerRendered = grid && grid.dataset.serverRendered === "true";
     const reduceMotion = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
 
-    let language = "it";
-    let page = Math.max(Number(initialParams.get("page") || localStorage.getItem("chronica-page") || 1) || 1, 1);
-    let limit = normalizeLimit(initialParams.get("limit") || localStorage.getItem("chronica-limit") || body.dataset.initialLimit || DEFAULT_LIMIT);
+    let language = initialParams.get("lang") || body.dataset.initialLanguage || "it";
+    let page = Math.max(Number(initialParams.get("page") || safeStorageGet("chronica-page") || 1) || 1, 1);
+    let limit = normalizeLimit(initialParams.get("limit") || safeStorageGet("chronica-limit") || body.dataset.initialLimit || DEFAULT_LIMIT);
     let searchQuery = initialParams.get("q") || "";
     let selectedDate = initialParams.get("date") || "";
     let ui = {
@@ -53,6 +53,22 @@
 
     function scrollToTop() {
         window.scrollTo({ top: 0, behavior: reduceMotion && reduceMotion.matches ? "auto" : "smooth" });
+    }
+
+    function safeStorageGet(key) {
+        try {
+            return window.localStorage.getItem(key);
+        } catch (error) {
+            return "";
+        }
+    }
+
+    function safeStorageSet(key, value) {
+        try {
+            window.localStorage.setItem(key, value);
+        } catch (error) {
+            // Storage can be unavailable in restricted/private browsing modes.
+        }
     }
 
     function setGridBusy(isBusy) {
@@ -175,6 +191,7 @@
         var params = new URLSearchParams();
         if (searchQuery) params.set("q", searchQuery);
         if (selectedDate) params.set("date", selectedDate);
+        if (language && language !== "it") params.set("lang", language);
         if (page > 1) params.set("page", String(page));
         if (limit !== DEFAULT_LIMIT) params.set("limit", String(limit));
         var nextUrl = window.location.pathname + (params.toString() ? "?" + params.toString() : "");
@@ -209,9 +226,9 @@
         page = data.page;
         if (data.limit) {
             limit = normalizeLimit(data.limit);
-            localStorage.setItem("chronica-limit", String(limit));
+            safeStorageSet("chronica-limit", String(limit));
         }
-        localStorage.setItem("chronica-page", String(page));
+        safeStorageSet("chronica-page", String(page));
         updateLimitControls();
         previousPage.textContent = ui.previous_page || "Precedenti";
         nextPage.textContent = ui.next_page || "Successive";
@@ -347,7 +364,7 @@
         }
 
         var url = new URL(apiUrl, window.location.origin);
-        url.searchParams.set("lang", "it");
+        url.searchParams.set("lang", language || "it");
         url.searchParams.set("page", String(page));
         url.searchParams.set("limit", String(limit));
         if (selectedDate) {
@@ -372,7 +389,9 @@
             loading = false;
             grid.classList.remove("is-loading");
             setGridBusy(false);
-            grid.replaceChildren();
+            if (!(quiet && firstRender && hasServerRendered)) {
+                grid.replaceChildren();
+            }
             emptyState.hidden = true;
             var errMsg;
             if (error.name === "TimeoutError" || error.name === "AbortError") {
@@ -414,8 +433,8 @@
             if (nextLimit === limit) return;
             limit = nextLimit;
             page = 1;
-            localStorage.setItem("chronica-limit", String(limit));
-            localStorage.setItem("chronica-page", String(page));
+            safeStorageSet("chronica-limit", String(limit));
+            safeStorageSet("chronica-page", String(page));
             firstRender = true;
             retryCount = 0;
             updateLimitControls();
@@ -432,7 +451,7 @@
                 if (query === searchQuery) return;
                 searchQuery = query;
                 page = 1;
-                localStorage.setItem("chronica-page", String(page));
+                safeStorageSet("chronica-page", String(page));
                 firstRender = true;
                 retryCount = 0;
                 loadNews();
@@ -458,7 +477,7 @@
         dateInput.addEventListener("change", function () {
             selectedDate = dateInput.value || "";
             page = 1;
-            localStorage.setItem("chronica-page", String(page));
+            safeStorageSet("chronica-page", String(page));
             firstRender = true;
             retryCount = 0;
             loadNews();
@@ -471,7 +490,7 @@
             selectedDate = "";
             dateInput.value = "";
             page = 1;
-            localStorage.setItem("chronica-page", String(page));
+            safeStorageSet("chronica-page", String(page));
             firstRender = true;
             retryCount = 0;
             updateDateControls();

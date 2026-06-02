@@ -9,6 +9,7 @@
     var emptyEl = document.getElementById("prediction-empty");
     var errorEl = document.getElementById("prediction-error");
     var errorMsg = document.getElementById("prediction-error-msg");
+    var inFlight = false;
 
     var STRATEGY_ICONS = {
         "Ciclo di ritorno": "\u25C9",
@@ -240,6 +241,7 @@
         if (!prediction || !prediction.combinations || !prediction.combinations.length) {
             emptyEl.hidden = false;
             loading.hidden = true;
+            section.setAttribute("aria-busy", "false");
             return;
         }
 
@@ -277,9 +279,17 @@
         h += renderHistory(history);
 
         section.innerHTML = h;
+        section.setAttribute("aria-busy", "false");
+        section.classList.remove("is-visible");
+        requestAnimationFrame(function () {
+            section.classList.add("is-visible");
+        });
     }
 
     function loadData() {
+        if (inFlight) return;
+        inFlight = true;
+        section.setAttribute("aria-busy", "true");
         loading.hidden = section.innerHTML.trim().length > 0;
         errorEl.hidden = true;
         emptyEl.hidden = true;
@@ -296,6 +306,10 @@
                 loading.hidden = true;
                 errorEl.hidden = false;
                 errorMsg.textContent = err.message || "Errore nel caricamento dei dati.";
+                section.setAttribute("aria-busy", "false");
+            })
+            .finally(function () {
+                inFlight = false;
             });
     }
 

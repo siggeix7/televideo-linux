@@ -18,9 +18,11 @@
     const emptyState = document.getElementById("empty-state");
     const errorState = document.getElementById("error-state");
     const errorMessage = document.getElementById("error-message");
+    const loadingState = document.getElementById("lottery-loading");
+    const drawsWrapper = document.getElementById("draws-table-wrapper");
 
-    let language = "it";
-    let selectedYear = localStorage.getItem("superenalotto-year") || "";
+    let language = body.dataset.initialLanguage || "it";
+    let selectedYear = safeStorageGet("superenalotto-year") || "";
     let selectedDate = "";
     let ui = {
         timeout_error: body.dataset.timeoutError || "",
@@ -30,7 +32,34 @@
     let retryCount = 0;
     let activeController = null;
     let requestSeq = 0;
+    let pendingDetailScroll = false;
     const MAX_RETRIES = 3;
+
+    function safeStorageGet(key) {
+        try {
+            return window.localStorage.getItem(key);
+        } catch (error) {
+            return "";
+        }
+    }
+
+    function safeStorageSet(key, value) {
+        try {
+            window.localStorage.setItem(key, value);
+        } catch (error) {
+            // Storage may be unavailable in restricted/private browsing modes.
+        }
+    }
+
+    function setLoadingState(isLoading) {
+        loading = isLoading;
+        if (loadingState) loadingState.hidden = !isLoading;
+        if (yearButtons) yearButtons.setAttribute("aria-busy", isLoading ? "true" : "false");
+        if (drawsWrapper) {
+            drawsWrapper.setAttribute("aria-busy", isLoading ? "true" : "false");
+            drawsWrapper.classList.toggle("is-loading", isLoading);
+        }
+    }
 
     function applyUi(nextUi) {
         ui = nextUi || ui;
@@ -77,11 +106,13 @@
             btn.className = "year-btn" + (year === Number(selectedYear) ? " year-btn--active" : "");
             btn.textContent = year;
             btn.type = "button";
+            btn.setAttribute("aria-pressed", year === Number(selectedYear) ? "true" : "false");
             btn.addEventListener("click", function () {
                 if (Number(selectedYear) === year) return;
                 selectedYear = String(year);
                 selectedDate = "";
-                localStorage.setItem("superenalotto-year", selectedYear);
+                pendingDetailScroll = false;
+                safeStorageSet("superenalotto-year", selectedYear);
                 retryCount = 0;
                 loadData();
             });
@@ -107,6 +138,8 @@
             tr.tabIndex = 0;
             tr.setAttribute("role", "button");
             tr.setAttribute("aria-expanded", draw.draw_date === selectedDate ? "true" : "false");
+            tr.setAttribute("aria-pressed", draw.draw_date === selectedDate ? "true" : "false");
+            tr.setAttribute("aria-label", "Concorso " + draw.draw_number + " del " + draw.draw_date);
 
             if (draw.draw_date === selectedDate) {
                 tr.classList.add("draws-table__row--selected");
@@ -114,6 +147,7 @@
 
             tr.addEventListener("click", function () {
                 selectedDate = draw.draw_date;
+                pendingDetailScroll = true;
                 retryCount = 0;
                 loadData();
             });
@@ -121,6 +155,7 @@
                 if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     selectedDate = draw.draw_date;
+                    pendingDetailScroll = true;
                     retryCount = 0;
                     loadData();
                 }
@@ -136,7 +171,7 @@
 
             var tdNums = document.createElement("td");
             tdNums.className = "draws-table__numbers";
-            draw.winning_numbers.forEach(function (n) {
+            (draw.winning_numbers || []).forEach(function (n) {
                 tdNums.appendChild(numberChipSmall(n));
             });
 
@@ -157,7 +192,7 @@
         });
     }
 
-    function renderDraw(draw) {
+    function renderDraw(draw, shouldScroll) {
         if (!draw) {
             if (drawDetail) drawDetail.hidden = true;
             heading.textContent = "";
@@ -172,14 +207,18 @@
         if (drawDetail) drawDetail.hidden = false;
         heading.textContent = (ui.draw_label || "Concorso") + " N." + draw.draw_number;
         drawDateText.textContent = (ui.draw_date_label || "Data") + ": " + draw.draw_date;
-        winningNumbers.replaceChildren.apply(winningNumbers, draw.winning_numbers.map(numberChip));
+        winningNumbers.replaceChildren();
+        (draw.winning_numbers || []).forEach(function (n) {
+            winningNumbers.appendChild(numberChip(n));
+        });
         jollyNumber.textContent = draw.jolly_number || "\u2014";
         superstarNumber.textContent = draw.superstar_number || "\u2014";
-        jackpot.textContent = draw.jackpot.text || "\u2014";
-        prizePool.textContent = draw.prize_pool.text || "\u2014";
+        jackpot.textContent = draw.jackpot && draw.jackpot.text ? draw.jackpot.text : "\u2014";
+        prizePool.textContent = draw.prize_pool && draw.prize_pool.text ? draw.prize_pool.text : "\u2014";
 
-        var detailTop = drawDetail.getBoundingClientRect().top + window.scrollY - 24;
-        drawDetail.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (shouldScroll && drawDetail) {
+            drawDetail.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
     }
 
     async function loadData() {
@@ -187,11 +226,11 @@
         if (activeController) activeController.abort();
         var controller = new AbortController();
         activeController = controller;
-        loading = true;
+        setLoadingState(true);
         hideError();
 
         var url = new URL(apiUrl, window.location.origin);
-        url.searchParams.set("lang", "it");
+        url.searchParams.set("lang", language || "it");
         if (selectedYear) {
             url.searchParams.set("year", selectedYear);
         }
@@ -213,17 +252,18 @@
 
             if (!selectedYear && payload.selected_year) {
                 selectedYear = String(payload.selected_year);
-                localStorage.setItem("superenalotto-year", selectedYear);
+                safeStorageSet("superenalotto-year", selectedYear);
             }
 
             renderYearButtons(payload.years || []);
             renderDrawsTable(payload.draws || []);
-            renderDraw(payload.selected);
+            renderDraw(payload.selected, pendingDetailScroll && !!selectedDate);
+            pendingDetailScroll = false;
             retryCount = 0;
-            loading = false;
+            setLoadingState(false);
         } catch (error) {
             if (seq !== requestSeq) return;
-            loading = false;
+            setLoadingState(false);
             if (error.name === "TimeoutError" || error.name === "AbortError") {
                 showError(ui.timeout_error || "Timeout: il server non risponde. Nuovo tentativo in corso...");
             } else {
