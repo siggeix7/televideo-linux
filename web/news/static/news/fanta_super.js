@@ -12,21 +12,21 @@
 
     var STRATEGY_ICONS = {
         "Ciclo di ritorno": "\u25C9",
-        "Catena di Markov": "\u25C8",
-        "Ritardatari": "\u25D6",
-        "Numeri caldi": "\u25B3",
-        "Bilanciato": "\u25A3",
-        "Ensemble": "\u2605",
+        "Transizioni Markov": "\u25C8",
+        "Gap anomalo": "\u25D6",
+        "Tendenza recente": "\u25B3",
+        "Mix controllato": "\u25A3",
+        "Ensemble pesato": "\u2605",
     };
 
     var STRATEGY_COLORS = {
         "Ciclo di ritorno": "card--cycle",
-        "Ensemble": "card--ensemble",
+        "Ensemble pesato": "card--ensemble",
     };
 
     function esc(s) {
         var d = document.createElement("div");
-        d.textContent = s;
+        d.textContent = s == null ? "" : String(s);
         return d.innerHTML;
     }
 
@@ -133,9 +133,9 @@
                 var m = methods[key];
                 var nameMap = {
                     cycle_aware: "Ciclo di ritorno",
-                    markov: "Catena di Markov",
-                    overdue: "Ritardatari",
-                    hot: "Numeri caldi",
+                    markov: "Transizioni Markov",
+                    overdue: "Gap anomalo",
+                    hot: "Tendenza recente",
                 };
                 var name = nameMap[key] || key;
                 var note = "";
@@ -280,12 +280,15 @@
     }
 
     function loadData() {
-        loading.hidden = false;
+        loading.hidden = section.innerHTML.trim().length > 0;
         errorEl.hidden = true;
         emptyEl.hidden = true;
 
         fetch(apiUrl)
-            .then(function (r) { return r.json(); })
+            .then(function (r) {
+                if (!r.ok) throw new Error("HTTP " + r.status);
+                return r.json();
+            })
             .then(function (payload) {
                 renderPage(payload.prediction, payload.analysis, payload.history);
             })

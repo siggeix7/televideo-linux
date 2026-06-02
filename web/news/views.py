@@ -30,7 +30,7 @@ from .formatters import (
 from .models import LottoDraw, NewsItem, SuperEnalottoDraw, SuperEnalottoPrediction, TelevideoPageSnapshot
 from .map_paths import get_map_regions
 from .openweather import OPENWEATHER_TILE_CACHE_SECONDS, fetch_openweather_tile, openweather_cache_by_city
-from .predictions import build_analysis_summary, create_prediction, generate_combinations, verify_predictions
+from .predictions import build_analysis_summary, create_prediction, generate_combinations, prediction_uses_current_engine, verify_predictions
 from .site_urls import public_absolute_url, public_base_url
 from .weather_capitals import build_capital_weather_markers, build_region_capital_weather, enrich_map_regions, NO_DATA, _parse_wind_float, _temp_float
 from .services.parser import compact_text, display_snapshot_text, fix_mojibake, prose_paragraphs
@@ -898,15 +898,22 @@ def montepremi_api(request):
 
 def fanta_super_api(request):
     prediction = SuperEnalottoPrediction.objects.filter(is_verified=False).first()
+    if prediction and not prediction_uses_current_engine(prediction):
+        prediction.delete()
+        prediction = None
     if not prediction:
         prediction = create_prediction()
 
-    history = SuperEnalottoPrediction.objects.filter(is_verified=True).order_by("-created_at")[:12]
+    verified = SuperEnalottoPrediction.objects.filter(is_verified=True).order_by("-created_at")[:24]
+    history = [p for p in verified if prediction_uses_current_engine(p)][:12]
+    prediction_payload = _prediction_payload(prediction)
+    history_payload = [_prediction_payload(p) for p in history]
+
     analysis = build_analysis_summary()
 
     response_data = {
-        "prediction": _prediction_payload(prediction),
-        "history": [_prediction_payload(p) for p in history],
+        "prediction": prediction_payload,
+        "history": history_payload,
         "analysis": analysis,
     }
     return JsonResponse(response_data, json_dumps_params={"ensure_ascii": False})

@@ -6,13 +6,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DJANGO_SETTINGS_MODULE=chronica.settings \
     APP_VERSION=${APP_VERSION} \
-    SQLITE_PATH=/data/chronica.sqlite3 \
     DJANGO_CACHE_DIR=/data/django_cache \
     DJANGO_LOG_DIR=/data \
     NEWS_REFRESH_SECONDS=1200 \
     NEWS_FETCH_LIMIT=30 \
     CATEGORY_FETCH_LIMIT=2 \
     PORT=8000 \
+    POSTGRES_HOST=localhost \
+    POSTGRES_DB=televideo \
+    POSTGRES_USER=televideo \
     PGDATA=/data/postgresql \
     PATH=/usr/pgsql-18/bin:/app:$PATH
 

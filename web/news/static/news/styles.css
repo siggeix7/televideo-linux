@@ -1972,7 +1972,7 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 
 .prediction-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
     gap: 12px;
     margin-bottom: 24px;
 }
@@ -1987,7 +1987,7 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 .prediction-card.card--cycle {
     border-color: var(--yellow-dim);
     background: linear-gradient(135deg, rgba(255,255,0,0.04) 0%, var(--bg-panel) 100%);
-  }
+}
 .prediction-card.card--ensemble {
     border-color: var(--cyan-dim, rgba(0,255,255,0.25));
     background: linear-gradient(135deg, rgba(0,255,255,0.03) 0%, var(--bg-panel) 100%);
@@ -2013,6 +2013,7 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 
 .prediction-card__numbers {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
     margin-bottom: 12px;
 }
@@ -2076,6 +2077,7 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
     margin-bottom: 12px;
     border: 1px solid var(--border-dim);
     background: var(--bg-panel);
+    overflow-x: auto;
 }
 .analysis-block summary {
     padding: 10px 14px;
@@ -2210,7 +2212,7 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
-    .prediction-grid { grid-template-columns: repeat(2, 1fr); }
+    .prediction-grid { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 }
 @media (max-width: 640px) {
     .prediction-grid { grid-template-columns: 1fr; }

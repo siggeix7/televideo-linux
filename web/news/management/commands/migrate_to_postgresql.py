@@ -1,5 +1,7 @@
+import json
 import sys
 import tempfile
+from collections import defaultdict
 
 from django.apps import apps
 from django.core.management import call_command
@@ -20,8 +22,17 @@ def _fix_postgres_sequences():
     cursor.close()
 
 
+def _existing_pks_from_postgres(model):
+    """Return set of existing primary keys for a model in the default (PostgreSQL) database."""
+    pk_field = model._meta.pk.name
+    try:
+        return set(model.objects.using("default").values_list(pk_field, flat=True))
+    except Exception:
+        return set()
+
+
 class Command(BaseCommand):
-    help = "Copies data from SQLite into PostgreSQL. Requires POSTGRES_HOST to be configured."
+    help = "Copies data from SQLite into PostgreSQL (idempotent). Requires POSTGRES_HOST to be configured."
 
     def handle(self, *args, **options):
         db_configs = connections.databases
@@ -34,7 +45,10 @@ class Command(BaseCommand):
             )
             sys.exit(1)
 
-        self.stdout.write(self.style.NOTICE("Step 1/4: dumping SQLite data ..."))
+        self.stdout.write(self.style.NOTICE("Step 1/5: migrating PostgreSQL schema ..."))
+        call_command("migrate", "--database=default", interactive=False)
+
+        self.stdout.write(self.style.NOTICE("Step 2/5: dumping SQLite data ..."))
         dump_file = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
         call_command(
             "dumpdata",
@@ -49,17 +63,64 @@ class Command(BaseCommand):
         )
         dump_file.close()
 
-        self.stdout.write(self.style.NOTICE("Step 2/4: migrating PostgreSQL ..."))
-        call_command("migrate", "--database=default", interactive=False)
+        self.stdout.write(self.style.NOTICE("Step 3/5: filtering out records already in PostgreSQL ..."))
+        with open(dump_file.name) as f:
+            all_objects = json.load(f)
 
-        self.stdout.write(self.style.NOTICE("Step 3/4: loading data into PostgreSQL ..."))
+        # Group objects by model
+        by_model = defaultdict(list)
+        for obj in all_objects:
+            by_model[obj["model"]].append(obj)
+
+        new_objects = []
+        skipped_total = 0
+
+        for model_label, objects in by_model.items():
+            try:
+                model = apps.get_model(model_label)
+            except LookupError:
+                new_objects.extend(objects)
+                continue
+
+            existing = _existing_pks_from_postgres(model)
+            added = 0
+            for obj in objects:
+                if obj["pk"] in existing:
+                    skipped_total += 1
+                else:
+                    new_objects.append(obj)
+                    added += 1
+            if added or (len(objects) - added) > 0:
+                self.stdout.write(
+                    f"  {model_label}: {added} new, {len(objects) - added} skipped (already present)"
+                )
+
+        if skipped_total:
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"  Skipped {skipped_total} records already present in PostgreSQL."
+                )
+            )
+
+        if not new_objects:
+            self.stdout.write(self.style.SUCCESS("No new records to import. PostgreSQL is up to date."))
+            import os
+            os.unlink(dump_file.name)
+            return
+
+        self.stdout.write(self.style.NOTICE(f"Step 4/5: loading {len(new_objects)} new records into PostgreSQL ..."))
+        filtered_file = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
+        json.dump(new_objects, filtered_file, indent=2)
+        filtered_file.close()
+
         try:
-            call_command("loaddata", "--database=default", dump_file.name)
+            call_command("loaddata", "--database=default", filtered_file.name)
         finally:
             import os
             os.unlink(dump_file.name)
+            os.unlink(filtered_file.name)
 
-        self.stdout.write(self.style.NOTICE("Step 4/4: fixing PostgreSQL sequences ..."))
+        self.stdout.write(self.style.NOTICE("Step 5/5: fixing PostgreSQL sequences ..."))
         _fix_postgres_sequences()
 
         self.stdout.write(self.style.SUCCESS("Migration to PostgreSQL completed."))

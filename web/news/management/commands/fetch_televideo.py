@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = "Fetches live Rai Televideo news and stores translations in SQLite."
+    help = "Fetches live Rai Televideo news and stores translations in the database."
 
     def add_arguments(self, parser):
         parser.add_argument("--once", action="store_true", help="fetch once and exit")

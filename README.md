@@ -4,7 +4,7 @@ Sito web e CLI per leggere notizie reali da Rai Televideo con uno stile
 mediavideo/teletext retro: sfondo nero, font monospace e palette di colori CRT.
 
 Il flusso principale e' la web app Django: un job interno scarica le Ultim'Ora
-Rai, salva tutto in SQLite e la pagina si aggiorna da sola mostrando le nuove
+Rai, salva tutto in PostgreSQL 18 e la pagina si aggiorna da sola mostrando le nuove
 notizie.
 
 ## Funzioni Principali
@@ -20,9 +20,9 @@ notizie.
 - Mappa SVG interattiva dell'Italia nella sezione meteo: ogni regione e' cliccabile e apre il Televideo regionale; con OpenWeatherMap configurato il meteo usa previsioni a 5 giorni, min/max e alba/tramonto.
 - Tabelle dati strutturate: classifica Serie A, risultati, palinsesto TV, Auditel, stazioni meteo, ruote Lotto.
 - Articoli multi-pagina: il parser fonde automaticamente le sottopagine Televideo in un unico articolo.
-- Cache SQLite delle pagine Televideo non-news, separata dallo storico notizie.
+- Cache delle pagine Televideo non-news, separata dallo storico notizie.
 - Lotto da pagina 691 con parsing delle ruote e SuperEnalotto nella pagina giochi.
-- Database SQLite persistente su volume esterno `/data`.
+- PostgreSQL 18 come database predefinito, con dati persistenti su volume esterno `/data`.
 - Job di aggiornamento automatico con worker paralleli (news + sezioni).
 - API JSON usata dalla pagina per aggiornarsi senza refresh manuale.
 - Tag versione visibile nel footer, utile per verificare quale container e' in esecuzione.
@@ -49,13 +49,13 @@ Nel setup preparato in questa macchina trovi:
 
 ```text
 /opt/televideo-docker/docker-compose.yml
-/opt/televideo-docker/chronica.sqlite3
+/opt/televideo-docker/postgresql/
 /opt/televideo-docker/postgresql/
 ```
 
 Il database vive fuori dal container, quindi rimane disponibile quando
-il container viene fermato, ricreato o aggiornato. Di default usa SQLite; e'
-possibile passare a PostgreSQL 18 (embedded nel container).
+il container viene fermato, ricreato o aggiornato. Di default usa PostgreSQL 18 (embedded nel container); e'
+possibile tornare a SQLite per sviluppo locale.
 
 Docker Compose consigliato:
 
@@ -68,8 +68,6 @@ services:
     ports:
       - "${PORT:-8000}:8000"
     environment:
-      SQLITE_PATH: /data/chronica.sqlite3
-      SQLITE_TIMEOUT: "${SQLITE_TIMEOUT:-30}"
       NEWS_REFRESH_SECONDS: "${NEWS_REFRESH_SECONDS:-1200}"
       NEWS_FETCH_LIMIT: "${NEWS_FETCH_LIMIT:-30}"
       CATEGORY_FETCH_LIMIT: "${CATEGORY_FETCH_LIMIT:-2}"
@@ -80,7 +78,7 @@ services:
       OPENWEATHER_STALE_SECONDS: "${OPENWEATHER_STALE_SECONDS:-9000}"
       OPENWEATHER_MAX_CALLS_PER_MINUTE: "${OPENWEATHER_MAX_CALLS_PER_MINUTE:-40}"
       OPENWEATHER_BATCH_SIZE: "${OPENWEATHER_BATCH_SIZE:-200}"
-      POSTGRES_HOST: "${POSTGRES_HOST:-}"
+      POSTGRES_HOST: "${POSTGRES_HOST:-localhost}"
       POSTGRES_DB: "${POSTGRES_DB:-televideo}"
       POSTGRES_USER: "${POSTGRES_USER:-televideo}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-televideo}"
@@ -106,7 +104,6 @@ Per produzione dietro Nginx Proxy Manager, crea `/opt/televideo-docker/.env`:
 
 ```env
 PORT=8000
-SQLITE_TIMEOUT=30
 NEWS_REFRESH_SECONDS=1200
 NEWS_FETCH_LIMIT=30
 CATEGORY_FETCH_LIMIT=2
@@ -117,7 +114,7 @@ OPENWEATHER_REFRESH_CHECK_SECONDS=9000
 OPENWEATHER_STALE_SECONDS=9000
 OPENWEATHER_MAX_CALLS_PER_MINUTE=40
 OPENWEATHER_BATCH_SIZE=200
-POSTGRES_HOST=
+POSTGRES_HOST=localhost
 POSTGRES_DB=televideo
 POSTGRES_USER=televideo
 POSTGRES_PASSWORD=televideo
@@ -270,8 +267,6 @@ Variabili d'ambiente principali:
 
 ```text
 PORT                  porta HTTP del container, default 8000
-SQLITE_PATH           path database, default /data/chronica.sqlite3 nel container
-SQLITE_TIMEOUT        timeout lock SQLite in secondi, default 30
 NEWS_REFRESH_SECONDS  frequenza aggiornamento notizie, default 1200 (20 minuti)
 NEWS_FETCH_LIMIT      quante notizie conservare a ogni giro, default 30
 CATEGORY_FETCH_LIMIT  quante notizie importare per ogni categoria Televideo, default 2
@@ -282,7 +277,7 @@ OPENWEATHER_REFRESH_CHECK_SECONDS frequenza check fallback meteo, default 9000
 OPENWEATHER_STALE_SECONDS eta' massima cache meteo OpenWeatherMap, default 9000 (2.5 ore)
 OPENWEATHER_MAX_CALLS_PER_MINUTE limite interno richieste OpenWeatherMap, default 40
 OPENWEATHER_BATCH_SIZE massimo capoluoghi aggiornati per check, default 200
-POSTGRES_HOST         hostname PostgreSQL; se vuoto usa SQLite
+POSTGRES_HOST         hostname PostgreSQL, default localhost
 POSTGRES_DB           nome database PostgreSQL, default televideo
 POSTGRES_USER         utente PostgreSQL, default televideo
 POSTGRES_PASSWORD     password PostgreSQL, default televideo
@@ -326,7 +321,7 @@ Per migrare i dati esistenti da SQLite:
 docker exec televideo-web python web/manage.py migrate_to_postgresql
 ```
 
-Il database SQLite originale (`/opt/televideo-docker/chronica.sqlite3`) non
+Il database SQLite originale (`/opt/televideo-docker/postgresql/`) non
 viene modificato. Per tornare a SQLite basta rimuovere `POSTGRES_HOST` dal
 `.env` e ricreare il container.
 
@@ -335,12 +330,12 @@ Il container avvia automaticamente:
 1. Controllo piano migrazioni Django.
 2. Migrazioni Django non distruttive sul database presente in `/data`.
 3. Primo fetch di notizie, categorie e SuperEnalotto.
-4. Worker in background per aggiornare SQLite (news, sezioni e, se configurato, OpenWeatherMap).
+4. Worker in background per aggiornare il database (news, sezioni e, se configurato, OpenWeatherMap).
 5. Gunicorn per servire la web app.
 
-Il database non viene cancellato dall'entrypoint. Se `/data/chronica.sqlite3`
-esiste gia', Django applica solo le migrazioni mancanti; se non esiste, viene
-creato da zero.
+Il database non viene cancellato dall'entrypoint. Django applica solo le
+migrazioni mancanti sul database esistente; se il database non esiste, viene
+creato da zero dalla entrypoint.
 
 Endpoint healthcheck:
 
@@ -365,13 +360,13 @@ Viabilita', non vengono mostrate come notizie: Televideo le espone in formati
 troppo diversi dagli articoli editoriali e generavano schede poco leggibili.
 
 Le notizie non vengono eliminate quando non compaiono piu' su Televideo: restano
-nello storico SQLite e la pagina principale usa una paginazione lato API/UI per
+nello storico e la pagina principale usa una paginazione lato API/UI per
 non caricare troppe schede insieme.
 
 ## Sezioni Dedicate
 
 Le pagine Televideo non adatte a diventare notizie sono integrate in sezioni
-separate, con cache SQLite propria e layout dedicato:
+separate, con cache propria e layout dedicato:
 
 ```text
 /tv/          guida TV con card film, palinsesto, Auditel, radio
@@ -389,7 +384,7 @@ Queste sezioni non vengono mischiate con la cronaca principale. I dati
 vengono parsati lato server dai formatters (classifica, risultati, palinsesto,
 meteo, Lotto, Auditel) e mostrati in tabelle e card strutturate.
 
-Le pagine sezioni rispondono in ~150ms grazie alla cache SQLite pre-popolata
+Le pagine sezioni rispondono in ~150ms grazie alla cache pre-popolata
 dal worker `fetch_sections`, invece dei 30+ secondi di una chiamata diretta
 agli endpoint Rai.
 
@@ -436,7 +431,7 @@ Pagina dedicata:
 http://localhost:8000/superenalotto/
 ```
 
-La pagina legge la pagina Televideo 696, salva l'estrazione in SQLite e mostra:
+La pagina legge la pagina Televideo 696, salva l'estrazione e mostra:
 - numero concorso e data;
 - combinazione vincente;
 - numero Jolly e SuperStar;
@@ -530,7 +525,7 @@ web/news/services/                         servizi modulari
 web/news/services/constants.py             definizioni pagine e sezioni Televideo
 web/news/services/fetcher.py               fetch HTTP da endpoint Rai
 web/news/services/parser.py                parsing RSS e pagine Televideo
-web/news/services/updater.py               persistenza SQLite e logica aggiornamento
+web/news/services/updater.py               persistenza dati e logica aggiornamento
 web/news/templates/news/home.html          pagina principale
 web/news/templates/news/superenalotto.html pagina SuperEnalotto
 web/news/templates/news/regions.html       Televideo regionale
@@ -567,7 +562,6 @@ docker run --rm -p 8000:8000 -v televideo-data:/data televideo-linux:latest
 
 - Gli endpoint Rai sono pubblici ma non API garantite.
 - La release automatica richiede un runner self-hosted gia' registrato su GitHub.
-- SQLite in scrittura concorrente puo' dare sporadici lock con worker paralleli.
 
 ## Licenza
 

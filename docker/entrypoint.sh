@@ -64,6 +64,15 @@ fi
 python web/manage.py showmigrations --plan >/dev/null
 python web/manage.py migrate --noinput --database=default
 
+# Auto-migrate SQLite data into PostgreSQL (idempotent)
+if [ -n "${POSTGRES_HOST:-}" ] && [ "${POSTGRES_HOST}" = "localhost" ]; then
+    SQLITE_DB="${SQLITE_PATH:-/data/chronica.sqlite3}"
+    if [ -f "$SQLITE_DB" ] && [ -s "$SQLITE_DB" ]; then
+        echo "Legacy SQLite database found at $SQLITE_DB — checking for new data to migrate ..."
+        python web/manage.py migrate_to_postgresql 2>&1 || echo "Auto-migration skipped (already up to date or no new data)."
+    fi
+fi
+
 rm -rf "${DJANGO_CACHE_DIR:-/data/django_cache}"/*
 mkdir -p "${DJANGO_CACHE_DIR:-/data/django_cache}"
 

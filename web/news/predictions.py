@@ -1,8 +1,6 @@
 from collections import Counter, defaultdict
 from datetime import timedelta
 
-from django.utils import timezone
-
 from .models import SuperEnalottoDraw, SuperEnalottoPrediction
 
 
@@ -12,6 +10,15 @@ COMBO_COUNT = 6
 NUMBERS_PER_COMBO = 6
 RECENT_WINDOW = 50
 MARKOV_WINDOW = 1000
+PREDICTION_ENGINE_VERSION = "cycle-aware-v2"
+CURRENT_COMBO_LABELS = (
+    "Ciclo di ritorno",
+    "Transizioni Markov",
+    "Gap anomalo",
+    "Tendenza recente",
+    "Mix controllato",
+    "Ensemble pesato",
+)
 
 
 def _all_draws():
@@ -51,14 +58,6 @@ def number_frequencies(draws_queryset=None):
 
 def hot_numbers(main_counter, top=18):
     return [num for num, _ in main_counter.most_common(top)]
-
-
-def cold_numbers(main_counter, bottom=18):
-    all_present = set(main_counter.keys())
-    never_drawn = [n for n in NUMBERS_RANGE if n not in all_present]
-    sorted_asc = [num for num, _ in main_counter.most_common()[::-1]]
-    result = never_drawn + sorted_asc
-    return result[:bottom]
 
 
 def _overdue_with_gaps(draws_list):
@@ -187,14 +186,11 @@ def generate_combinations(draws_queryset=None):
         draws_queryset = _all_draws()
 
     draws_list = _draws_as_lists(draws_queryset)
-    total_draws = len(draws_list)
-
     recent = draws_queryset.order_by("-draw_date")[:RECENT_WINDOW]
     main_counter, jolly_counter, superstar_counter = number_frequencies(recent)
     main_all, _, _ = number_frequencies(draws_queryset)
 
     hot = hot_numbers(main_counter, top=NUMBERS_PER_COMBO * 3)
-    cold = cold_numbers(main_all, bottom=NUMBERS_PER_COMBO * 3)
     overdue_sorted, gap_info, most_overdue = _overdue_with_gaps(draws_list)
     overdue = overdue_sorted[:NUMBERS_PER_COMBO * 3]
     cycle_candidates = _cycle_aware_candidates(draws_list)
@@ -243,6 +239,7 @@ def generate_combinations(draws_queryset=None):
     # --------------------------------------------------------------
     combo1 = build_combo(cycle_candidates)
     combo1["label"] = "Ciclo di ritorno"
+    combo1["engine_version"] = PREDICTION_ENGINE_VERSION
     combo1["description"] = "Numeri in fase di ritorno secondo il loro ciclo storico"
     combo1["reasoning"] = [
         "Analisi dei cicli di ritorno: ogni numero ha un ritmo tipico di riapparizione (~13-18 estrazioni).",
@@ -261,7 +258,8 @@ def generate_combinations(draws_queryset=None):
     # Combo 2: Catena di Markov
     # --------------------------------------------------------------
     combo2 = build_combo(markov_candidates)
-    combo2["label"] = "Catena di Markov"
+    combo2["label"] = "Transizioni Markov"
+    combo2["engine_version"] = PREDICTION_ENGINE_VERSION
     combo2["description"] = "Numeri che storicamente seguono quelli dell'ultima estrazione"
     combo2["reasoning"] = [
         "Analisi delle transizioni: quali numeri appaiono pi\u00f9 spesso dopo i numeri dell'ultima estrazione.",
@@ -273,11 +271,12 @@ def generate_combinations(draws_queryset=None):
     combos.append(combo2)
 
     # --------------------------------------------------------------
-    # Combo 3: Ritardatari (improved with gap analysis)
+    # Combo 3: Gap anomalo (improved overdue analysis)
     # --------------------------------------------------------------
     combo3 = build_combo(overdue)
-    combo3["label"] = "Ritardatari"
-    combo3["description"] = "I numeri che mancano da pi\u00f9 estrazioni, con analisi del gap"
+    combo3["label"] = "Gap anomalo"
+    combo3["engine_version"] = PREDICTION_ENGINE_VERSION
+    combo3["description"] = "Numeri con assenza molto superiore al loro ciclo medio"
     combo3["reasoning"] = [
         "Numeri con il gap attuale pi\u00f9 lungo rispetto alla loro ultima apparizione.",
         "Il gap \u00e8 confrontato con la media storica per identificare anomalie.",
@@ -295,20 +294,21 @@ def generate_combinations(draws_queryset=None):
     combos.append(combo3)
 
     # --------------------------------------------------------------
-    # Combo 4: Numeri caldi (improved recency)
+    # Combo 4: Tendenza recente (improved recency)
     # --------------------------------------------------------------
     combo4 = build_combo(hot, jolly_counter, superstar_counter)
-    combo4["label"] = "Numeri caldi"
-    combo4["description"] = "I pi\u00f9 frequenti nelle ultime 50 estrazioni"
+    combo4["label"] = "Tendenza recente"
+    combo4["engine_version"] = PREDICTION_ENGINE_VERSION
+    combo4["description"] = "Numeri con frequenza recente superiore alla media storica"
     combo4["reasoning"] = [
         "Frequenza nelle ultime 50 estrazioni (finestra mobile).",
-        "I numeri caldi tendono a mantenere una presenza superiore alla media.",
+        "Misura i numeri che stanno sovraperformando rispetto alla frequenza storica.",
         "Il backtest mostra che dopo somme basse (<200) la frequenza \u00e8 la strategia migliore.",
     ]
     combos.append(combo4)
 
     # --------------------------------------------------------------
-    # Combo 5: Bilanciato (decade-aware, interleaved from all strategies)
+    # Combo 5: Mix controllato (decade-aware, interleaved from all strategies)
     # --------------------------------------------------------------
     balanced = []
     decade_map = {n: (n - 1) // 10 for n in NUMBERS_RANGE}
@@ -352,10 +352,11 @@ def generate_combinations(draws_queryset=None):
                     break
 
     combo5 = build_combo(balanced)
-    combo5["label"] = "Bilanciato"
+    combo5["label"] = "Mix controllato"
+    combo5["engine_version"] = PREDICTION_ENGINE_VERSION
     combo5["description"] = "Mix di pi\u00f9 strategie distribuito sulle decine"
     combo5["reasoning"] = [
-        "Combina ciclo di ritorno, Markov e ritardatari.",
+        "Combina ciclo di ritorno, transizioni Markov e gap anomalo.",
         "Distribuito su decine diverse per massima copertura.",
         "Evita concentrazioni eccessive in singole fasce numeriche.",
     ]
@@ -376,18 +377,30 @@ def generate_combinations(draws_queryset=None):
 
     best_ensemble = [n for n, _ in ensemble.most_common(NUMBERS_PER_COMBO * 2)]
     combo6 = build_combo(best_ensemble)
-    combo6["label"] = "Ensemble"
+    combo6["label"] = "Ensemble pesato"
+    combo6["engine_version"] = PREDICTION_ENGINE_VERSION
     combo6["description"] = "Pesato su tutte le strategie con peso proporzionale all'affidabilit\u00e0"
     combo6["reasoning"] = [
         "Ciclo di ritorno: peso 3.5x (unica strategia statisticamente significativa).",
-        "Catena di Markov: peso 2.5x.",
-        "Ritardatari: peso 2.0x.",
-        "Numeri caldi: peso 1.5x.",
+        "Transizioni Markov: peso 2.5x.",
+        "Gap anomalo: peso 2.0x.",
+        "Tendenza recente: peso 1.5x.",
         "L'ensemble ha mostrato performance superiori alla media nei backtest.",
     ]
     combos.append(combo6)
 
     return combos
+
+
+def prediction_uses_current_engine(prediction: SuperEnalottoPrediction | None) -> bool:
+    if not prediction or not prediction.combinations:
+        return False
+    if len(prediction.combinations) != COMBO_COUNT:
+        return False
+    labels = tuple(combo.get("label") for combo in prediction.combinations)
+    if labels != CURRENT_COMBO_LABELS:
+        return False
+    return all(combo.get("engine_version") == PREDICTION_ENGINE_VERSION for combo in prediction.combinations)
 
 
 def verify_predictions(new_draw):
@@ -467,16 +480,16 @@ def build_analysis_summary():
                 "avg_performance": "0.4226 match/estrazione (vs 0.40 casuale)",
             },
             "markov": {
-                "description": "Catena di Markov sulle transizioni da un'estrazione all'altra",
+                "description": "Transizioni Markov dall'ultima estrazione verso la successiva",
                 "window": MARKOV_WINDOW,
                 "avg_performance": "0.4069 match/estrazione",
             },
             "overdue": {
-                "description": "Numeri con gap attuale superiore alla media",
+                "description": "Gap anomalo rispetto al ciclo medio individuale",
                 "avg_performance": "0.4094 match/estrazione",
             },
             "hot": {
-                "description": "Frequenza nelle ultime 50 estrazioni",
+                "description": "Tendenza recente nelle ultime 50 estrazioni",
                 "window": RECENT_WINDOW,
                 "avg_performance": "0.3713-0.3941 match/estrazione",
             },
@@ -491,7 +504,6 @@ def create_prediction():
     target_date = latest.draw_date + timedelta(days=3)
     target_number = latest.draw_number + 1
     combos = generate_combinations()
-    analysis = build_analysis_summary()
     prediction = SuperEnalottoPrediction.objects.create(
         target_draw_date=target_date,
         draw_number=target_number,
