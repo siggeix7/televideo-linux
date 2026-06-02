@@ -424,17 +424,33 @@ def capital_marker_detail(row: dict) -> tuple[str, str, str]:
     return emoji, temp_label, f"{emoji} {temp_label} \u00b7 vento {wind}"
 
 
-def capital_marker_card_position(x: float, y: float) -> tuple[float, float]:
-    """Place card to right of marker, or left if near right edge."""
+def capital_marker_card_candidates(x: float, y: float) -> list[tuple[float, float]]:
+    """Return candidate card positions (left,right × centered,top,bottom) ordered by preference."""
     gap = 8
-    if x + MARKER_CARD_WIDTH + gap > MAP_WIDTH:
-        card_x = x - MARKER_CARD_WIDTH - gap
-    else:
-        card_x = x + gap
-    card_y = y - MARKER_CARD_HEIGHT / 2
-    card_x = min(max(card_x, 3), MAP_WIDTH - MARKER_CARD_WIDTH - 3)
-    card_y = min(max(card_y, 3), MAP_HEIGHT - MARKER_CARD_HEIGHT - 3)
-    return round(card_x, 1), round(card_y, 1)
+    w = MARKER_CARD_WIDTH
+    h = MARKER_CARD_HEIGHT
+    candidates = [
+        (x + gap,            y - h / 2),   # right-centered (preferred)
+        (x - w - gap,        y - h / 2),   # left-centered
+        (x + gap,            y - h - gap), # right-top
+        (x - w - gap,        y - h - gap), # left-top
+        (x + gap,            y + gap),     # right-bottom
+        (x - w - gap,        y + gap),     # left-bottom
+    ]
+    clamped = []
+    for cx, cy in candidates:
+        cx = min(max(cx, 3), MAP_WIDTH - w - 3)
+        cy = min(max(cy, 3), MAP_HEIGHT - h - 3)
+        clamped.append((round(cx, 1), round(cy, 1)))
+    return clamped
+
+
+def _card_overlaps(cx: float, cy: float, placed: list[tuple[float, float, float, float]]) -> bool:
+    for pcx, pcy, pcw, pch in placed:
+        if (cx < pcx + pcw + 4 and cx + MARKER_CARD_WIDTH + 4 > pcx and
+            cy < pcy + pch + 4 and cy + MARKER_CARD_HEIGHT + 4 > pcy):
+            return True
+    return False
 
 
 def build_capital_weather_markers(region_weather: dict[str, list[dict]]) -> list[dict[str, object]]:
@@ -447,20 +463,22 @@ def build_capital_weather_markers(region_weather: dict[str, list[dict]]) -> list
             if not city or not position:
                 continue
             x, y = position
-            card_x, card_y = capital_marker_card_position(x, y)
-
-            # Avoid overlapping: if this card overlaps a previously placed card, shift it down
-            for _ in range(8):  # max 8 shift attempts
-                overlap = False
-                for pcx, pcy, pcw, pch in placed_cards:
-                    if (card_x < pcx + pcw + 4 and card_x + MARKER_CARD_WIDTH + 4 > pcx and
-                        card_y < pcy + pch + 4 and card_y + MARKER_CARD_HEIGHT + 4 > pcy):
-                        card_y = pcy + pch + 5
-                        card_y = min(card_y, MAP_HEIGHT - MARKER_CARD_HEIGHT - 3)
-                        overlap = True
-                        break
-                if not overlap:
-                    break
+            candidates = capital_marker_card_candidates(x, y)
+            best_dist = float("inf")
+            card_x = card_y = 0.0
+            for cx, cy in candidates:
+                if not _card_overlaps(cx, cy, placed_cards):
+                    dist = ((cx + MARKER_CARD_WIDTH / 2 - x) ** 2 + (cy + MARKER_CARD_HEIGHT / 2 - y) ** 2) ** 0.5
+                    if dist < best_dist:
+                        best_dist = dist
+                        card_x, card_y = cx, cy
+            if best_dist == float("inf"):
+                # All candidates overlap — pick the closest to marker
+                for cx, cy in candidates:
+                    dist = ((cx + MARKER_CARD_WIDTH / 2 - x) ** 2 + (cy + MARKER_CARD_HEIGHT / 2 - y) ** 2) ** 0.5
+                    if dist < best_dist:
+                        best_dist = dist
+                        card_x, card_y = cx, cy
             placed_cards.append((card_x, card_y, MARKER_CARD_WIDTH, MARKER_CARD_HEIGHT))
 
             emoji, temp_label, detail = capital_marker_detail(row)
