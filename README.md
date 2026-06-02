@@ -55,7 +55,7 @@ Nel setup preparato in questa macchina trovi:
 
 Il database vive fuori dal container, quindi rimane disponibile quando
 il container viene fermato, ricreato o aggiornato. Di default usa PostgreSQL 18 (embedded nel container); e'
-possibile tornare a SQLite per sviluppo locale.
+possibile usare SQLite per sviluppo locale (POSTGRES_HOST="").
 
 Docker Compose consigliato:
 
@@ -299,7 +299,7 @@ DJANGO_SECRET_KEY     secret key Django per ambienti pubblici
 
 ### Passare a PostgreSQL 18
 
-Di default il progetto usa SQLite. PostgreSQL 18 e' incluso nel container;
+Il progetto usa PostgreSQL 18 come database predefinito;
 per attivarlo aggiungi al file `.env`:
 
 ```env
@@ -321,7 +321,7 @@ Per migrare i dati esistenti da SQLite:
 docker exec televideo-web python web/manage.py migrate_to_postgresql
 ```
 
-Il database SQLite originale (`/opt/televideo-docker/postgresql/`) non
+Il database PostgreSQL non
 viene modificato. Per tornare a SQLite basta rimuovere `POSTGRES_HOST` dal
 `.env` e ricreare il container.
 
@@ -406,7 +406,7 @@ La chiave non va salvata nel repository. Senza `OPENWEATHER_API_KEY` il sito
 continua a usare solo Televideo per la sezione meteo.
 
 Il worker non chiama l'API durante le visite degli utenti: legge e aggiorna una
-cache SQLite. Ogni 2.5 ore (o OPENWEATHER_REFRESH_CHECK_SECONDS) aggiorna i capoluoghi di provincia (110 circa),
+cache. Ogni 2.5 ore (o OPENWEATHER_REFRESH_CHECK_SECONDS) aggiorna i capoluoghi di provincia (110 circa),
 con un rate limiter che non supera `OPENWEATHER_MAX_CALLS_PER_MINUTE` richieste
 al minuto (default 40), cosi' il piano gratuito non viene stressato.
 
