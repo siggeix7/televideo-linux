@@ -378,7 +378,7 @@ def build_capital_weather_markers(region_weather: dict[str, list[dict]]) -> list
                 "region_slug": region_slug,
                 "x": x,
                 "y": y,
-                "emoji_y": round(y - 9, 1),
+                "emoji_y": round(y, 1),
                 "card_x": card_x,
                 "card_y": card_y,
                 "card_width": MARKER_CARD_WIDTH,

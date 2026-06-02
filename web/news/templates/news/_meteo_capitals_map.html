@@ -27,18 +27,22 @@
             {% endfor %}
         </g>
 
-        <g class="capital-markers">
+        <g class="capital-markers-dots">
             {% for marker in weather_capital_markers %}
             <g class="capital-marker{% if not marker.available %} capital-marker--muted{% endif %}" tabindex="0" role="img" aria-label="{{ marker.aria_label }}" data-capital-marker="{{ marker.slug }}" data-source-label="{{ marker.source_label }}">
                 <title>{{ marker.aria_label }}</title>
-                <circle class="capital-marker__halo" cx="{{ marker.x|unlocalize }}" cy="{{ marker.y|unlocalize }}" r="12"/>
-                <circle class="capital-marker__dot" cx="{{ marker.x|unlocalize }}" cy="{{ marker.y|unlocalize }}" r="5.5"/>
+                <circle class="capital-marker__halo" cx="{{ marker.x|unlocalize }}" cy="{{ marker.y|unlocalize }}" r="18"/>
                 <text class="capital-marker__glyph" x="{{ marker.x|unlocalize }}" y="{{ marker.emoji_y|unlocalize }}" text-anchor="middle">{{ marker.emoji }}</text>
-                <g class="capital-marker__card" transform="translate({{ marker.card_x|unlocalize }} {{ marker.card_y|unlocalize }})">
-                    <rect class="capital-marker__card-bg" width="{{ marker.card_width }}" height="{{ marker.card_height }}" rx="0"/>
-                    <text class="capital-marker__card-title" x="9" y="17">{{ marker.name }}</text>
-                    <text class="capital-marker__card-detail" x="9" y="34">{{ marker.detail }}</text>
-                </g>
+            </g>
+            {% endfor %}
+        </g>
+
+        <g class="capital-markers-cards">
+            {% for marker in weather_capital_markers %}
+            <g class="capital-marker__card" data-card-for="{{ marker.slug }}" transform="translate({{ marker.card_x|unlocalize }} {{ marker.card_y|unlocalize }})">
+                <rect class="capital-marker__card-bg" width="{{ marker.card_width }}" height="{{ marker.card_height }}" rx="0"/>
+                <text class="capital-marker__card-title" x="9" y="17">{{ marker.name }}</text>
+                <text class="capital-marker__card-detail" x="9" y="34">{{ marker.detail }}</text>
             </g>
             {% endfor %}
         </g>
@@ -47,24 +51,43 @@
     <script>
     (function(){
         document.querySelectorAll("[data-capitals-map]").forEach(function(map){
-            var markers = Array.prototype.slice.call(map.querySelectorAll("[data-capital-marker]"));
+            var markerDots = Array.prototype.slice.call(map.querySelectorAll("[data-capital-marker]"));
+            var cardsById = {};
+            map.querySelectorAll("[data-card-for]").forEach(function(card){
+                cardsById[card.getAttribute("data-card-for")] = card;
+            });
 
             function clearMarkers(){
-                markers.forEach(function(marker){ marker.classList.remove("is-active"); });
+                markerDots.forEach(function(marker){ marker.classList.remove("is-active"); });
+                Object.values(cardsById).forEach(function(card){ card.classList.remove("is-active"); });
             }
 
-            function activate(marker){
+            function showCard(slug){
+                var card = cardsById[slug];
+                if (card) {
+                    card.classList.add("is-active");
+                }
+            }
+
+            function activate(markerDot){
                 clearMarkers();
-                marker.classList.add("is-active");
+                var slug = markerDot.getAttribute("data-capital-marker");
+                markerDot.classList.add("is-active");
+                showCard(slug);
             }
 
-            markers.forEach(function(marker){
+            markerDots.forEach(function(marker){
                 marker.addEventListener("click", function(event){
                     event.stopPropagation();
                     activate(marker);
                 });
                 marker.addEventListener("focus", function(){ activate(marker); });
-                marker.addEventListener("blur", function(){ marker.classList.remove("is-active"); });
+                marker.addEventListener("blur", function(){ clearMarkers(); });
+                marker.addEventListener("mouseenter", function(){
+                    clearMarkers();
+                    showCard(marker.getAttribute("data-capital-marker"));
+                });
+                marker.addEventListener("mouseleave", function(){ clearMarkers(); });
                 marker.addEventListener("keydown", function(event){
                     if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
