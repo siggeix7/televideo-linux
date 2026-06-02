@@ -15,7 +15,7 @@
             {% if article.paragraphs %}
                 {% for paragraph in article.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
             {% else %}
-                {{ article.body|linebreaksbr }}
+                <p>{{ ui.section_empty_message }}</p>
             {% endif %}
         </div>
     </article>

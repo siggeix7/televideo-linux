@@ -337,6 +337,87 @@ class ViewTests(TestCase):
         self.assertContains(response, "FILM CLUB")
         self.assertNotContains(response, "raw-block")
 
+    def test_travel_index_does_not_render_televideo_navigation_raw(self):
+        TelevideoPageSnapshot.objects.create(
+            section="viaggi",
+            page=433,
+            subpage="01",
+            label="Indice in viaggio",
+            title="Indice in viaggio",
+            content_kind="index",
+            raw_text=(
+                "Indice in viaggio\n"
+                "AVVISI VIAGGIARE SICURI 434>440\n"
+                "    STRADE D'ITALIA - ITINERARI   443\n"
+                "    COS'E' IL FAI                 445  j\n"
+                "    CAPITALE CULTURA:\n"
+                "     A SPASSO PER... a pagina 408 del\n"
+                "         TELEVIDEO REGIONALE RAI3\n"
+            ),
+            sort_order=1,
+        )
+
+        response = self.client.get(reverse("news:travel"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "televideo-index-item")
+        self.assertContains(response, "A SPASSO PER...")
+        self.assertContains(response, "pag. 408")
+        self.assertNotContains(response, "a pagina 408 del")
+        self.assertNotContains(response, "TELEVIDEO REGIONALE")
+        self.assertNotContains(response, "raw-block")
+
+    def test_games_hides_unparsed_superenalotto_snapshot(self):
+        TelevideoPageSnapshot.objects.create(
+            section="giochi",
+            page=696,
+            subpage="01",
+            label="SuperEnalotto",
+            title="Ultime notizie",
+            content_kind="table",
+            raw_text=(
+                "NUOVO\n"
+                "CONCORSO N.87 30/05/2026\n"
+                "COMBINAZIONE     nessun        \"sei\"\n"
+                "N.ro SuperStar 56   euro      25.859,69\n"
+            ),
+            sort_order=1,
+        )
+
+        response = self.client.get(reverse("news:games"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "COMBINAZIONE")
+        self.assertNotContains(response, "N.ro SuperStar")
+        self.assertNotContains(response, "raw-block")
+
+    def test_games_index_is_structured_not_raw(self):
+        TelevideoPageSnapshot.objects.create(
+            section="giochi",
+            page=690,
+            subpage="01",
+            label="Indice lotto e lotterie",
+            title="Indice lotto e lotterie",
+            content_kind="index",
+            raw_text=(
+                "GUIDA TV 501\n"
+                "                         GUIDA TV   501\n"
+                "                         MAGAZINE   545\n"
+                "       ESTRAZIONI\n"
+                "    DEL 30/05/2026                 691\n"
+                "    NUOVO SUPERENALOTTO SUPERSTAR  696\n"
+            ),
+            sort_order=1,
+        )
+
+        response = self.client.get(reverse("news:games"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "televideo-index-item")
+        self.assertContains(response, "NUOVO SUPERENALOTTO SUPERSTAR")
+        self.assertNotContains(response, "ESTRAZIONI")
+        self.assertNotContains(response, "raw-block")
+
     def test_robots_and_sitemap(self):
         robots = self.client.get(reverse("news:robots"))
         sitemap = self.client.get(reverse("news:sitemap"))
@@ -401,6 +482,37 @@ class ViewTests(TestCase):
         self.assertContains(response, "Meteo capoluoghi - Lazio")
         self.assertContains(response, "Roma")
         self.assertContains(response, "OpenWeatherMap")
+
+    def test_region_pharmacy_page_removes_televideo_border_artifacts(self):
+        TelevideoPageSnapshot.objects.create(
+            section="regioni",
+            region="Piemonte",
+            page=690,
+            subpage="01",
+            label="Farmacie",
+            title="Farmacie",
+            content_kind="table",
+            raw_text=(
+                "Farmacie\n"
+                "ùppppppppppppppppppppppppppp0\n"
+                "        ùppppppppppppppppppppppppppp0\n"
+                "       TORINO\n"
+                " 691   di turno\n"
+                " 692   notturne e 24 ore\n"
+                " 693   ALESSANDRIA, ASTI, BIELLA\n"
+                " 694   CUNEO, NOVARA, VERCELLI\n"
+            ),
+            sort_order=1,
+        )
+
+        response = self.client.get(reverse("news:region", kwargs={"region_slug_value": "piemonte"}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "televideo-index-item")
+        self.assertContains(response, "di turno")
+        self.assertContains(response, "notturne e 24 ore")
+        self.assertNotContains(response, "ùpp")
+        self.assertNotContains(response, "raw-block")
 
     @override_settings(OPENWEATHER_API_KEY="test-key")
     def test_weather_page_uses_openweather_only_when_key_configured(self):

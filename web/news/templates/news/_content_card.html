@@ -49,7 +49,7 @@
             {% for paragraph in card.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
         </div>
     {% else %}
-        <div class="prose-block"><p>{{ card.all_text|default:card.raw_text }}</p></div>
+        <div class="empty-state empty-state--inline"><p>{{ ui.section_empty_message }}</p></div>
     {% endif %}
     {% endwith %}
 </article>

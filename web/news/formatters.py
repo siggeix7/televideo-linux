@@ -17,6 +17,7 @@ TRAILING_PAGE_RE = re.compile(
     r"^(?P<label>.+?)\s+(?:p\.?\s*)?(?P<page>\d{3})(?:\s*(?:>|-|/)\s*(?P<end>\d{3}))?(?:\s+[jJ])?\s*$",
     re.IGNORECASE,
 )
+PAGE_WORD_RE = re.compile(r"^(?P<label>.+?)\s+a\s+pag(?:ina|\.)\s*(?P<page>\d{3})\b.*$", re.IGNORECASE)
 LEADING_PAGE_RE = re.compile(
     r"^(?P<page>\d{3})(?:\s*(?:>|-|/)\s*(?P<end>\d{3}))?\s+(?P<label>.+?)\s*$",
     re.IGNORECASE,
@@ -30,9 +31,10 @@ def parse_televideo_card(raw_text: str, title: str = "", label: str = "", conten
     schedule_groups, schedule_used = parse_program_groups(lines, index_used, content_kind)
     used_indexes = index_used | schedule_used
     paragraphs = paragraphs_from_lines(lines, used_indexes, skip_headings=bool(index_items))
-
-    if not (index_items or schedule_groups or paragraphs):
-        paragraphs = prose_paragraphs(raw_text)
+    if content_kind == "table" and not index_items:
+        paragraphs = []
+    for item in index_items:
+        item.pop("_indent", None)
 
     return {
         "index_items": index_items,
@@ -58,6 +60,8 @@ def normalized_televideo_lines(raw_text: str, *, title: str = "", label: str = "
             continue
         if is_noise_line(text):
             continue
+        if is_navigation_note_line(text):
+            continue
         lines.append({"raw": raw_line.rstrip(), "text": text})
         previous_key = key
     return lines
@@ -75,9 +79,27 @@ def line_key(value: str) -> str:
 
 
 def is_noise_line(text: str) -> bool:
+    if len(text) >= 8 and re.fullmatch(r"[\sùò£pPqQnNoO0|_\-]+", text):
+        return True
+    compact = re.sub(r"\s+", "", text)
+    if len(compact) >= 8:
+        repeated = max(compact.count(char) for char in set(compact))
+        if repeated / len(compact) >= 0.82 and not re.search(r"\d{3}", text):
+            return True
     if len(text) <= 2 and not re.search(r"\d{3}", text):
         return True
     return not re.search(r"[A-Za-zÀ-ÿ0-9]", text)
+
+
+def is_navigation_note_line(text: str) -> bool:
+    normalized = compact_text(text).casefold()
+    if "televideo regionale" in normalized:
+        return True
+    if "del televideo" in normalized or "sul televideo" in normalized:
+        return True
+    if normalized.startswith("per le frequenze"):
+        return True
+    return False
 
 
 def parse_index_items(lines: list[dict]) -> tuple[list[dict], set[int]]:
@@ -89,6 +111,7 @@ def parse_index_items(lines: list[dict]) -> tuple[list[dict], set[int]]:
     for index, line in enumerate(lines):
         entry = parse_index_entry(line["text"])
         if entry:
+            entry["_indent"] = leading_spaces(line["raw"])
             key = (entry["page"], entry.get("end_page"), line_key(entry["label"]))
             if key not in seen:
                 items.append(entry)
@@ -108,6 +131,12 @@ def parse_index_items(lines: list[dict]) -> tuple[list[dict], set[int]]:
 
 
 def parse_index_entry(text: str) -> dict | None:
+    page_word = PAGE_WORD_RE.match(text)
+    if page_word:
+        label = clean_index_label(page_word.group("label"))
+        if valid_index_label(label):
+            return build_index_entry(label, page_word.group("page"))
+
     trailing = TRAILING_PAGE_RE.match(text)
     if trailing:
         label = clean_index_label(trailing.group("label"))
@@ -152,7 +181,11 @@ def continuation_for_index(line: dict, last_item: dict) -> bool:
         return False
     if len(last_item.get("label", "")) > 18 or len(text) > 18:
         return False
-    return line["raw"].startswith(" ") and text.isupper()
+    return leading_spaces(line["raw"]) > int(last_item.get("_indent") or 0) and text.isupper()
+
+
+def leading_spaces(value: str) -> int:
+    return len(value) - len(value.lstrip(" "))
 
 
 def parse_program_groups(lines: list[dict], index_used: set[int], content_kind: str) -> tuple[list[dict], set[int]]:

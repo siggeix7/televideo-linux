@@ -350,6 +350,11 @@ def should_display_card(section: str, snap: dict[str, object]) -> bool:
         return False
     if section == "cultura" and snap.get("content_kind") == "article" and len(snap.get("subpages", [])) > 1:
         return False
+    structured = snap.get("structured") or {}
+    if not structured.get("has_content"):
+        return False
+    if snap.get("content_kind") == "table" and not structured.get("index_items"):
+        return False
     return True
 
 

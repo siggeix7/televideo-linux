@@ -49,14 +49,34 @@ def is_navigation_line(line: str) -> bool:
         return False
     if "www.servizitelevideo.rai.it" in compact or "RAI INFORMA" in compact:
         return True
+    lowered = compact.casefold()
+    if "televideo regionale" in lowered:
+        return True
+    if "del televideo" in lowered or "sul televideo" in lowered:
+        return True
+    if lowered.startswith("per le frequenze"):
+        return True
+    if re.search(r"\b\d{3}\s*(?:>|-|/)\s*\d{3}\b", compact):
+        return False
     return len(re.findall(r"\b\d{3}\b", compact)) >= 2
+
+
+def is_artifact_line(line: str) -> bool:
+    compact = re.sub(r"\s+", "", compact_text(line))
+    if len(compact) >= 8 and re.fullmatch(r"[ùò£pPqQnNoO0|_\-]+", compact):
+        return True
+    if len(compact) >= 8:
+        repeated = max(compact.count(char) for char in set(compact))
+        if repeated / len(compact) >= 0.82 and not re.search(r"\d{3}", compact):
+            return True
+    return False
 
 
 def display_snapshot_text(content: str) -> str:
     lines: list[str] = []
     for raw_line in clean_snapshot_text(content).splitlines():
         line = raw_line.strip()
-        if is_subpage_marker(line) or is_navigation_line(line):
+        if is_subpage_marker(line) or is_navigation_line(line) or is_artifact_line(line):
             continue
         lines.append(raw_line.rstrip())
     while lines and not lines[0].strip():

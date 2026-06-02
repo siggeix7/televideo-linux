@@ -75,3 +75,80 @@ class TelevideoParserTests(SimpleTestCase):
         self.assertFalse(parsed["index_items"])
         self.assertFalse(parsed["schedule_groups"])
         self.assertEqual(parsed["paragraphs"][0], "Ogni venerdi Evie e Noa condividono la visione di un classico del cinema. Serie in 6 episodi")
+
+    def test_regional_pharmacy_index_removes_televideo_border_artifacts(self):
+        content = "\n".join(
+            [
+                "Farmacie",
+                "ùppppppppppppppppppppppppppp0",
+                "        ùppppppppppppppppppppppppppp0",
+                "       TORINO",
+                " 691   di turno",
+                " 692   notturne e 24 ore",
+                " 693   ALESSANDRIA, ASTI, BIELLA",
+                " 694   CUNEO, NOVARA, VERCELLI",
+            ]
+        )
+
+        parsed = parse_televideo_card(content, title="Farmacie", label="Farmacie", content_kind="table")
+
+        self.assertEqual([item["page_label"] for item in parsed["index_items"]], ["691", "692", "693", "694"])
+        self.assertEqual(parsed["index_items"][0]["label"], "di turno")
+        self.assertFalse(parsed["paragraphs"])
+        self.assertNotIn("ùpp", str(parsed))
+
+    def test_travel_index_parses_page_word_links_and_drops_televideo_notes(self):
+        content = "\n".join(
+            [
+                "Indice in viaggio",
+                "AVVISI VIAGGIARE SICURI 434>440",
+                "    STRADE D'ITALIA - ITINERARI   443",
+                "    COS'E' IL FAI                 445  j",
+                "    CAPITALE CULTURA:",
+                "     A SPASSO PER... a pagina 408 del",
+                "         TELEVIDEO REGIONALE RAI3",
+            ]
+        )
+
+        parsed = parse_televideo_card(content, title="Indice in viaggio", label="Indice in viaggio", content_kind="index")
+
+        self.assertEqual([item["page_label"] for item in parsed["index_items"]], ["434-440", "443", "445", "408"])
+        self.assertEqual(parsed["index_items"][-1]["label"], "A SPASSO PER...")
+        self.assertFalse(parsed["paragraphs"])
+        self.assertNotIn("TELEVIDEO REGIONALE", str(parsed))
+
+    def test_games_index_is_deduplicated_and_structured(self):
+        content = "\n".join(
+            [
+                "Indice lotto e lotterie",
+                "GUIDA TV 501",
+                "                         GUIDA TV   501",
+                "                         MAGAZINE   545",
+                "                         RADIO RAI  535",
+                "       ESTRAZIONI",
+                "    DEL 30/05/2026                 691",
+                "    DEL 29/05/2026                 692",
+                "    NUOVO SUPERENALOTTO SUPERSTAR  696",
+            ]
+        )
+
+        parsed = parse_televideo_card(content, title="Indice lotto e lotterie", label="Indice lotto e lotterie", content_kind="index")
+
+        self.assertEqual([item["page_label"] for item in parsed["index_items"]], ["501", "545", "535", "691", "692", "696"])
+        self.assertFalse(parsed["paragraphs"])
+        self.assertEqual([item["label"] for item in parsed["index_items"]].count("GUIDA TV"), 1)
+
+    def test_unparsed_table_does_not_fallback_to_raw_paragraphs(self):
+        content = "\n".join(
+            [
+                "NUOVO",
+                "CONCORSO N.87 30/05/2026",
+                "COMBINAZIONE nessun sei",
+                "N.ro SuperStar 56 euro 25.859,69",
+            ]
+        )
+
+        parsed = parse_televideo_card(content, title="Ultime notizie", label="SuperEnalotto", content_kind="table")
+
+        self.assertFalse(parsed["has_content"])
+        self.assertFalse(parsed["paragraphs"])
