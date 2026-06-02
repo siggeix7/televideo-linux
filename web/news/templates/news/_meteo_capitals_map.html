@@ -16,14 +16,14 @@
         </div>
         <div class="italy-map__controls">
             {% if weather_tile_template %}
-            <label class="italy-map__toggle" data-layer-toggle="precipitation">
+            <label class="italy-map__toggle italy-map__toggle--rain" data-layer-toggle="precipitation">
                 <input type="checkbox" checked aria-label="Mostra precipitazioni">
                 <span class="italy-map__toggle-pill"></span>
                 <span class="italy-map__toggle-label">Pioggia</span>
             </label>
             {% endif %}
             {% if weather_cloud_template %}
-            <label class="italy-map__toggle" data-layer-toggle="clouds">
+            <label class="italy-map__toggle italy-map__toggle--cloud" data-layer-toggle="clouds">
                 <input type="checkbox" aria-label="Mostra nuvole">
                 <span class="italy-map__toggle-pill"></span>
                 <span class="italy-map__toggle-label">Nuvole</span>
@@ -31,12 +31,18 @@
             {% endif %}
         </div>
     </div>
-    <div class="italy-map__body">
+     <div class="italy-map__body">
     <svg class="italy-map__svg italy-map__svg--capitals" viewBox="0 0 800 960" xmlns="http://www.w3.org/2000/svg" aria-label="Mappa interattiva dei capoluoghi italiani" role="img">
         <defs>
             <linearGradient id="sea-grad-capitals" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#082616" stop-opacity="0.68"/>
-                <stop offset="100%" stop-color="#001105" stop-opacity="0.92"/>
+                <stop offset="0%" stop-color="#0a2a40" stop-opacity="0.88"/>
+                <stop offset="40%" stop-color="#061e30" stop-opacity="0.92"/>
+                <stop offset="100%" stop-color="#02101a" stop-opacity="0.96"/>
+            </linearGradient>
+            <linearGradient id="sea-deep-capitals" x1="0.5" y1="0" x2="0.5" y2="1">
+                <stop offset="0%" stop-color="#0e3a5c" stop-opacity="0.55"/>
+                <stop offset="50%" stop-color="#082c44" stop-opacity="0.35"/>
+                <stop offset="100%" stop-color="#041a28" stop-opacity="0.18"/>
             </linearGradient>
             <clipPath id="italy-weather-clip-capitals">
                 {% for r in map_regions %}
@@ -49,6 +55,21 @@
         </defs>
 
         <rect width="800" height="960" fill="url(#sea-grad-capitals)"/>
+
+        <g class="sea-waves" aria-hidden="true" fill="none" stroke="rgba(0,200,255,0.12)" stroke-width="0.7">
+            <path d="M0 100 Q50 90 100 100 T200 100 T300 100 T400 100 T500 100 T600 100 T700 100 T800 100"/>
+            <path d="M0 140 Q40 128 80 140 T160 140 T240 140 T320 140 T400 140 T480 140 T560 140 T640 140 T720 140 T800 140"/>
+            <path d="M0 800 Q60 810 120 800 T240 800 T360 800 T480 800 T600 800 T720 800 T800 800"/>
+            <path d="M0 840 Q50 830 100 840 T200 840 T300 840 T400 840 T500 840 T600 840 T700 840 T800 840"/>
+            <path d="M0 880 Q70 870 140 880 T280 880 T420 880 T560 880 T700 880 T800 880"/>
+        </g>
+
+        <g class="sea-labels" pointer-events="none" aria-hidden="true">
+            <text x="120" y="55" class="sea-label">Mar Ligure</text>
+            <text x="360" y="35" class="sea-label">Mar Adriatico</text>
+            <text x="620" y="60" class="sea-label">Mar Ionio</text>
+            <text x="680" y="600" class="sea-label">Mar Mediterraneo</text>
+        </g>
 
         <g class="weather-radar" data-weather-radar data-layer="precipitation" clip-path="url(#italy-weather-clip-capitals)" filter="url(#weather-radar-soften)" aria-hidden="true"></g>
         <g class="weather-radar" data-weather-radar data-layer="clouds" clip-path="url(#italy-weather-clip-capitals)" filter="url(#weather-radar-soften)" aria-hidden="true" style="display:none"></g>
@@ -69,7 +90,6 @@
             {% for marker in weather_capital_markers %}
             <g class="capital-marker{% if not marker.available %} capital-marker--muted{% endif %}{% if marker.precipitating %} capital-marker--rain{% endif %}" tabindex="0" role="img" aria-label="{{ marker.aria_label }}" data-capital-marker="{{ marker.slug }}" data-source-label="{{ marker.source_label }}" data-precipitation="{{ marker.precipitation_badge }}" data-temp="{{ marker.temp_value|default:'' }}">
                 <title>{{ marker.aria_label }}</title>
-                {% if marker.precipitating %}<circle class="capital-marker__pulse" cx="{{ marker.x|unlocalize }}" cy="{{ marker.y|unlocalize }}" r="25"/>{% endif %}
                 <circle class="capital-marker__halo" cx="{{ marker.x|unlocalize }}" cy="{{ marker.y|unlocalize }}" r="18" fill="{{ marker.temp_color }}" stroke="{% if marker.precipitating %}rgba(0,255,255,0.9){% else %}rgba(0,255,0,0.24){% endif %}"/>
                 <text class="capital-marker__glyph" x="{{ marker.x|unlocalize }}" y="{{ marker.emoji_y|unlocalize }}" text-anchor="middle">{{ marker.emoji }}</text>
             </g>

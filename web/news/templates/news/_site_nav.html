@@ -8,10 +8,6 @@
         <a href="{{ item.url }}" class="site-nav__link{% if item.active %} is-active{% endif %}"{% if item.active %} aria-current="page"{% endif %}>{{ item.label }}</a>
     {% endfor %}
 </nav>
-<button class="theme-toggle" id="theme-toggle" aria-label="Attiva tema chiaro" aria-pressed="false" title="Tema chiaro" type="button">
-    <span class="icon-dark" aria-hidden="true">&#9790;</span>
-    <span class="icon-light" aria-hidden="true">&#9728;</span>
-</button>
 <script>
 (function(){
     var toggle = document.getElementById("nav-toggle");
@@ -41,44 +37,6 @@
             if (!nav.classList.contains("is-open")) return;
             if (nav.contains(event.target) || toggle.contains(event.target)) return;
             closeNav();
-        });
-    }
-    var themeToggle = document.getElementById("theme-toggle");
-    if (themeToggle) {
-        function storedTheme() {
-            try {
-                return localStorage.getItem("chronica-theme");
-            } catch (error) {
-                return null;
-            }
-        }
-        function saveTheme(value) {
-            try {
-                if (value) localStorage.setItem("chronica-theme", value);
-                else localStorage.removeItem("chronica-theme");
-            } catch (error) {}
-        }
-        function applyTheme(value) {
-            var isLight = value === "light";
-            var themeMeta = document.querySelector('meta[name="theme-color"]');
-            if (isLight) {
-                document.documentElement.setAttribute("data-theme", "light");
-            } else {
-                document.documentElement.removeAttribute("data-theme");
-            }
-            if (themeMeta) {
-                themeMeta.setAttribute("content", isLight ? "#e8e4d8" : "#001400");
-            }
-            themeToggle.setAttribute("aria-pressed", isLight ? "true" : "false");
-            themeToggle.setAttribute("aria-label", isLight ? "Attiva tema scuro" : "Attiva tema chiaro");
-            themeToggle.setAttribute("title", isLight ? "Tema scuro" : "Tema chiaro");
-        }
-        applyTheme(storedTheme() === "light" ? "light" : null);
-        themeToggle.addEventListener("click", function(){
-            var current = document.documentElement.getAttribute("data-theme");
-            var next = current === "light" ? null : "light";
-            applyTheme(next);
-            saveTheme(next);
         });
     }
 })();
