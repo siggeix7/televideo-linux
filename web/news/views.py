@@ -32,14 +32,12 @@ from .map_paths import get_map_regions
 from .openweather import OPENWEATHER_TILE_CACHE_SECONDS, fetch_openweather_tile, openweather_cache_by_city
 from .predictions import create_prediction, generate_combinations, verify_predictions
 from .site_urls import public_absolute_url, public_base_url
-from .weather_capitals import build_capital_weather_markers, build_region_capital_weather, enrich_map_regions
+from .weather_capitals import build_capital_weather_markers, build_region_capital_weather, enrich_map_regions, NO_DATA, _parse_wind_float, _temp_float
 from .services.parser import compact_text, display_snapshot_text, fix_mojibake, prose_paragraphs
 from .services import (
     REGION_CHOICES,
     SECTION_DEFINITIONS,
     normalize_region,
-    refresh_if_stale,
-    refresh_section_if_stale,
     region_display_name,
     region_slug,
     section_definition,
@@ -499,7 +497,6 @@ def meteo_map_context() -> dict[str, object]:
         region_weather = build_region_capital_weather(meteo_data, openweather_data, openweather_only=True)
         latest = max((item.get("source_at") for item in openweather_data.values() if item.get("source_at")), default=None)
     else:
-        refresh_section_if_stale("meteo")
         meteo_data = formatted_section_data("meteo")
         region_weather = build_region_capital_weather(meteo_data)
         latest = max((card["fetched_at"] for card in meteo_data["raw"]), default=None)
@@ -509,6 +506,36 @@ def meteo_map_context() -> dict[str, object]:
         (marker for marker in weather_markers if marker.get("precipitating")),
         key=lambda marker: (-float(marker.get("precipitation_mm") or 0), marker["name"]),
     )
+    available_markers = [m for m in weather_markers if m.get("available")]
+    temp_markers = [
+        m for m in available_markers
+        if m.get("temp_value") is not None
+    ]
+    hottest = max(temp_markers, key=lambda m: m["temp_value"]) if temp_markers else None
+    coldest = min(temp_markers, key=lambda m: m["temp_value"]) if temp_markers else None
+    extremes = []
+    if hottest:
+        extremes.append({
+            "label": "Più calda",
+            "city": hottest["name"],
+            "value": f"{hottest['temp_label']}",
+        })
+    if coldest:
+        extremes.append({
+            "label": "Più fredda",
+            "city": coldest["name"],
+            "value": f"{coldest['temp_label']}",
+        })
+    windy = sorted(
+        [m for m in available_markers if m.get("wind") not in (None, "", NO_DATA)],
+        key=lambda m: -_parse_wind_float(m.get("wind", "0")),
+    )
+    if windy and _parse_wind_float(windy[0].get("wind", "0")) > 0:
+        extremes.append({
+            "label": "Vento max",
+            "city": windy[0]["name"],
+            "value": windy[0]["wind"],
+        })
     return {
         "meteo_data": meteo_data,
         "meteo_latest": latest,
@@ -516,19 +543,21 @@ def meteo_map_context() -> dict[str, object]:
         "map_regions": map_regions,
         "weather_capital_markers": weather_markers,
         "weather_map_summary": {
-            "available_count": sum(1 for marker in weather_markers if marker.get("available")),
+            "available_count": len(available_markers),
             "precipitating_count": len(precipitating_markers),
             "precipitating_markers": precipitating_markers[:6],
+            "extremes": extremes[:3],
         },
         "weather_tile_template": openweather_tile_template() if settings.OPENWEATHER_API_KEY else "",
         "weather_tile_zoom": 7,
+        "weather_cloud_template": openweather_tile_template("clouds_new") if settings.OPENWEATHER_API_KEY else "",
     }
 
 
-def openweather_tile_template() -> str:
+def openweather_tile_template(layer: str = "precipitation_new") -> str:
     tile_url = reverse(
         "news:openweather_tile",
-        kwargs={"layer": "precipitation_new", "z": 0, "x": 0, "y": 0},
+        kwargs={"layer": layer, "z": 0, "x": 0, "y": 0},
     )
     return tile_url.replace("/0/0/0.png", "/__z__/__x__/__y__.png")
 
@@ -771,11 +800,6 @@ def initial_home_listing(request) -> dict[str, object]:
 
 
 def home(request):
-    if not NewsItem.objects.exists():
-        try:
-            refresh_if_stale()
-        except RuntimeError:
-            pass
     listing = initial_home_listing(request)
     return render(
         request,
@@ -801,11 +825,6 @@ def home(request):
 
 
 def superenalotto(request):
-    if not SuperEnalottoDraw.objects.exists():
-        try:
-            refresh_if_stale()
-        except RuntimeError:
-            pass
     return render(
         request,
         "news/storico_estrazioni.html",
@@ -878,11 +897,6 @@ def montepremi_api(request):
 
 
 def fanta_super_api(request):
-    try:
-        refresh_if_stale()
-    except RuntimeError:
-        pass
-
     prediction = SuperEnalottoPrediction.objects.filter(is_verified=False).first()
     if not prediction:
         prediction = create_prediction()
@@ -913,7 +927,6 @@ def televideo_section(request, section: str, active: str):
     if section not in SECTION_DEFINITIONS:
         raise Http404("Sezione non trovata")
     definition = localized_section_definition(section)
-    refresh_section_if_stale(section)
     formatted = formatted_section_data(section)
     latest = max((card["fetched_at"] for card in formatted["raw"]), default=None)
     ctx = {
@@ -979,6 +992,7 @@ def weather(request):
         "weather_map_summary": meteo_context["weather_map_summary"],
         "weather_tile_template": meteo_context["weather_tile_template"],
         "weather_tile_zoom": meteo_context["weather_tile_zoom"],
+        "weather_cloud_template": meteo_context["weather_cloud_template"],
     }
     return render(request, "news/section_meteo.html", ctx)
 
@@ -988,7 +1002,6 @@ def travel(request):
 
 
 def games(request):
-    refresh_section_if_stale("giochi")
     formatted = formatted_section_data("giochi")
     latest = max((card["fetched_at"] for card in formatted["raw"]), default=None)
     latest_superenalotto = SuperEnalottoDraw.objects.first()
@@ -1055,7 +1068,6 @@ def regions(request, region_slug_value: str | None = None):
     if region_slug_value and region_slug_value != canonical_slug:
         return redirect("news:region", region_slug_value=canonical_slug, permanent=True)
     meteo_context = meteo_map_context()
-    refresh_section_if_stale("regioni", selected_region)
     formatted = formatted_section_data("regioni", selected_region)
     latest = max((card["fetched_at"] for card in formatted["raw"]), default=None)
     selected_region_display = region_display_name(selected_region)
@@ -1097,11 +1109,6 @@ def news_api(request):
     page = parse_page(request.GET.get("page"))
     search_query = (request.GET.get("q") or "").strip()[:120]
     selected_date = parse_news_date(request.GET.get("date"))
-    error = ""
-    try:
-        refresh_if_stale()
-    except RuntimeError as exc:
-        error = str(exc)
     listing = news_listing(search_query, page, limit, selected_date=selected_date)
 
     return JsonResponse(
@@ -1117,7 +1124,6 @@ def news_api(request):
             "search_query": listing["search_query"],
             "ui": UI_TEXT["it"],
             "pagination": listing["pagination"],
-            "error": error,
             "items": listing["items"],
         }
     )
@@ -1233,11 +1239,6 @@ def draw_payload(draw: SuperEnalottoDraw | None) -> dict[str, object] | None:
 def superenalotto_api(request):
     selected_date = request.GET.get("date") or ""
     selected_year = request.GET.get("year") or ""
-    error = ""
-    try:
-        refresh_if_stale()
-    except RuntimeError as exc:
-        error = str(exc)
 
     years_qs = (
         SuperEnalottoDraw.objects
@@ -1264,7 +1265,6 @@ def superenalotto_api(request):
             "generated_at": timezone.localtime().isoformat(),
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
             "ui": UI_TEXT["it"],
-            "error": error,
             "years": years,
             "selected_year": selected_year,
             "selected_date": selected.draw_date.isoformat() if selected else "",

@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 OPENWEATHER_FORECAST_URL = "https://api.openweathermap.org/data/2.5/forecast"
 OPENWEATHER_TILE_URL = "https://tile.openweathermap.org/map/{layer}/{z}/{x}/{y}.png"
-OPENWEATHER_TILE_LAYERS = {"precipitation_new"}
+OPENWEATHER_TILE_LAYERS = {"precipitation_new", "clouds_new"}
 OPENWEATHER_TILE_CACHE_SECONDS = 600
 OPENWEATHER_TILE_MAX_ZOOM = 10
 

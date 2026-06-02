@@ -64,6 +64,7 @@ fi
 python web/manage.py showmigrations --plan >/dev/null
 python web/manage.py migrate --noinput --database=default
 
+rm -rf "${DJANGO_CACHE_DIR:-/data/django_cache}"/*
 mkdir -p "${DJANGO_CACHE_DIR:-/data/django_cache}"
 
 # Background worker: news, lotto, superenalotto

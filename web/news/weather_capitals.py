@@ -148,8 +148,8 @@ MAP_MIN_LAT = 35.49
 MAP_MAX_LAT = 47.10
 MAP_WIDTH = 800
 MAP_HEIGHT = 960
-MARKER_CARD_WIDTH = 178
-MARKER_CARD_HEIGHT = 62
+MARKER_CARD_WIDTH = 210
+MARKER_CARD_HEIGHT = 84
 
 
 CITY_ALIASES = {
@@ -319,6 +319,50 @@ def temperature_range(row: dict) -> str:
     return ""
 
 
+def _temp_float(value) -> float | None:
+    if value in (None, "", NO_DATA):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_wind_float(value: str) -> float:
+    if not value:
+        return 0.0
+    match = re.match(r"([\d.]+)", str(value))
+    if match:
+        try:
+            return float(match.group(1))
+        except ValueError:
+            return 0.0
+    return 0.0
+
+
+def temp_color(temperature: float | None) -> str:
+    """Return a hex color from blue (cold) through green to red (hot)."""
+    if temperature is None:
+        return "rgba(0,255,0,0.10)"
+    if temperature <= 0:
+        return "rgba(100,180,255,0.35)"
+    if temperature <= 5:
+        return "rgba(130,200,255,0.32)"
+    if temperature <= 10:
+        return "rgba(160,220,240,0.28)"
+    if temperature <= 15:
+        return "rgba(200,230,180,0.22)"
+    if temperature <= 20:
+        return "rgba(180,255,140,0.24)"
+    if temperature <= 25:
+        return "rgba(255,240,80,0.35)"
+    if temperature <= 30:
+        return "rgba(255,190,40,0.42)"
+    if temperature <= 35:
+        return "rgba(255,130,30,0.50)"
+    return "rgba(255,60,20,0.58)"
+
+
 def _positive_number(value) -> float:
     try:
         number = float(value)
@@ -403,6 +447,22 @@ def build_capital_weather_markers(region_weather: dict[str, list[dict]]) -> list
             card_x, card_y = capital_marker_card_position(x, y)
             emoji, temp_label, detail = capital_marker_detail(row)
             condition = str(row.get("condition") or "")
+            temp_val = _temp_float(row.get("temp"))
+            min_val = row.get("min")
+            max_val = row.get("max")
+            temp_range = ""
+            if min_val is not None and max_val is not None:
+                temp_range = f"{min_val}\u00b0 / {max_val}\u00b0"
+            forecast_slots = []
+            slot_index = 0
+            for slot in (row.get("today_forecast") or [])[:4]:
+                forecast_slots.append({
+                    "time": slot.get("time", ""),
+                    "emoji": slot.get("emoji", ""),
+                    "temp": slot.get("temp"),
+                    "x": 9 + slot_index * 48,
+                })
+                slot_index += 1
             aria_parts = [city]
             if condition:
                 aria_parts.append(condition)
@@ -426,10 +486,16 @@ def build_capital_weather_markers(region_weather: dict[str, list[dict]]) -> list
                 "precipitation_mm": _positive_number(row.get("precipitation_mm")),
                 "emoji": emoji,
                 "temp_label": temp_label,
+                "temp_value": temp_val,
+                "temp_color": temp_color(temp_val),
+                "temp_range": temp_range,
                 "wind": row.get("wind") or NO_DATA,
                 "detail": detail,
                 "condition": condition,
                 "source_label": row.get("source_label") or "",
+                "forecast_slots": forecast_slots,
+                "sunrise": row.get("sunrise") or "",
+                "sunset": row.get("sunset") or "",
                 "aria_label": ": ".join(aria_parts),
             })
     return sorted(markers, key=lambda marker: (marker["y"], marker["x"], marker["name"]))

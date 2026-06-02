@@ -105,8 +105,8 @@ class TelevideoPageSnapshotTests(TestCase):
 
 
 class SettingsDefaultsTests(TestCase):
-    def test_meteo_section_refresh_defaults_to_two_and_half_hours(self):
-        self.assertEqual(settings.METEO_SECTION_REFRESH_SECONDS, 9000)
+    def test_meteo_section_refresh_defaults_to_one_hour(self):
+        self.assertEqual(settings.METEO_SECTION_REFRESH_SECONDS, 3600)
 
     def test_openweather_stale_defaults_to_two_and_half_hours(self):
         self.assertEqual(settings.OPENWEATHER_STALE_SECONDS, 9000)

@@ -70,11 +70,11 @@ services:
     environment:
       SQLITE_PATH: /data/chronica.sqlite3
       SQLITE_TIMEOUT: "${SQLITE_TIMEOUT:-30}"
-      NEWS_REFRESH_SECONDS: "${NEWS_REFRESH_SECONDS:-1800}"
+      NEWS_REFRESH_SECONDS: "${NEWS_REFRESH_SECONDS:-1200}"
       NEWS_FETCH_LIMIT: "${NEWS_FETCH_LIMIT:-30}"
       CATEGORY_FETCH_LIMIT: "${CATEGORY_FETCH_LIMIT:-2}"
-      TELETEXT_SECTION_REFRESH_SECONDS: "${TELETEXT_SECTION_REFRESH_SECONDS:-1800}"
-      METEO_SECTION_REFRESH_SECONDS: "${METEO_SECTION_REFRESH_SECONDS:-9000}"
+      TELETEXT_SECTION_REFRESH_SECONDS: "${TELETEXT_SECTION_REFRESH_SECONDS:-21600}"
+      METEO_SECTION_REFRESH_SECONDS: "${METEO_SECTION_REFRESH_SECONDS:-3600}"
       OPENWEATHER_API_KEY: "${OPENWEATHER_API_KEY:-}"
       OPENWEATHER_REFRESH_CHECK_SECONDS: "${OPENWEATHER_REFRESH_CHECK_SECONDS:-9000}"
       OPENWEATHER_STALE_SECONDS: "${OPENWEATHER_STALE_SECONDS:-9000}"
@@ -107,11 +107,11 @@ Per produzione dietro Nginx Proxy Manager, crea `/opt/televideo-docker/.env`:
 ```env
 PORT=8000
 SQLITE_TIMEOUT=30
-NEWS_REFRESH_SECONDS=1800
+NEWS_REFRESH_SECONDS=1200
 NEWS_FETCH_LIMIT=30
 CATEGORY_FETCH_LIMIT=2
-TELETEXT_SECTION_REFRESH_SECONDS=1800
-METEO_SECTION_REFRESH_SECONDS=9000
+TELETEXT_SECTION_REFRESH_SECONDS=21600
+METEO_SECTION_REFRESH_SECONDS=3600
 OPENWEATHER_API_KEY=
 OPENWEATHER_REFRESH_CHECK_SECONDS=9000
 OPENWEATHER_STALE_SECONDS=9000
@@ -261,7 +261,7 @@ python web/manage.py runserver
 Job di aggiornamento continuo:
 
 ```sh
-python web/manage.py fetch_televideo --loop --interval 1800 --limit 30
+python web/manage.py fetch_televideo --loop --interval 1200 --limit 30
 ```
 
 ## Configurazione Runtime
@@ -272,11 +272,11 @@ Variabili d'ambiente principali:
 PORT                  porta HTTP del container, default 8000
 SQLITE_PATH           path database, default /data/chronica.sqlite3 nel container
 SQLITE_TIMEOUT        timeout lock SQLite in secondi, default 30
-NEWS_REFRESH_SECONDS  frequenza aggiornamento notizie, default 1800
+NEWS_REFRESH_SECONDS  frequenza aggiornamento notizie, default 1200 (20 minuti)
 NEWS_FETCH_LIMIT      quante notizie conservare a ogni giro, default 30
 CATEGORY_FETCH_LIMIT  quante notizie importare per ogni categoria Televideo, default 2
-TELETEXT_SECTION_REFRESH_SECONDS frequenza cache sezioni Televideo dedicate, default 1800
-METEO_SECTION_REFRESH_SECONDS frequenza refresh dati meteo, default 9000 (2.5 ore)
+TELETEXT_SECTION_REFRESH_SECONDS frequenza cache sezioni Televideo dedicate, default 21600 (6 ore)
+METEO_SECTION_REFRESH_SECONDS frequenza refresh dati meteo, default 3600 (1 ora)
 OPENWEATHER_API_KEY chiave API OpenWeatherMap; se vuota il fallback meteo e' disabilitato
 OPENWEATHER_REFRESH_CHECK_SECONDS frequenza check fallback meteo, default 9000
 OPENWEATHER_STALE_SECONDS eta' massima cache meteo OpenWeatherMap, default 9000 (2.5 ore)
@@ -411,7 +411,7 @@ La chiave non va salvata nel repository. Senza `OPENWEATHER_API_KEY` il sito
 continua a usare solo Televideo per la sezione meteo.
 
 Il worker non chiama l'API durante le visite degli utenti: legge e aggiorna una
-cache SQLite. Ogni 2.5 ore aggiorna tutti i capoluoghi di provincia (110 circa),
+cache SQLite. Ogni 2.5 ore (o OPENWEATHER_REFRESH_CHECK_SECONDS) aggiorna i capoluoghi di provincia (110 circa),
 con un rate limiter che non supera `OPENWEATHER_MAX_CALLS_PER_MINUTE` richieste
 al minuto (default 40), cosi' il piano gratuito non viene stressato.
 
