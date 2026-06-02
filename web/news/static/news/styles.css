@@ -1991,6 +1991,66 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 .prediction-card__extras dt { color: var(--text-dim); font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
 .number-chip--special { border-color: var(--yellow) !important; color: var(--yellow) !important; }
 
+.prediction-card__reasoning {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-dim);
+    font-size: var(--font-size-sm);
+    color: var(--text-dim);
+}
+.prediction-card__reasoning summary {
+    cursor: pointer;
+    color: var(--cyan);
+    font-weight: bold;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+.prediction-card__reasoning summary:hover { color: var(--yellow); }
+.prediction-card__reasoning ul { margin: 6px 0 0 16px; }
+.prediction-card__reasoning li { margin-bottom: 3px; }
+.prediction-card__details-label { color: var(--text-dim); font-weight: bold; margin-top: 8px; font-size: 0.75rem; }
+.prediction-card__context { margin-top: 8px; color: var(--text-dim); font-style: italic; }
+
+.analysis-section { margin-top: 32px; border-top: 2px solid var(--border-dim); padding-top: 20px; }
+.analysis-section__title { color: var(--yellow); text-transform: uppercase; margin-bottom: 16px; font-size: 1.1rem; }
+.analysis-block {
+    margin-bottom: 20px;
+    padding: 14px;
+    border: 1px solid var(--border-dim);
+    background: var(--bg-panel);
+}
+.analysis-block h3 { color: var(--cyan); font-size: 0.9rem; margin-bottom: 8px; }
+.analysis-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm);
+}
+.analysis-table th {
+    text-align: left;
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border-dim);
+}
+.analysis-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border-dim);
+}
+.analysis-table tr:last-child td { border-bottom: none; }
+.analysis-note { color: var(--text-dim); font-size: 0.8rem; margin-top: 4px; }
+.analysis-trends { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.number-chip--trend { border-color: var(--green) !important; color: var(--green) !important; }
+
+.analysis-methodology { border: 1px solid var(--border-dim); }
+.analysis-methodology summary {
+    padding: 0;
+    cursor: pointer;
+    color: var(--cyan);
+}
+.analysis-methodology summary:hover { color: var(--yellow); }
+.analysis-methodology .analysis-table { margin-top: 12px; }
+
 .prediction-info { margin-top: 24px; border: 1px solid var(--border-dim); }
 .prediction-info summary {
     padding: 12px 16px;

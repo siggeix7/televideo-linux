@@ -30,7 +30,7 @@ from .formatters import (
 from .models import LottoDraw, NewsItem, SuperEnalottoDraw, SuperEnalottoPrediction, TelevideoPageSnapshot
 from .map_paths import get_map_regions
 from .openweather import OPENWEATHER_TILE_CACHE_SECONDS, fetch_openweather_tile, openweather_cache_by_city
-from .predictions import create_prediction, generate_combinations, verify_predictions
+from .predictions import build_analysis_summary, create_prediction, generate_combinations, verify_predictions
 from .site_urls import public_absolute_url, public_base_url
 from .weather_capitals import build_capital_weather_markers, build_region_capital_weather, enrich_map_regions, NO_DATA, _parse_wind_float, _temp_float
 from .services.parser import compact_text, display_snapshot_text, fix_mojibake, prose_paragraphs
@@ -902,11 +902,14 @@ def fanta_super_api(request):
         prediction = create_prediction()
 
     history = SuperEnalottoPrediction.objects.filter(is_verified=True).order_by("-created_at")[:12]
+    analysis = build_analysis_summary()
 
-    return JsonResponse({
+    response_data = {
         "prediction": _prediction_payload(prediction),
         "history": [_prediction_payload(p) for p in history],
-    })
+        "analysis": analysis,
+    }
+    return JsonResponse(response_data, json_dumps_params={"ensure_ascii": False})
 
 
 def _prediction_payload(prediction: SuperEnalottoPrediction) -> dict:

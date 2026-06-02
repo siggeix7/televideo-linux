@@ -15,9 +15,9 @@
                 <div class="hero__copy">
                     <p class="eyebrow">{{ ui.data_provider }}</p>
                     <h1>Fanta-Super</h1>
-                    <p class="lede">6 combinazioni calcolate matematicamente per la prossima estrazione. Ricalcolate dopo ogni concorso.</p>
+                    <p class="lede">6 combinazioni predittive per il SuperEnalotto, generate analizzando lo storico dal 2009 con algoritmi di pattern recognition. Ricalcolate dopo ogni concorso.</p>
                 </div>
-                <div class="seal" aria-hidden="true">6</div>
+                <div class="seal" aria-hidden="true">&#9672;</div>
             </div>
             <div class="topbar">
                 {% include "news/_site_nav.html" %}
@@ -28,7 +28,8 @@
             {% include "news/_super_subnav.html" with active="fanta" %}
             <div id="prediction-section"></div>
             <div id="prediction-loading" class="empty-state">
-                <h2>Carico i pronostici...</h2>
+                <h2>Analisi in corso...</h2>
+                <p>Sto elaborando lo storico delle estrazioni per generare i pronostici.</p>
             </div>
             <div id="prediction-empty" class="empty-state" hidden>
                 <h2>Nessun pronostico</h2>
