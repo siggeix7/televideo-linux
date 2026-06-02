@@ -5,7 +5,7 @@
     {% if latest_superenalotto %}
     <section class="lottery-layout">
         <article class="lottery-card">
-            <p class="eyebrow">SuperEnalotto &middot; {{ ui.page_label }} 696</p>
+            <p class="eyebrow">SuperEnalotto</p>
             <h2>{{ ui.draw_label }} N.{{ latest_superenalotto.draw_number }}</h2>
             <p class="news-card__meta">{{ latest_superenalotto.draw_date|date:"d/m/Y" }}</p>
             <div class="number-row">
@@ -25,11 +25,10 @@
         <article class="trend-card">
             <h2>Dati estrazione</h2>
             <dl class="televideo-fact-list">
-                <div><dt>Pagina</dt><dd>696</dd></div>
                 <div><dt>Fonte</dt><dd>Rai Televideo</dd></div>
                 <div><dt>Archivio</dt><dd>{{ ui.archive_super }}</dd></div>
             </dl>
-            <p class="news-card__summary">La combinazione e i valori principali sono raccolti dalla pagina Televideo e presentati in forma sintetica.</p>
+            <p class="news-card__summary">La combinazione e i valori principali sono raccolti da Rai Televideo e presentati in forma sintetica.</p>
         </article>
     </section>
     {% endif %}

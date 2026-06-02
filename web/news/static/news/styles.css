@@ -789,20 +789,13 @@ h1 {
 .televideo-index-list { display: grid; gap: 0; }
 .televideo-index-item {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr);
     align-items: baseline;
     padding: 7px 0;
     border-top: 1px solid var(--border-dim);
 }
 .televideo-index-item:first-child { border-top: 0; }
 .televideo-index-item__label { color: var(--white); font-weight: bold; }
-.televideo-index-item__page {
-    color: var(--yellow);
-    font-size: var(--font-size-sm);
-    font-weight: bold;
-    white-space: nowrap;
-}
 .televideo-program-list { display: grid; gap: 10px; }
 .televideo-program-group {
     padding-top: 9px;
@@ -1044,12 +1037,6 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
     color: var(--white);
     font-size: clamp(1.3rem, 2vw, 1.6rem);
     text-transform: uppercase;
-}
-
-.tv-channel__page {
-    color: var(--text-dim);
-    font-size: var(--font-size-sm);
-    font-weight: bold;
 }
 
 .tv-channel__schedule {

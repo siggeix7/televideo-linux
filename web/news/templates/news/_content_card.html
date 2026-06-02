@@ -1,8 +1,4 @@
 <article class="content-card content-card--{{ card.content_kind }}{% if card.content_kind == 'article' %} content-card--article{% endif %}">
-    <div class="content-card__meta">
-        <span>{{ ui.page_label }} {{ card.page }}{% if card.subpages %}/{{ card.subpages|join:", " }}{% elif card.subpage %}/{{ card.subpage }}{% endif %}</span>
-        {% if card.label %}<span>{{ card.label }}</span>{% endif %}
-    </div>
     <h2>{{ card.title }}</h2>
     {% with structured=card.structured %}
     {% if structured.has_content %}
@@ -14,11 +10,10 @@
             {% endif %}
 
             {% if structured.index_items %}
-            <div class="televideo-index-list" aria-label="Indice pagina {{ card.page }}">
+            <div class="televideo-index-list" aria-label="Indice">
                 {% for item in structured.index_items %}
                 <div class="televideo-index-item">
                     <span class="televideo-index-item__label">{{ item.label }}</span>
-                    <span class="televideo-index-item__page">pag. {{ item.page_label }}</span>
                 </div>
                 {% endfor %}
             </div>

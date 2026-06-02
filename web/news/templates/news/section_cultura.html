@@ -5,11 +5,6 @@
     {% if data.articles %}
     {% for article in data.articles %}
     <article class="content-card content-card--article">
-        <div class="content-card__meta">
-            <span>{{ ui.page_label }} {{ article.page }}</span>
-            <span>{{ article.pages }} {{ ui.subpages_label }}</span>
-            <span>{{ article.label }}</span>
-        </div>
         <h2>{{ article.title }}</h2>
         <div class="prose-block">
             {% if article.paragraphs %}

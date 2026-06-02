@@ -18,6 +18,7 @@ TRAILING_PAGE_RE = re.compile(
     re.IGNORECASE,
 )
 PAGE_WORD_RE = re.compile(r"^(?P<label>.+?)\s+a\s+pag(?:ina|\.)\s*(?P<page>\d{3})\b.*$", re.IGNORECASE)
+PAGE_ONLY_RE = re.compile(r"^(?:pag(?:ina|\.)\s*)?(?P<page>\d{3})(?:\s*(?:>|-|/)\s*(?P<end>\d{3}))?\s*$", re.IGNORECASE)
 LEADING_PAGE_RE = re.compile(
     r"^(?P<page>\d{3})(?:\s*(?:>|-|/)\s*(?P<end>\d{3}))?\s+(?P<label>.+?)\s*$",
     re.IGNORECASE,
@@ -107,10 +108,12 @@ def parse_index_items(lines: list[dict]) -> tuple[list[dict], set[int]]:
     used = set()
     seen = set()
     last_item = None
+    pending_label: tuple[int, dict] | None = None
 
     for index, line in enumerate(lines):
         entry = parse_index_entry(line["text"])
         if entry:
+            pending_label = None
             entry["_indent"] = leading_spaces(line["raw"])
             key = (entry["page"], entry.get("end_page"), line_key(entry["label"]))
             if key not in seen:
@@ -120,14 +123,54 @@ def parse_index_items(lines: list[dict]) -> tuple[list[dict], set[int]]:
             used.add(index)
             continue
 
+        page_only = parse_page_only(line["text"])
+        if page_only:
+            used.add(index)
+            if pending_label:
+                label_index, label_line = pending_label
+                pending_label = None
+                label = clean_index_label(label_line["text"])
+                entry = build_index_entry(label, page_only["page"], page_only.get("end_page") or None)
+                key = (entry["page"], entry.get("end_page"), line_key(entry["label"]))
+                if key not in seen:
+                    items.append(entry)
+                    seen.add(key)
+                used.add(label_index)
+            last_item = None
+            continue
+
         if last_item and continuation_for_index(line, last_item):
+            pending_label = None
             last_item["label"] = f"{last_item['label']} {clean_index_label(line['text'])}"
             used.add(index)
             continue
 
+        if possible_index_label(line["text"]):
+            pending_label = (index, line)
+            last_item = None
+            continue
+
+        pending_label = None
         last_item = None
 
     return items, used
+
+
+def parse_page_only(text: str) -> dict | None:
+    match = PAGE_ONLY_RE.match(text)
+    if not match:
+        return None
+    return {"page": match.group("page"), "end_page": match.group("end") or ""}
+
+
+def possible_index_label(text: str) -> bool:
+    if len(text) > 70:
+        return False
+    if parse_index_entry(text) or parse_page_only(text):
+        return False
+    if is_week_heading(text) or is_day_heading(text):
+        return False
+    return valid_index_label(text)
 
 
 def parse_index_entry(text: str) -> dict | None:
@@ -156,7 +199,6 @@ def build_index_entry(label: str, page: str, end_page: str | None = None) -> dic
         "label": label,
         "page": page,
         "end_page": end_page or "",
-        "page_label": f"{page}-{end_page}" if end_page else page,
     }
 
 

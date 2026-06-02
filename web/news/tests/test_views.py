@@ -362,9 +362,10 @@ class ViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "televideo-index-item")
         self.assertContains(response, "A SPASSO PER...")
-        self.assertContains(response, "pag. 408")
+        self.assertNotContains(response, "pag. 408")
         self.assertNotContains(response, "a pagina 408 del")
         self.assertNotContains(response, "TELEVIDEO REGIONALE")
+        self.assertNotContains(response, "Pagina 433")
         self.assertNotContains(response, "raw-block")
 
     def test_games_hides_unparsed_superenalotto_snapshot(self):
@@ -416,6 +417,8 @@ class ViewTests(TestCase):
         self.assertContains(response, "televideo-index-item")
         self.assertContains(response, "NUOVO SUPERENALOTTO SUPERSTAR")
         self.assertNotContains(response, "ESTRAZIONI")
+        self.assertNotContains(response, "pag.")
+        self.assertNotContains(response, "Pagina 690")
         self.assertNotContains(response, "raw-block")
 
     def test_robots_and_sitemap(self):
@@ -512,7 +515,75 @@ class ViewTests(TestCase):
         self.assertContains(response, "di turno")
         self.assertContains(response, "notturne e 24 ore")
         self.assertNotContains(response, "ùpp")
+        self.assertNotContains(response, "pag.")
+        self.assertNotContains(response, "Pagina 690")
         self.assertNotContains(response, "raw-block")
+
+    def test_region_pharmacy_page_handles_split_page_labels_without_page_refs(self):
+        TelevideoPageSnapshot.objects.create(
+            section="regioni",
+            region="Lombardia",
+            page=690,
+            subpage="01",
+            label="Farmacie",
+            title="Farmacie",
+            content_kind="table",
+            raw_text=(
+                "Farmacie\n"
+                "ùpppppppppppppppppppppppppp0\n"
+                "di turno\n"
+                "pag. 691\n"
+                "notturne e 24 ore\n"
+                "pag. 692\n"
+                "BERGAMO, BRESCIA, COMO,\n"
+                "pag. 693\n"
+                "MANTOVA, MONZA, PAVIA,\n"
+                "pag. 694\n"
+            ),
+            sort_order=1,
+        )
+
+        response = self.client.get(reverse("news:region", kwargs={"region_slug_value": "lombardia"}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "di turno")
+        self.assertContains(response, "BERGAMO, BRESCIA, COMO,")
+        self.assertNotContains(response, "pag.")
+        self.assertNotContains(response, "Pagina 690")
+        self.assertNotContains(response, "ùpp")
+
+    def test_region_culturambiente_index_removes_split_pages_and_artifacts(self):
+        TelevideoPageSnapshot.objects.create(
+            section="regioni",
+            region="Lombardia",
+            page=575,
+            subpage="01",
+            label="Culturambiente",
+            title="Culturambiente",
+            content_kind="article",
+            raw_text=(
+                "Culturambiente\n"
+                "576 VIAGGIO NEI BENI DEL FAI\n"
+                "TOURING CLUB ITALIANO\n"
+                "pag. 579\n"
+                "AGENDA VERDE\n"
+                "pag. 582\n"
+                "I PARCHI DELLA REGIONE\n"
+                "pag. 585\n"
+                "sssssssssssssssssssssssssss\n"
+            ),
+            sort_order=1,
+        )
+
+        response = self.client.get(reverse("news:region", kwargs={"region_slug_value": "lombardia"}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "VIAGGIO NEI BENI DEL FAI")
+        self.assertContains(response, "TOURING CLUB ITALIANO")
+        self.assertContains(response, "AGENDA VERDE")
+        self.assertNotContains(response, "pag.")
+        self.assertNotContains(response, "Pagina 575")
+        self.assertNotContains(response, "ssss")
 
     @override_settings(OPENWEATHER_API_KEY="test-key")
     def test_weather_page_uses_openweather_only_when_key_configured(self):

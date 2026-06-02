@@ -4,6 +4,10 @@ from news.formatters import parse_televideo_card
 from news.services.parser import parse_article_content
 
 
+def item_page(item: dict) -> str:
+    return f"{item['page']}-{item['end_page']}" if item.get("end_page") else item["page"]
+
+
 class TelevideoParserTests(SimpleTestCase):
     def test_rejects_left_truncated_article_fragments(self):
         content = "\n".join(
@@ -31,7 +35,7 @@ class TelevideoParserTests(SimpleTestCase):
 
         parsed = parse_televideo_card(content, title="Indice lavoro", label="Indice lavoro", content_kind="index")
 
-        self.assertEqual([item["page_label"] for item in parsed["index_items"]], ["466", "467", "468", "543", "475"])
+        self.assertEqual([item_page(item) for item in parsed["index_items"]], ["466", "467", "468", "543", "475"])
         self.assertEqual(parsed["index_items"][0]["label"], "INFO GAZZETTA UFFICIALE")
         self.assertEqual(parsed["index_items"][3]["label"], "RAI RADIO TECHETE'")
         self.assertIn("TUTTA LA GAZZETTA", parsed["paragraphs"][0])
@@ -92,7 +96,7 @@ class TelevideoParserTests(SimpleTestCase):
 
         parsed = parse_televideo_card(content, title="Farmacie", label="Farmacie", content_kind="table")
 
-        self.assertEqual([item["page_label"] for item in parsed["index_items"]], ["691", "692", "693", "694"])
+        self.assertEqual([item_page(item) for item in parsed["index_items"]], ["691", "692", "693", "694"])
         self.assertEqual(parsed["index_items"][0]["label"], "di turno")
         self.assertFalse(parsed["paragraphs"])
         self.assertNotIn("ùpp", str(parsed))
@@ -112,7 +116,7 @@ class TelevideoParserTests(SimpleTestCase):
 
         parsed = parse_televideo_card(content, title="Indice in viaggio", label="Indice in viaggio", content_kind="index")
 
-        self.assertEqual([item["page_label"] for item in parsed["index_items"]], ["434-440", "443", "445", "408"])
+        self.assertEqual([item_page(item) for item in parsed["index_items"]], ["434-440", "443", "445", "408"])
         self.assertEqual(parsed["index_items"][-1]["label"], "A SPASSO PER...")
         self.assertFalse(parsed["paragraphs"])
         self.assertNotIn("TELEVIDEO REGIONALE", str(parsed))
@@ -134,7 +138,7 @@ class TelevideoParserTests(SimpleTestCase):
 
         parsed = parse_televideo_card(content, title="Indice lotto e lotterie", label="Indice lotto e lotterie", content_kind="index")
 
-        self.assertEqual([item["page_label"] for item in parsed["index_items"]], ["501", "545", "535", "691", "692", "696"])
+        self.assertEqual([item_page(item) for item in parsed["index_items"]], ["501", "545", "535", "691", "692", "696"])
         self.assertFalse(parsed["paragraphs"])
         self.assertEqual([item["label"] for item in parsed["index_items"]].count("GUIDA TV"), 1)
 
@@ -152,3 +156,26 @@ class TelevideoParserTests(SimpleTestCase):
 
         self.assertFalse(parsed["has_content"])
         self.assertFalse(parsed["paragraphs"])
+
+    def test_split_page_labels_are_parsed_as_index_items(self):
+        content = "\n".join(
+            [
+                "Culturambiente",
+                "576 VIAGGIO NEI BENI DEL FAI",
+                "TOURING CLUB ITALIANO",
+                "pag. 579",
+                "AGENDA VERDE",
+                "pag. 582",
+                "sssssssssssssssssssssssssss",
+            ]
+        )
+
+        parsed = parse_televideo_card(content, title="Culturambiente", label="Culturambiente", content_kind="article")
+
+        self.assertEqual(
+            [item["label"] for item in parsed["index_items"]],
+            ["VIAGGIO NEI BENI DEL FAI", "TOURING CLUB ITALIANO", "AGENDA VERDE"],
+        )
+        self.assertFalse(parsed["paragraphs"])
+        self.assertNotIn("pag.", str(parsed))
+        self.assertNotIn("ssss", str(parsed))

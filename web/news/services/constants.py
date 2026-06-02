@@ -69,7 +69,7 @@ REGION_CHOICES = (
 SECTION_DEFINITIONS = {
     "tv": {
         "title": "Guida TV",
-        "eyebrow": "Rai Televideo 501-535",
+        "eyebrow": "Rai Televideo",
         "lede": "Programmi TV, prima serata, film del giorno, RaiPlay, Rai Sport, radio e dati Auditel.",
         "seal": "TV",
         "pages": (
@@ -88,7 +88,7 @@ SECTION_DEFINITIONS = {
     },
     "cultura": {
         "title": "Cultura, Libri, Cinema e Teatro",
-        "eyebrow": "Rai Televideo 561-600",
+        "eyebrow": "Rai Televideo",
         "lede": "Recensioni, libri, film, teatro, concerti, eventi e mostre recuperati dalle rubriche culturali.",
         "seal": "CU",
         "pages": (
@@ -109,7 +109,7 @@ SECTION_DEFINITIONS = {
     },
     "ambiente": {
         "title": "Ambiente, Scienza e Salute",
-        "eyebrow": "Rai Televideo 450-483",
+        "eyebrow": "Rai Televideo",
         "lede": "Energie rinnovabili, sostenibilita, agenda verde, ricerca, scienza, salute e istituti scientifici.",
         "seal": "EA",
         "pages": (
@@ -124,7 +124,7 @@ SECTION_DEFINITIONS = {
     },
     "lavoro": {
         "title": "Lavoro e Concorsi",
-        "eyebrow": "Rai Televideo 465-470",
+        "eyebrow": "Rai Televideo",
         "lede": "Concorsi, Gazzetta Ufficiale, sicurezza sul lavoro, formazione, agenzie ed eventi occupazionali.",
         "seal": "LA",
         "pages": (
@@ -135,7 +135,7 @@ SECTION_DEFINITIONS = {
     },
     "sport": {
         "title": "Sport e Risultati",
-        "eyebrow": "Rai Televideo 200-299",
+        "eyebrow": "Rai Televideo",
         "lede": "Risultati, classifiche, calendari, club di Serie A e B, altri sport e brevi sportive.",
         "seal": "SP",
         "pages": (
@@ -150,7 +150,7 @@ SECTION_DEFINITIONS = {
     },
     "meteo": {
         "title": "Meteo, Mari e Venti",
-        "eyebrow": "Rai Televideo 700-719",
+        "eyebrow": "Rai Televideo",
         "lede": "Previsioni per versanti, temperature, aeroporti, mari, venti e sicurezza in mare.",
         "seal": "MT",
         "pages": (
@@ -167,7 +167,7 @@ SECTION_DEFINITIONS = {
     },
     "viaggi": {
         "title": "Viaggi, Turismo e Sicurezza",
-        "eyebrow": "Rai Televideo 433-448",
+        "eyebrow": "Rai Televideo",
         "lede": "Avvisi per viaggiare sicuri, itinerari, FAI, Touring Club, borghi e informazioni utili.",
         "seal": "VI",
         "pages": (
@@ -183,7 +183,7 @@ SECTION_DEFINITIONS = {
     },
     "giochi": {
         "title": "Giochi e Estrazioni",
-        "eyebrow": "Rai Televideo 690-696",
+        "eyebrow": "Rai Televideo",
         "lede": "SuperEnalotto, Lotto e archivio delle ultime estrazioni salvate nel database.",
         "seal": "90",
         "pages": (
@@ -195,7 +195,7 @@ SECTION_DEFINITIONS = {
 
 REGIONAL_SECTION = {
     "title": "Televideo Regionale",
-    "eyebrow": "Rai Televideo regionale 300",
+    "eyebrow": "Rai Televideo regionale",
     "lede": "Notizie, eventi, cinema, teatri, gusto, viaggi, societa e servizi dalle pagine regionali Rai.",
     "seal": "R3",
     "pages": (
