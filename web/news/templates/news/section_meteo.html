@@ -2,7 +2,9 @@
 
 {% block section_content %}
 <main class="section-stack" id="main">
-    {% if map_regions %}
+    {% if weather_capital_markers %}
+    {% include "news/_meteo_capitals_map.html" %}
+    {% elif map_regions %}
     {% include "news/_meteo_map.html" %}
     {% endif %}
 

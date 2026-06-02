@@ -31,7 +31,7 @@ from .models import LottoDraw, NewsItem, SuperEnalottoDraw, TelevideoPageSnapsho
 from .map_paths import get_map_regions
 from .openweather import openweather_cache_by_city
 from .site_urls import public_absolute_url, public_base_url
-from .weather_capitals import build_region_capital_weather, enrich_map_regions
+from .weather_capitals import build_capital_weather_markers, build_region_capital_weather, enrich_map_regions
 from .services.parser import compact_text, display_snapshot_text, fix_mojibake, prose_paragraphs
 from .services import (
     REGION_CHOICES,
@@ -502,11 +502,13 @@ def meteo_map_context() -> dict[str, object]:
         meteo_data = formatted_section_data("meteo")
         region_weather = build_region_capital_weather(meteo_data)
         latest = max((card["fetched_at"] for card in meteo_data["raw"]), default=None)
+    map_regions = enrich_map_regions(get_map_regions(), region_weather)
     return {
         "meteo_data": meteo_data,
         "meteo_latest": latest,
         "region_weather": region_weather,
-        "map_regions": enrich_map_regions(get_map_regions(), region_weather),
+        "map_regions": map_regions,
+        "weather_capital_markers": build_capital_weather_markers(region_weather),
     }
 
 
@@ -847,6 +849,7 @@ def weather(request):
         "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
         "ui": UI_TEXT["it"],
         "map_regions": meteo_context["map_regions"],
+        "weather_capital_markers": meteo_context["weather_capital_markers"],
     }
     return render(request, "news/section_meteo.html", ctx)
 

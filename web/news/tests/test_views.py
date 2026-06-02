@@ -468,6 +468,9 @@ class ViewTests(TestCase):
         response = self.client.get(reverse("news:regions"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "italy-map")
+        self.assertContains(response, "data-meteo-map")
+        self.assertNotContains(response, "data-capitals-map")
+        self.assertNotContains(response, "capital-marker")
         self.assertNotContains(response, "Televideo Regionale - Lombardia")
 
     @override_settings(OPENWEATHER_API_KEY="test-key")
@@ -609,7 +612,13 @@ class ViewTests(TestCase):
         response = self.client.get(reverse("news:weather"))
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-capitals-map")
+        self.assertContains(response, "italy-map--capitals")
+        self.assertContains(response, "capital-marker")
+        self.assertContains(response, "Roma")
+        self.assertContains(response, "22")
         self.assertContains(response, "OpenWeatherMap")
+        self.assertNotContains(response, "data-meteo-map")
         self.assertNotContains(response, "SENTINEL_METEO_TELEVIDEO")
         self.assertNotContains(response, "weather-zone-grid")
         self.assertNotContains(response, "temperature-grid")

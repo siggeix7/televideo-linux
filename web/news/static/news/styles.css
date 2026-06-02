@@ -1272,6 +1272,118 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
 .italy-map__weather-summary { color: var(--text-dim); font-size: var(--font-size-sm); }
 .italy-map__weather-source { color: var(--cyan); font-size: 0.72rem; }
 
+.italy-map--capitals {
+    overflow: hidden;
+    border-color: rgba(0,255,255,0.28);
+    background:
+        radial-gradient(circle at 48% 22%, rgba(0,255,255,0.12), transparent 30rem),
+        radial-gradient(circle at 60% 58%, rgba(255,255,0,0.08), transparent 34rem),
+        var(--bg-panel);
+}
+.italy-map--capitals .italy-map__body {
+    padding: 0 8px 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.italy-map__svg--capitals {
+    max-width: 900px;
+    padding: 0;
+}
+.italy-region--capitals {
+    pointer-events: none;
+}
+.italy-label--capitals {
+    fill: rgba(0,255,0,0.33);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 800;
+    stroke: rgba(0,0,0,0.55);
+    stroke-width: 0.5;
+    paint-order: stroke fill;
+}
+.capital-marker {
+    cursor: pointer;
+    outline: none;
+}
+.capital-marker__halo {
+    fill: rgba(255,255,0,0.08);
+    stroke: rgba(255,255,0,0.18);
+    stroke-width: 1;
+    transition: fill 100ms var(--ease), stroke 100ms var(--ease);
+}
+.capital-marker__dot {
+    fill: var(--yellow);
+    stroke: rgba(0,0,0,0.9);
+    stroke-width: 2;
+    transition: fill 100ms var(--ease), stroke 100ms var(--ease), r 100ms var(--ease);
+}
+.capital-marker--muted .capital-marker__halo {
+    fill: rgba(0,255,0,0.04);
+    stroke: rgba(0,255,0,0.16);
+}
+.capital-marker--muted .capital-marker__dot {
+    fill: var(--text-dim);
+}
+.capital-marker__glyph {
+    opacity: 0;
+    fill: var(--white);
+    stroke: rgba(0,0,0,0.86);
+    stroke-width: 2.5;
+    paint-order: stroke fill;
+    font-size: 16px;
+    pointer-events: none;
+    transition: opacity 100ms var(--ease);
+}
+.capital-marker__card {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 100ms var(--ease), visibility 100ms var(--ease);
+}
+.capital-marker__card-bg {
+    fill: rgba(0,12,4,0.96);
+    stroke: var(--yellow);
+    stroke-width: 1.2;
+    filter: drop-shadow(0 8px 10px rgba(0,0,0,0.45));
+}
+.capital-marker__card-title {
+    fill: var(--white);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 800;
+}
+.capital-marker__card-detail {
+    fill: var(--text);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+}
+.capital-marker:hover .capital-marker__halo,
+.capital-marker:focus .capital-marker__halo,
+.capital-marker:focus-visible .capital-marker__halo,
+.capital-marker.is-active .capital-marker__halo {
+    fill: rgba(255,255,0,0.20);
+    stroke: rgba(255,255,0,0.70);
+}
+.capital-marker:hover .capital-marker__dot,
+.capital-marker:focus .capital-marker__dot,
+.capital-marker:focus-visible .capital-marker__dot,
+.capital-marker.is-active .capital-marker__dot {
+    fill: var(--cyan);
+    stroke: var(--yellow);
+}
+.capital-marker:hover .capital-marker__glyph,
+.capital-marker:focus .capital-marker__glyph,
+.capital-marker:focus-visible .capital-marker__glyph,
+.capital-marker.is-active .capital-marker__glyph,
+.capital-marker:hover .capital-marker__card,
+.capital-marker:focus .capital-marker__card,
+.capital-marker:focus-visible .capital-marker__card,
+.capital-marker.is-active .capital-marker__card {
+    opacity: 1;
+    visibility: visible;
+}
+
 .toolbar { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px; border-color: var(--border-dim); margin-bottom: 10px; }
 .stale-banner {
     display: grid;
@@ -1409,6 +1521,11 @@ table.data-table tbody tr.highlight { background: rgba(255, 255, 0, 0.06); }
         left: 12px;
         width: auto;
         max-height: 42%;
+    }
+    .italy-map--capitals .italy-map__body { justify-items: start; }
+    .italy-map__svg--capitals {
+        width: 760px;
+        max-width: none;
     }
     .toolbar .site-nav__link { flex: 0 0 auto; }
     .news-card--lead,

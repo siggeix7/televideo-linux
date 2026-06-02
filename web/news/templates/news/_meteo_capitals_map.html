@@ -1,0 +1,84 @@
+<section class="italy-map italy-map--capitals" data-capitals-map aria-label="Mappa meteo dei capoluoghi di provincia italiani">
+    <div class="italy-map__header">
+        <h2 class="italy-map__title">Mappa meteo capoluoghi</h2>
+        <p class="italy-map__subtitle">Tocca o seleziona un marker per temperatura e vento</p>
+    </div>
+    <div class="italy-map__body">
+    <svg class="italy-map__svg italy-map__svg--capitals" viewBox="0 0 800 960" xmlns="http://www.w3.org/2000/svg" aria-label="Mappa interattiva dei capoluoghi italiani" role="img">
+        <defs>
+            <linearGradient id="sea-grad-capitals" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#082616" stop-opacity="0.68"/>
+                <stop offset="100%" stop-color="#001105" stop-opacity="0.92"/>
+            </linearGradient>
+        </defs>
+
+        <rect width="800" height="960" fill="url(#sea-grad-capitals)"/>
+
+        <g class="italy-regions italy-regions--capitals" aria-hidden="true">
+            {% for r in map_regions %}
+            <path d="{{ r.path }}" fill="rgba(0,170,0,0.20)" stroke="rgba(0,255,0,0.44)" stroke-width="1.1" stroke-linejoin="round" class="italy-region italy-region--capitals"/>
+            {% endfor %}
+        </g>
+
+        <g class="italy-labels italy-labels--capitals" pointer-events="none" aria-hidden="true">
+            {% for r in map_regions %}
+            <text x="{{ r.cx }}" y="{{ r.cy }}" text-anchor="middle" class="italy-label--capitals">{{ r.label_short }}</text>
+            {% endfor %}
+        </g>
+
+        <g class="capital-markers">
+            {% for marker in weather_capital_markers %}
+            <g class="capital-marker{% if not marker.available %} capital-marker--muted{% endif %}" tabindex="0" role="img" aria-label="{{ marker.aria_label }}" data-capital-marker="{{ marker.slug }}" data-source-label="{{ marker.source_label }}">
+                <title>{{ marker.aria_label }}</title>
+                <circle class="capital-marker__halo" cx="{{ marker.x }}" cy="{{ marker.y }}" r="12"/>
+                <circle class="capital-marker__dot" cx="{{ marker.x }}" cy="{{ marker.y }}" r="5.5"/>
+                <text class="capital-marker__glyph" x="{{ marker.x }}" y="{{ marker.emoji_y }}" text-anchor="middle">{{ marker.emoji }}</text>
+                <g class="capital-marker__card" transform="translate({{ marker.card_x }} {{ marker.card_y }})">
+                    <rect class="capital-marker__card-bg" width="{{ marker.card_width }}" height="{{ marker.card_height }}" rx="0"/>
+                    <text class="capital-marker__card-title" x="9" y="17">{{ marker.name }}</text>
+                    <text class="capital-marker__card-detail" x="9" y="34">{{ marker.detail }}</text>
+                </g>
+            </g>
+            {% endfor %}
+        </g>
+    </svg>
+    </div>
+    <script>
+    (function(){
+        document.querySelectorAll("[data-capitals-map]").forEach(function(map){
+            var markers = Array.prototype.slice.call(map.querySelectorAll("[data-capital-marker]"));
+
+            function clearMarkers(){
+                markers.forEach(function(marker){ marker.classList.remove("is-active"); });
+            }
+
+            function activate(marker){
+                clearMarkers();
+                marker.classList.add("is-active");
+            }
+
+            markers.forEach(function(marker){
+                marker.addEventListener("click", function(event){
+                    event.stopPropagation();
+                    activate(marker);
+                });
+                marker.addEventListener("focus", function(){ activate(marker); });
+                marker.addEventListener("blur", function(){ marker.classList.remove("is-active"); });
+                marker.addEventListener("keydown", function(event){
+                    if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        activate(marker);
+                    }
+                    if (event.key === "Escape") {
+                        clearMarkers();
+                    }
+                });
+            });
+
+            document.addEventListener("click", function(event){
+                if (!map.contains(event.target)) clearMarkers();
+            });
+        });
+    })();
+    </script>
+</section>

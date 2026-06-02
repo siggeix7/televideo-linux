@@ -29,6 +29,129 @@ REGION_CAPITALS = {
 }
 
 
+CAPITAL_COORDINATES = {
+    "L'Aquila": (42.3498, 13.3995),
+    "Chieti": (42.3510, 14.1670),
+    "Pescara": (42.4643, 14.2142),
+    "Teramo": (42.6612, 13.6990),
+    "Potenza": (40.6404, 15.8056),
+    "Matera": (40.6664, 16.6043),
+    "Catanzaro": (38.9054, 16.5944),
+    "Cosenza": (39.2983, 16.2537),
+    "Crotone": (39.0808, 17.1271),
+    "Reggio Calabria": (38.1140, 15.6500),
+    "Vibo Valentia": (38.6762, 16.1016),
+    "Napoli": (40.8518, 14.2681),
+    "Avellino": (40.9149, 14.7908),
+    "Benevento": (41.1298, 14.7826),
+    "Caserta": (41.0747, 14.3324),
+    "Salerno": (40.6824, 14.7681),
+    "Bologna": (44.4949, 11.3426),
+    "Ferrara": (44.8381, 11.6198),
+    "Forli": (44.2227, 12.0407),
+    "Modena": (44.6471, 10.9252),
+    "Parma": (44.8015, 10.3279),
+    "Piacenza": (45.0526, 9.6934),
+    "Ravenna": (44.4184, 12.2035),
+    "Reggio Emilia": (44.6983, 10.6312),
+    "Rimini": (44.0678, 12.5695),
+    "Trieste": (45.6495, 13.7768),
+    "Gorizia": (45.9409, 13.6217),
+    "Pordenone": (45.9564, 12.6600),
+    "Udine": (46.0635, 13.2357),
+    "Roma": (41.9028, 12.4964),
+    "Frosinone": (41.6398, 13.3512),
+    "Latina": (41.4676, 12.9037),
+    "Rieti": (42.4045, 12.8567),
+    "Viterbo": (42.4207, 12.1077),
+    "Genova": (44.4056, 8.9463),
+    "Imperia": (43.8897, 8.0393),
+    "La Spezia": (44.1025, 9.8241),
+    "Savona": (44.3091, 8.4772),
+    "Milano": (45.4642, 9.1900),
+    "Bergamo": (45.6983, 9.6773),
+    "Brescia": (45.5416, 10.2118),
+    "Como": (45.8081, 9.0852),
+    "Cremona": (45.1332, 10.0227),
+    "Lecco": (45.8566, 9.3977),
+    "Lodi": (45.3097, 9.5037),
+    "Mantova": (45.1564, 10.7914),
+    "Monza": (45.5845, 9.2744),
+    "Pavia": (45.1847, 9.1582),
+    "Sondrio": (46.1699, 9.8788),
+    "Varese": (45.8206, 8.8251),
+    "Ancona": (43.6158, 13.5189),
+    "Ascoli Piceno": (42.8536, 13.5749),
+    "Fermo": (43.1609, 13.7185),
+    "Macerata": (43.2984, 13.4531),
+    "Pesaro": (43.9125, 12.9155),
+    "Urbino": (43.7263, 12.6367),
+    "Campobasso": (41.5603, 14.6627),
+    "Isernia": (41.5960, 14.2330),
+    "Torino": (45.0703, 7.6869),
+    "Alessandria": (44.9073, 8.6116),
+    "Asti": (44.9008, 8.2064),
+    "Biella": (45.5629, 8.0583),
+    "Cuneo": (44.3845, 7.5427),
+    "Novara": (45.4469, 8.6222),
+    "Verbania": (45.9210, 8.5518),
+    "Vercelli": (45.3202, 8.4186),
+    "Bari": (41.1171, 16.8719),
+    "Barletta": (41.3193, 16.2833),
+    "Andria": (41.2316, 16.2917),
+    "Trani": (41.2775, 16.4101),
+    "Brindisi": (40.6327, 17.9418),
+    "Foggia": (41.4622, 15.5446),
+    "Lecce": (40.3515, 18.1750),
+    "Taranto": (40.4644, 17.2470),
+    "Cagliari": (39.2238, 9.1217),
+    "Nuoro": (40.3202, 9.3307),
+    "Oristano": (39.9038, 8.5912),
+    "Sassari": (40.7259, 8.5557),
+    "Carbonia": (39.1672, 8.5222),
+    "Palermo": (38.1157, 13.3615),
+    "Agrigento": (37.3111, 13.5765),
+    "Caltanissetta": (37.4901, 14.0629),
+    "Catania": (37.5079, 15.0830),
+    "Enna": (37.5675, 14.2790),
+    "Messina": (38.1938, 15.5540),
+    "Ragusa": (36.9269, 14.7255),
+    "Siracusa": (37.0755, 15.2866),
+    "Trapani": (38.0176, 12.5362),
+    "Firenze": (43.7696, 11.2558),
+    "Arezzo": (43.4633, 11.8796),
+    "Grosseto": (42.7635, 11.1124),
+    "Livorno": (43.5485, 10.3106),
+    "Lucca": (43.8429, 10.5027),
+    "Massa": (44.0354, 10.1393),
+    "Pisa": (43.7228, 10.4017),
+    "Pistoia": (43.9335, 10.9173),
+    "Prato": (43.8777, 11.1022),
+    "Siena": (43.3188, 11.3308),
+    "Trento": (46.0701, 11.1196),
+    "Bolzano": (46.4983, 11.3548),
+    "Perugia": (43.1107, 12.3908),
+    "Terni": (42.5636, 12.6427),
+    "Aosta": (45.7370, 7.3201),
+    "Venezia": (45.4408, 12.3155),
+    "Belluno": (46.1425, 12.2167),
+    "Padova": (45.4064, 11.8768),
+    "Rovigo": (45.0698, 11.7902),
+    "Treviso": (45.6669, 12.2430),
+    "Verona": (45.4384, 10.9916),
+    "Vicenza": (45.5455, 11.5354),
+}
+
+MAP_MIN_LON = 6.62
+MAP_MAX_LON = 18.52
+MAP_MIN_LAT = 35.49
+MAP_MAX_LAT = 47.10
+MAP_WIDTH = 800
+MAP_HEIGHT = 960
+MARKER_CARD_WIDTH = 158
+MARKER_CARD_HEIGHT = 46
+
+
 CITY_ALIASES = {
     "Ancona": ["Ancona Falconara"],
     "Brescia": ["Brescia Ghedi"],
@@ -198,6 +321,78 @@ def weather_summary(row: dict) -> str:
     if row.get("wind"):
         parts.append(f"vento {row['wind']}")
     return " \u00b7 ".join(parts) if parts else NO_DATA
+
+
+def project_capital_position(city: str) -> tuple[float, float] | None:
+    coordinates = CAPITAL_COORDINATES.get(city)
+    if not coordinates:
+        return None
+    lat, lon = coordinates
+    x = (lon - MAP_MIN_LON) / (MAP_MAX_LON - MAP_MIN_LON) * MAP_WIDTH
+    y = (MAP_MAX_LAT - lat) / (MAP_MAX_LAT - MAP_MIN_LAT) * MAP_HEIGHT
+    return round(x, 1), round(y, 1)
+
+
+def capital_marker_slug(city: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", normalize_name(city).casefold()).strip("-")
+
+
+def capital_marker_detail(row: dict) -> tuple[str, str, str]:
+    emoji = str(row.get("emoji") or DEFAULT_EMOJI)
+    temp = row.get("temp")
+    temp_label = f"{temp}\u00b0" if temp not in (None, "") else NO_DATA
+    wind = str(row.get("wind") or NO_DATA)
+    return emoji, temp_label, f"{emoji} {temp_label} \u00b7 vento {wind}"
+
+
+def capital_marker_card_position(x: float, y: float) -> tuple[float, float]:
+    if x > MAP_WIDTH - MARKER_CARD_WIDTH - 20:
+        card_x = x - MARKER_CARD_WIDTH - 12
+    else:
+        card_x = x + 12
+    card_y = y - (MARKER_CARD_HEIGHT / 2)
+    card_x = min(max(card_x, 4), MAP_WIDTH - MARKER_CARD_WIDTH - 4)
+    card_y = min(max(card_y, 4), MAP_HEIGHT - MARKER_CARD_HEIGHT - 4)
+    return round(card_x, 1), round(card_y, 1)
+
+
+def build_capital_weather_markers(region_weather: dict[str, list[dict]]) -> list[dict[str, object]]:
+    markers = []
+    for region_slug, rows in region_weather.items():
+        for row in rows:
+            city = str(row.get("name") or "")
+            position = project_capital_position(city)
+            if not city or not position:
+                continue
+            x, y = position
+            card_x, card_y = capital_marker_card_position(x, y)
+            emoji, temp_label, detail = capital_marker_detail(row)
+            condition = str(row.get("condition") or "")
+            aria_parts = [city]
+            if condition:
+                aria_parts.append(condition)
+            aria_parts.append(detail)
+            markers.append({
+                "slug": capital_marker_slug(city),
+                "name": city,
+                "region_slug": region_slug,
+                "x": x,
+                "y": y,
+                "emoji_y": round(y - 9, 1),
+                "card_x": card_x,
+                "card_y": card_y,
+                "card_width": MARKER_CARD_WIDTH,
+                "card_height": MARKER_CARD_HEIGHT,
+                "available": bool(row.get("available")),
+                "emoji": emoji,
+                "temp_label": temp_label,
+                "wind": row.get("wind") or NO_DATA,
+                "detail": detail,
+                "condition": condition,
+                "source_label": row.get("source_label") or "",
+                "aria_label": ": ".join(aria_parts),
+            })
+    return sorted(markers, key=lambda marker: (marker["y"], marker["x"], marker["name"]))
 
 
 def enrich_map_regions(map_regions: list[dict], region_weather: dict[str, list[dict]]) -> list[dict]:
