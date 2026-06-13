@@ -4,6 +4,8 @@ from django.conf import settings
 from django.test import TestCase
 
 from news.models import Category, LottoDraw, NewsItem, OpenWeatherCity, SuperEnalottoDraw, SuperEnalottoPrediction, TelevideoPageSnapshot
+from news.predictions import create_prediction
+from news.superenalotto_schedule import next_draw_date_after, upcoming_draws_after
 
 
 class CategoryTests(TestCase):
@@ -116,6 +118,30 @@ class SettingsDefaultsTests(TestCase):
 
 
 class SuperEnalottoPredictionTests(TestCase):
+    def test_next_draw_date_uses_official_weekdays(self):
+        self.assertEqual(next_draw_date_after(date(2026, 6, 12)), date(2026, 6, 13))
+        self.assertEqual(next_draw_date_after(date(2026, 6, 13)), date(2026, 6, 16))
+
+    def test_upcoming_draws_include_future_contest_numbers(self):
+        draws = upcoming_draws_after(date(2026, 6, 13), 95, count=2)
+
+        self.assertEqual(draws[0]["date"], "2026-06-16")
+        self.assertEqual(draws[0]["draw_number"], 96)
+        self.assertEqual(draws[1]["date"], "2026-06-18")
+        self.assertEqual(draws[1]["draw_number"], 97)
+
+    def test_create_prediction_targets_next_official_draw(self):
+        SuperEnalottoDraw.objects.create(
+            draw_number=95,
+            draw_date=date(2026, 6, 13),
+            winning_numbers=[13, 23, 34, 68, 87, 90],
+        )
+
+        prediction = create_prediction()
+
+        self.assertEqual(prediction.target_draw_date, date(2026, 6, 16))
+        self.assertEqual(prediction.draw_number, 96)
+
     def test_create_prediction(self):
         prediction = SuperEnalottoPrediction.objects.create(
             target_draw_date=date(2026, 6, 4),

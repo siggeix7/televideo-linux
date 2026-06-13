@@ -197,9 +197,11 @@
         h += '<div class="history-list">';
 
         history.forEach(function (pred) {
+            var drawNumber = pred.matched_draw_number || pred.draw_number || "";
+            var drawDate = pred.matched_draw_date || pred.target_draw_date || "";
             h += '<article class="history-item">';
             h += '<div class="history-item__head">';
-            h += '<strong>Concorso N.' + pred.draw_number + ' del ' + esc(pred.target_draw_date) + '</strong>';
+            h += '<strong>Concorso N.' + esc(drawNumber) + ' del ' + esc(drawDate) + '</strong>';
             h += '<span class="history-item__date">Pronostico del ' + (pred.created_at || "").slice(0, 10) + '</span>';
             h += '</div>';
 
@@ -237,7 +239,23 @@
         return h;
     }
 
-    function renderPage(prediction, analysis, history) {
+    function renderUpcomingDraws(draws) {
+        if (!draws || !draws.length) return "";
+        var h = '<section class="prediction-next" aria-label="Prossime estrazioni SuperEnalotto">';
+        h += '<h2 class="prediction-next__title">Prossime estrazioni ufficiali</h2>';
+        h += '<div class="prediction-next__grid">';
+        draws.forEach(function (draw) {
+            h += '<div class="prediction-next__item">';
+            h += '<strong>' + esc(draw.weekday || "") + ' ' + esc(draw.display_date || draw.date || "") + '</strong>';
+            h += '<span>' + (draw.draw_number ? 'Concorso N.' + esc(draw.draw_number) + ' · ' : '') + 'ore ' + esc(draw.draw_time || '20:00') + '</span>';
+            h += '<small>Giocate fino alle ' + esc(draw.play_deadline || '19:30') + '</small>';
+            h += '</div>';
+        });
+        h += '</div></section>';
+        return h;
+    }
+
+    function renderPage(prediction, analysis, history, upcomingDraws) {
         if (!prediction || !prediction.combinations || !prediction.combinations.length) {
             emptyEl.hidden = false;
             loading.hidden = true;
@@ -261,6 +279,8 @@
             h += '<p class="prediction-header__generated">Generato: ' + esc(prediction.created_at.slice(0, 16).replace("T", " ")) + '</p>';
         }
         h += '</div>';
+
+        h += renderUpcomingDraws(upcomingDraws);
 
         // --- Combos grid ---
         h += '<div class="prediction-grid">';
@@ -300,7 +320,7 @@
                 return r.json();
             })
             .then(function (payload) {
-                renderPage(payload.prediction, payload.analysis, payload.history);
+                renderPage(payload.prediction, payload.analysis, payload.history, payload.upcoming_draws);
             })
             .catch(function (err) {
                 loading.hidden = true;

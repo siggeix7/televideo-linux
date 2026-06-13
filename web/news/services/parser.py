@@ -13,6 +13,22 @@ from django.utils import timezone
 from .constants import COMPOSITE_CATEGORY_PAGES, LOTTO_PAGES, SUMMARY_MAX_CHARS, SUMMARY_SENTENCES
 
 
+ITALIAN_MONTHS = {
+    "gennaio": 1,
+    "febbraio": 2,
+    "marzo": 3,
+    "aprile": 4,
+    "maggio": 5,
+    "giugno": 6,
+    "luglio": 7,
+    "agosto": 8,
+    "settembre": 9,
+    "ottobre": 10,
+    "novembre": 11,
+    "dicembre": 12,
+}
+
+
 def strip_html(value: str) -> str:
     value = re.sub(r"<br\s*/?>", "\n", value, flags=re.IGNORECASE)
     value = re.sub(r"<[^>]+>", "", value)
@@ -298,6 +314,54 @@ def parse_superenalotto_content(content: str) -> dict[str, object]:
         "prize_pool": parse_italian_decimal(prize_pool_match.group(1)) if prize_pool_match else None,
         "raw_text": content,
     }
+
+
+def parse_superenalotto_official_archive(content: str) -> list[dict[str, object]]:
+    text = fix_mojibake(content)
+    text = html.unescape(re.sub(r"<[^>]+>", " ", text))
+    text = re.sub(r"\s+", " ", text).strip()
+    pattern = re.compile(
+        r"Concorso\s+N(?:[º°.]|o)?\s*(\d+)\s+del\s+"
+        r"(\d{1,2})\s+([A-Za-zÀ-ÿ]+)\s+(\d{4})\s+"
+        r"((?:\d{1,2}\s+){7}\d{1,2})\s+Dettagli",
+        flags=re.IGNORECASE,
+    )
+    draws: list[dict[str, object]] = []
+    seen: set[tuple[int, date]] = set()
+    for match in pattern.finditer(text):
+        draw_number = int(match.group(1))
+        month = ITALIAN_MONTHS.get(match.group(3).casefold())
+        if not month:
+            continue
+        draw_date = date(int(match.group(4)), month, int(match.group(2)))
+        key = (draw_number, draw_date)
+        if key in seen:
+            continue
+        values = [int(value) for value in match.group(5).split()]
+        if len(values) != 8:
+            continue
+        winning_numbers = values[:6]
+        if len(set(winning_numbers)) != 6 or any(number < 1 or number > 90 for number in values):
+            continue
+        seen.add(key)
+        draws.append(
+            {
+                "draw_number": draw_number,
+                "draw_date": draw_date,
+                "winning_numbers": winning_numbers,
+                "jolly_number": values[6],
+                "superstar_number": values[7],
+                "raw_text": (
+                    "Fonte ufficiale SuperEnalotto archivio: "
+                    f"Concorso N.{draw_number} del {draw_date.isoformat()} "
+                    f"numeri {' '.join(str(number) for number in winning_numbers)} "
+                    f"Jolly {values[6]} SuperStar {values[7]}"
+                ),
+            }
+        )
+    if not draws:
+        raise RuntimeError("archivio ufficiale SuperEnalotto non riconosciuto")
+    return draws
 
 
 def clean_snapshot_text(content: str) -> str:

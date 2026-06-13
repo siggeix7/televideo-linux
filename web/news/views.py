@@ -32,6 +32,7 @@ from .map_paths import get_map_regions
 from .openweather import OPENWEATHER_TILE_CACHE_SECONDS, fetch_openweather_tile, openweather_cache_by_city
 from .predictions import build_analysis_summary, create_prediction, generate_combinations, prediction_uses_current_engine, verify_predictions
 from .site_urls import public_absolute_url, public_base_url
+from .superenalotto_schedule import upcoming_draws_after
 from .weather_capitals import build_capital_weather_markers, build_region_capital_weather, enrich_map_regions, NO_DATA, _parse_wind_float, _temp_float
 from .services.parser import compact_text, display_snapshot_text, fix_mojibake, prose_paragraphs
 from .services import (
@@ -123,6 +124,7 @@ NAVIGATION = (
     ("meteo", "nav_weather", "news:weather"),
     ("viaggi", "nav_travel", "news:travel"),
     ("giochi", "nav_games", "news:games"),
+    ("superenalotto", "nav_superenalotto", "news:superenalotto_landing"),
     ("regioni", "nav_regions", "news:regions"),
 )
 
@@ -142,6 +144,7 @@ UI_TEXT = {
         "nav_weather": "Meteo",
         "nav_travel": "Viaggi",
         "nav_games": "Giochi",
+        "nav_superenalotto": "SuperEnalotto",
         "nav_regions": "Regioni",
         "language_nav_label": "Lingua",
         "date_filter_title": "Archivio per giorno",
@@ -299,6 +302,42 @@ def nav_items(active: str, _language: str = "it") -> list[dict[str, object]]:
         {"key": key, "label": ui[label_key], "url": reverse(route), "active": key == active}
         for key, label_key, route in NAVIGATION
     ]
+
+
+SUPERENALOTTO_INFO_CARDS = (
+    {
+        "title": "Calendario ufficiale",
+        "body": "Estrazioni ogni martedi, giovedi, venerdi e sabato alle 20:00. Nei giorni di estrazione si gioca fino alle 19:30.",
+        "url": "https://www.superenalotto.it/quando-si-gioca",
+        "label": "Quando si gioca",
+    },
+    {
+        "title": "Categorie e probabilita",
+        "body": "La sestina vincente ha probabilita 1 su 622.614.630; il 5+ vale 1 su 103.769.105; il 5 vale 1 su 1.250.230.",
+        "url": "https://www.superenalotto.it/quanto-si-vince",
+        "label": "Quanto si vince",
+    },
+    {
+        "title": "Archivio ufficiale",
+        "body": "La raccolta SuperEnalotto usa l'archivio ufficiale come controllo prioritario e Televideo per montepremi e jackpot.",
+        "url": "https://www.superenalotto.it/archivio-estrazioni",
+        "label": "Archivio ufficiale",
+    },
+)
+
+
+def superenalotto_overview_context() -> dict[str, object]:
+    latest = SuperEnalottoDraw.objects.order_by("-draw_date", "-draw_number").first()
+    return {
+        "latest_superenalotto": latest,
+        "latest_superenalotto_payload": draw_payload(latest) if latest else None,
+        "upcoming_superenalotto_draws": upcoming_draws_after(
+            latest.draw_date if latest else None,
+            latest.draw_number if latest else None,
+            count=4,
+        ),
+        "superenalotto_info_cards": SUPERENALOTTO_INFO_CARDS,
+    }
 
 
 def snapshot_payload(snapshot: TelevideoPageSnapshot) -> dict[str, object]:
@@ -833,22 +872,26 @@ def superenalotto(request):
             "languages": LANGUAGES,
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
             "ui": UI_TEXT["it"],
-            "nav_items": nav_items("giochi"),
+            "nav_items": nav_items("superenalotto"),
         },
     )
 
 
 def superenalotto_landing(request):
-    return render(
-        request,
-        "news/superenalotto_landing.html",
+    context = superenalotto_overview_context()
+    context.update(
         {
             "language": "it",
             "languages": LANGUAGES,
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
             "ui": UI_TEXT["it"],
-            "nav_items": nav_items("giochi"),
-        },
+            "nav_items": nav_items("superenalotto"),
+        }
+    )
+    return render(
+        request,
+        "news/superenalotto_landing.html",
+        context,
     )
 
 
@@ -861,7 +904,7 @@ def storico_montepremi(request):
             "languages": LANGUAGES,
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
             "ui": UI_TEXT["it"],
-            "nav_items": nav_items("giochi"),
+            "nav_items": nav_items("superenalotto"),
         },
     )
 
@@ -875,7 +918,7 @@ def fanta_super(request):
             "languages": LANGUAGES,
             "refresh_seconds": settings.NEWS_REFRESH_SECONDS,
             "ui": UI_TEXT["it"],
-            "nav_items": nav_items("giochi"),
+            "nav_items": nav_items("superenalotto"),
         },
     )
 
@@ -904,17 +947,22 @@ def fanta_super_api(request):
     if not prediction:
         prediction = create_prediction()
 
-    verified = SuperEnalottoPrediction.objects.filter(is_verified=True).order_by("-created_at")[:24]
-    history = [p for p in verified if prediction_uses_current_engine(p)][:12]
+    history = SuperEnalottoPrediction.objects.filter(is_verified=True).select_related("matched_draw").order_by("-created_at")[:12]
     prediction_payload = _prediction_payload(prediction)
     history_payload = [_prediction_payload(p) for p in history]
 
     analysis = build_analysis_summary()
+    latest = SuperEnalottoDraw.objects.order_by("-draw_date", "-draw_number").first()
 
     response_data = {
         "prediction": prediction_payload,
         "history": history_payload,
         "analysis": analysis,
+        "upcoming_draws": upcoming_draws_after(
+            latest.draw_date if latest else None,
+            latest.draw_number if latest else None,
+            count=4,
+        ),
     }
     return JsonResponse(response_data, json_dumps_params={"ensure_ascii": False})
 
@@ -1025,6 +1073,7 @@ def games(request):
             "latest": latest,
             "stale": is_stale_timestamp(latest, settings.TELETEXT_SECTION_REFRESH_SECONDS),
             "latest_superenalotto": latest_superenalotto,
+            "latest_superenalotto_payload": draw_payload(latest_superenalotto) if latest_superenalotto else None,
             "latest_lotto": latest_lotto,
             "nav_items": nav_items("giochi"),
             "language": "it",
@@ -1267,6 +1316,7 @@ def superenalotto_api(request):
 
     year_int = int(selected_year) if selected_year else None
     draws_qs = SuperEnalottoDraw.objects.filter(draw_date__year=year_int) if year_int else SuperEnalottoDraw.objects.none()
+    latest = SuperEnalottoDraw.objects.order_by("-draw_date", "-draw_number").first()
 
     return JsonResponse(
         {
@@ -1281,6 +1331,11 @@ def superenalotto_api(request):
             "draws": [draw_payload(d) for d in draws_qs],
             "selected": draw_payload(selected) if selected else None,
             "draw_count": draws_qs.count(),
+            "upcoming_draws": upcoming_draws_after(
+                latest.draw_date if latest else None,
+                latest.draw_number if latest else None,
+                count=4,
+            ),
         }
     )
 

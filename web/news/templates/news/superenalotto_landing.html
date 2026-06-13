@@ -24,6 +24,46 @@
         </header>
 
         <main id="main">
+            {% include "news/_super_subnav.html" with active="home" %}
+
+            <section class="super-dashboard" aria-label="Sintesi SuperEnalotto">
+                <article class="lottery-card super-dashboard__latest">
+                    <p class="eyebrow">Ultima estrazione salvata</p>
+                    {% if latest_superenalotto %}
+                        <h2>{{ ui.draw_label }} N.{{ latest_superenalotto.draw_number }}</h2>
+                        <p class="news-card__meta">{{ latest_superenalotto.draw_date|date:"d/m/Y" }}</p>
+                        <div class="number-row">
+                            {% for number in latest_superenalotto.winning_numbers %}
+                                <span class="number-chip">{{ number }}</span>
+                            {% endfor %}
+                        </div>
+                        <dl class="lottery-stats">
+                            <div><dt>{{ ui.jolly_label }}</dt><dd>{{ latest_superenalotto.jolly_number|default:"&mdash;" }}</dd></div>
+                            <div><dt>{{ ui.superstar_label }}</dt><dd>{{ latest_superenalotto.superstar_number|default:"&mdash;" }}</dd></div>
+                            <div><dt>{{ ui.jackpot_label }}</dt><dd>{% if latest_superenalotto_payload.jackpot.text %}{{ latest_superenalotto_payload.jackpot.text }}{% else %}&mdash;{% endif %}</dd></div>
+                            <div><dt>{{ ui.prize_pool_label }}</dt><dd>{% if latest_superenalotto_payload.prize_pool.text %}{{ latest_superenalotto_payload.prize_pool.text }}{% else %}&mdash;{% endif %}</dd></div>
+                        </dl>
+                    {% else %}
+                        <h2>{{ ui.no_draws }}</h2>
+                        <p class="news-card__summary">La raccolta non ha ancora salvato estrazioni SuperEnalotto.</p>
+                    {% endif %}
+                </article>
+
+                <article class="trend-card super-dashboard__upcoming">
+                    <p class="eyebrow">Prossime estrazioni</p>
+                    <h2>Calendario ufficiale</h2>
+                    <div class="upcoming-draws">
+                        {% for draw in upcoming_superenalotto_draws %}
+                            <div class="upcoming-draw">
+                                <span class="upcoming-draw__date">{{ draw.weekday }} {{ draw.display_date }}</span>
+                                <span class="upcoming-draw__meta">{% if draw.draw_number %}Concorso N.{{ draw.draw_number }} · {% endif %}ore {{ draw.draw_time }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <p class="news-card__summary">Nei giorni di estrazione si gioca fino alle {{ upcoming_superenalotto_draws.0.play_deadline }}. Fonte: sito ufficiale SuperEnalotto.</p>
+                </article>
+            </section>
+
             <nav class="super-nav">
                 <a class="super-nav__card" href="{% url 'news:superenalotto' %}">
                     <span class="super-nav__icon" aria-hidden="true">&#9636;</span>
@@ -41,6 +81,17 @@
                     <span class="super-nav__desc">6 combinazioni generate matematicamente per la prossima estrazione.</span>
                 </a>
             </nav>
+
+            <section class="super-info-grid" aria-label="Informazioni ufficiali SuperEnalotto">
+                {% for card in superenalotto_info_cards %}
+                    <article class="content-card super-info-card">
+                        <p class="eyebrow">Dal sito ufficiale</p>
+                        <h2>{{ card.title }}</h2>
+                        <p class="news-card__summary">{{ card.body }}</p>
+                        <a class="action-link" href="{{ card.url }}" rel="noopener noreferrer" target="_blank">{{ card.label }} &raquo;</a>
+                    </article>
+                {% endfor %}
+            </section>
         </main>
     </div>
 

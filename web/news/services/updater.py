@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 import threading
 
@@ -19,6 +20,7 @@ from .constants import (
     REGION_CHOICES,
     REGIONS,
     SECTION_DEFINITIONS,
+    SUPERENALOTTO_OFFICIAL_ARCHIVE_URL,
     SUPERENALOTTO_PAGE,
 )
 from .fetcher import fetch_televideo_content, fetch_text, build_rss_urls, page_link
@@ -30,6 +32,7 @@ from .parser import (
     parse_lotto_content,
     parse_rss,
     parse_superenalotto_content,
+    parse_superenalotto_official_archive,
     snapshot_title,
     snapshot_total_subpages,
     source_id_for,
@@ -40,6 +43,7 @@ from news.models import Category, LottoDraw, NewsItem, SuperEnalottoDraw, Televi
 from news.predictions import create_prediction, verify_predictions
 
 
+logger = logging.getLogger(__name__)
 _REFRESH_LOCK = threading.Lock()
 _SECTION_REFRESH_LOCK = threading.Lock()
 
@@ -173,18 +177,74 @@ def update_category_news(categories: list[Category], per_category_limit: int) ->
     return saved
 
 
-def update_superenalotto() -> int:
-    content = fetch_televideo_content(SUPERENALOTTO_PAGE)
-    defaults = parse_superenalotto_content(content)
+def save_superenalotto_draw(defaults: dict[str, object]) -> tuple[SuperEnalottoDraw, bool]:
     draw_number = int(defaults.pop("draw_number"))
     draw_date = defaults.pop("draw_date")
-    draw, created = SuperEnalottoDraw.objects.update_or_create(
+    return SuperEnalottoDraw.objects.update_or_create(
         draw_number=draw_number, draw_date=draw_date, defaults=defaults,
     )
+
+
+def update_superenalotto_from_official() -> int:
+    content, source_url = fetch_text(
+        [SUPERENALOTTO_OFFICIAL_ARCHIVE_URL],
+        settings.TRANSLATION_TIMEOUT,
+        settings.TRANSLATION_RETRIES,
+    )
+    draws = parse_superenalotto_official_archive(content)
+    created_draws = []
+    for draw_defaults in draws:
+        draw, created = save_superenalotto_draw(draw_defaults.copy())
+        if created:
+            created_draws.append(draw)
+    for draw in sorted(created_draws, key=lambda item: (item.draw_date, item.draw_number)):
+        verify_predictions(draw)
+    if created_draws:
+        create_prediction()
+    latest = max(draws, key=lambda item: (item["draw_date"], item["draw_number"]))
+    logger.info(
+        "SuperEnalotto official refresh ok: source=%s draws=%s latest=%s/%s created=%s",
+        source_url,
+        len(draws),
+        latest["draw_number"],
+        latest["draw_date"],
+        len(created_draws),
+    )
+    return len(draws)
+
+
+def update_superenalotto_from_televideo() -> int:
+    content = fetch_televideo_content(SUPERENALOTTO_PAGE)
+    defaults = parse_superenalotto_content(content)
+    draw, created = save_superenalotto_draw(defaults)
     if created:
         verify_predictions(draw)
         create_prediction()
+    logger.info(
+        "SuperEnalotto Televideo refresh ok: page=%s draw=%s/%s created=%s",
+        SUPERENALOTTO_PAGE,
+        draw.draw_number,
+        draw.draw_date,
+        created,
+    )
     return 1
+
+
+def update_superenalotto() -> int:
+    saved = 0
+    official_error = None
+    try:
+        saved += update_superenalotto_from_official()
+    except RuntimeError as exc:
+        official_error = exc
+        logger.warning("SuperEnalotto official refresh failed: %s", exc)
+    try:
+        saved += update_superenalotto_from_televideo()
+    except RuntimeError as exc:
+        logger.warning("SuperEnalotto Televideo refresh failed: %s", exc)
+        if not saved:
+            raise official_error or exc
+    return saved
 
 
 def update_lotto() -> int:
@@ -241,14 +301,16 @@ def update_section_snapshots(section: str, region: str = "") -> int:
 
 def update_news(limit: int | None = None, category_limit: int | None = None) -> int:
     category_limit = settings.CATEGORY_FETCH_LIMIT if category_limit is None else category_limit
+    logger.info("Televideo refresh started: limit=%s category_limit=%s", limit, category_limit)
     categories = sync_categories_from_page_104()
     saved = update_rss_news(limit, categories[0])
     saved += update_category_news(categories, category_limit)
     try:
         saved += update_superenalotto()
-    except RuntimeError:
-        pass
+    except RuntimeError as exc:
+        logger.warning("SuperEnalotto refresh skipped after errors: %s", exc)
     saved += update_lotto()
+    logger.info("Televideo refresh finished: stored=%s", saved)
     return saved
 
 
@@ -267,8 +329,12 @@ def refresh_if_stale() -> None:
 def refresh_worker() -> None:
     try:
         close_old_connections()
+        logger.info("Background Televideo refresh worker started")
         update_news(settings.NEWS_FETCH_LIMIT, settings.CATEGORY_FETCH_LIMIT)
+    except Exception:
+        logger.exception("Background Televideo refresh worker failed")
     finally:
+        logger.info("Background Televideo refresh worker stopped")
         close_old_connections()
         _REFRESH_LOCK.release()
 
@@ -318,13 +384,18 @@ def refresh_section_if_stale(section: str, region: str = "") -> None:
 def section_refresh_worker(section: str, region: str) -> None:
     try:
         close_old_connections()
-        _retry_on_db_lock(update_section_snapshots, section, region)
+        logger.info("Section refresh started: section=%s region=%s", section, region or "-")
+        saved = _retry_on_db_lock(update_section_snapshots, section, region)
+        logger.info("Section refresh finished: section=%s region=%s stored=%s", section, region or "-", saved)
+    except Exception:
+        logger.exception("Section refresh failed: section=%s region=%s", section, region or "-")
     finally:
         close_old_connections()
         _SECTION_REFRESH_LOCK.release()
 
 
 def refresh_all_sections() -> int:
+    logger.info("Full section refresh started")
     saved = 0
     sections = list(SECTION_DEFINITIONS.keys()) + ["regioni"]
     if settings.OPENWEATHER_API_KEY:
@@ -332,11 +403,12 @@ def refresh_all_sections() -> int:
     for section in sections:
         try:
             saved += _retry_on_db_lock(update_section_snapshots, section)
-        except RuntimeError:
-            pass
+        except RuntimeError as exc:
+            logger.warning("Section refresh skipped: section=%s error=%s", section, exc)
     for region in REGION_CHOICES:
         try:
             saved += _retry_on_db_lock(update_section_snapshots, "regioni", region)
-        except RuntimeError:
-            pass
+        except RuntimeError as exc:
+            logger.warning("Regional refresh skipped: region=%s error=%s", region, exc)
+    logger.info("Full section refresh finished: stored=%s", saved)
     return saved

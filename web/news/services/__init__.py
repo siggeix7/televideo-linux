@@ -9,6 +9,7 @@ from .parser import (
     parse_published_at,
     parse_rss,
     parse_superenalotto_content,
+    parse_superenalotto_official_archive,
     source_id_for,
     strip_html,
     summarize_description,

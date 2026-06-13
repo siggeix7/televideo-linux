@@ -2,8 +2,8 @@ from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 
-from news.models import Category
-from news.services.updater import refresh_all_sections, update_category_news
+from news.models import Category, SuperEnalottoDraw
+from news.services.updater import refresh_all_sections, update_category_news, update_superenalotto
 
 
 class NewsUpdaterTests(TestCase):
@@ -27,3 +27,22 @@ class NewsUpdaterTests(TestCase):
             refresh_all_sections()
 
         self.assertNotIn(("meteo", ""), calls)
+
+    def test_update_superenalotto_uses_official_archive(self):
+        official_archive = """
+        Concorso Nº 95 del 13 Giugno 2026
+        13 23 34 68 87 90 80 54 Dettagli
+        """
+
+        with (
+            patch("news.services.updater.fetch_text", return_value=(official_archive, "https://www.superenalotto.it/archivio-estrazioni")),
+            patch("news.services.updater.fetch_televideo_content", side_effect=RuntimeError("Rai non aggiornata")),
+        ):
+            saved = update_superenalotto()
+
+        draw = SuperEnalottoDraw.objects.get(draw_number=95)
+        self.assertEqual(saved, 1)
+        self.assertEqual(draw.draw_date.isoformat(), "2026-06-13")
+        self.assertEqual(draw.winning_numbers, [13, 23, 34, 68, 87, 90])
+        self.assertEqual(draw.jolly_number, 80)
+        self.assertEqual(draw.superstar_number, 54)

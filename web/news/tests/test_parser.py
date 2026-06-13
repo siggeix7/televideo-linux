@@ -1,7 +1,7 @@
 from django.test import SimpleTestCase
 
 from news.formatters import parse_televideo_card
-from news.services.parser import parse_article_content
+from news.services.parser import parse_article_content, parse_superenalotto_official_archive
 
 
 def item_page(item: dict) -> str:
@@ -9,6 +9,26 @@ def item_page(item: dict) -> str:
 
 
 class TelevideoParserTests(SimpleTestCase):
+    def test_parses_superenalotto_official_archive(self):
+        content = """
+        <section>I risultati degli ultimi concorsi</section>
+        <div>Concorso <strong>Nº 95</strong> del <strong>13 Giugno 2026</strong></div>
+        <span>13</span><span>23</span><span>34</span><span>68</span><span>87</span><span>90</span>
+        <span>80</span><span>54</span><a>Dettagli</a>
+        <div>Concorso <strong>Nº 94</strong> del <strong>12 Giugno 2026</strong></div>
+        <span>18</span><span>24</span><span>42</span><span>68</span><span>75</span><span>83</span>
+        <span>26</span><span>20</span><a>Dettagli</a>
+        """
+
+        draws = parse_superenalotto_official_archive(content)
+
+        self.assertEqual(len(draws), 2)
+        self.assertEqual(draws[0]["draw_number"], 95)
+        self.assertEqual(draws[0]["draw_date"].isoformat(), "2026-06-13")
+        self.assertEqual(draws[0]["winning_numbers"], [13, 23, 34, 68, 87, 90])
+        self.assertEqual(draws[0]["jolly_number"], 80)
+        self.assertEqual(draws[0]["superstar_number"], 54)
+
     def test_rejects_left_truncated_article_fragments(self):
         content = "\n".join(
             [

@@ -1,7 +1,9 @@
 from collections import Counter, defaultdict
-from datetime import timedelta
+
+from django.db.models import Q
 
 from .models import SuperEnalottoDraw, SuperEnalottoPrediction
+from .superenalotto_schedule import next_draw_target
 
 
 SUPERENALOTTO_MAX_NUMBER = 90
@@ -10,7 +12,7 @@ COMBO_COUNT = 6
 NUMBERS_PER_COMBO = 6
 RECENT_WINDOW = 50
 MARKOV_WINDOW = 1000
-PREDICTION_ENGINE_VERSION = "cycle-aware-v2"
+PREDICTION_ENGINE_VERSION = "cycle-aware-v3"
 CURRENT_COMBO_LABELS = (
     "Ciclo di ritorno",
     "Transizioni Markov",
@@ -244,7 +246,7 @@ def generate_combinations(draws_queryset=None):
     combo1["reasoning"] = [
         "Analisi dei cicli di ritorno: ogni numero ha un ritmo tipico di riapparizione (~13-18 estrazioni).",
         "Quando il gap attuale si avvicina alla media storica, la probabilit\u00e0 aumenta leggermente.",
-        "Unica strategia con significativit\u00e0 statistica (p<0.05) nei backtest su 2809 estrazioni.",
+        f"Unica strategia con significativit\u00e0 statistica (p<0.05) nei backtest su {len(draws_list)} estrazioni.",
     ]
     cycle_details = []
     for n in combo1["numbers"]:
@@ -400,11 +402,22 @@ def prediction_uses_current_engine(prediction: SuperEnalottoPrediction | None) -
     labels = tuple(combo.get("label") for combo in prediction.combinations)
     if labels != CURRENT_COMBO_LABELS:
         return False
-    return all(combo.get("engine_version") == PREDICTION_ENGINE_VERSION for combo in prediction.combinations)
+    if not all(combo.get("engine_version") == PREDICTION_ENGINE_VERSION for combo in prediction.combinations):
+        return False
+    if not prediction.is_verified:
+        latest = SuperEnalottoDraw.objects.order_by("-draw_date", "-draw_number").first()
+        expected_date, expected_number = next_draw_target(latest)
+        if expected_date and prediction.target_draw_date != expected_date:
+            return False
+        if expected_number and prediction.draw_number != expected_number:
+            return False
+    return True
 
 
 def verify_predictions(new_draw):
-    pending = SuperEnalottoPrediction.objects.filter(is_verified=False)
+    pending = SuperEnalottoPrediction.objects.filter(is_verified=False).filter(
+        Q(draw_number=new_draw.draw_number) | Q(target_draw_date=new_draw.draw_date)
+    )
     drawn_set = set(new_draw.winning_numbers or [])
     for prediction in pending:
         matched_counts = []
@@ -421,7 +434,14 @@ def verify_predictions(new_draw):
         prediction.matched_counts = matched_counts
         prediction.matched_draw = new_draw
         prediction.is_verified = True
-        prediction.save(update_fields=["matched_counts", "matched_draw", "is_verified"])
+        update_fields = ["matched_counts", "matched_draw", "is_verified"]
+        if prediction.target_draw_date != new_draw.draw_date:
+            prediction.target_draw_date = new_draw.draw_date
+            update_fields.append("target_draw_date")
+        if prediction.draw_number != new_draw.draw_number:
+            prediction.draw_number = new_draw.draw_number
+            update_fields.append("draw_number")
+        prediction.save(update_fields=update_fields)
 
 
 def build_analysis_summary():
@@ -498,11 +518,10 @@ def build_analysis_summary():
 
 
 def create_prediction():
-    latest = SuperEnalottoDraw.objects.order_by("-draw_date").first()
+    latest = SuperEnalottoDraw.objects.order_by("-draw_date", "-draw_number").first()
     if not latest:
         return None
-    target_date = latest.draw_date + timedelta(days=3)
-    target_number = latest.draw_number + 1
+    target_date, target_number = next_draw_target(latest)
     combos = generate_combinations()
     prediction = SuperEnalottoPrediction.objects.create(
         target_draw_date=target_date,

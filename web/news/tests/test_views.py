@@ -408,6 +408,24 @@ class ViewTests(TestCase):
         self.assertNotContains(response, "N.ro SuperStar")
         self.assertNotContains(response, "raw-block")
 
+    def test_games_superenalotto_source_mentions_official_archive(self):
+        SuperEnalottoDraw.objects.create(
+            draw_number=95,
+            draw_date=date(2026, 6, 13),
+            winning_numbers=[13, 23, 34, 68, 87, 90],
+            jolly_number=80,
+            superstar_number=54,
+            jackpot=179015605.44,
+            prize_pool=4935121.20,
+        )
+
+        response = self.client.get(reverse("news:games"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Fonte principale")
+        self.assertContains(response, "Archivio ufficiale SuperEnalotto")
+        self.assertNotContains(response, "raccolti da Rai Televideo")
+
     def test_games_index_is_structured_not_raw(self):
         TelevideoPageSnapshot.objects.create(
             section="giochi",
@@ -454,6 +472,7 @@ class ViewTests(TestCase):
     def test_superenalotto_api(self):
         response = self.client.get(reverse("news:superenalotto_api"))
         self.assertEqual(response.status_code, 200)
+        self.assertIn("upcoming_draws", response.json())
 
     def test_superenalotto_api_falls_back_from_invalid_date(self):
         SuperEnalottoDraw.objects.create(
@@ -710,12 +729,23 @@ class ViewTests(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_superenalotto_landing_page(self):
+        SuperEnalottoDraw.objects.create(
+            draw_number=95,
+            draw_date=date(2026, 6, 13),
+            winning_numbers=[13, 23, 34, 68, 87, 90],
+            jolly_number=80,
+            superstar_number=54,
+        )
+
         response = self.client.get(reverse("news:superenalotto_landing"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Storico estrazioni")
         self.assertContains(response, "Storico montepremi")
         self.assertContains(response, "Fanta-Super")
         self.assertContains(response, "super-nav__card")
+        self.assertContains(response, "Prossime estrazioni")
+        self.assertContains(response, "Concorso N.96")
+        self.assertContains(response, "1 su 622.614.630")
 
     def test_storico_montepremi_page(self):
         SuperEnalottoDraw.objects.create(
@@ -772,6 +802,7 @@ class ViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertIn("prediction", data)
+        self.assertIn("upcoming_draws", data)
         self.assertIn("combinations", data["prediction"])
         self.assertEqual(len(data["prediction"]["combinations"]), 6)
         for combo in data["prediction"]["combinations"]:
@@ -807,6 +838,31 @@ class ViewTests(TestCase):
         self.assertEqual(prediction.matched_counts[0]["matches"], 4)
         self.assertTrue(prediction.matched_counts[0]["jolly_match"])
         self.assertTrue(prediction.matched_counts[0]["superstar_match"])
+
+    def test_fanta_super_api_keeps_legacy_verified_history(self):
+        draw = SuperEnalottoDraw.objects.create(
+            draw_number=95, draw_date=date(2026, 6, 13),
+            winning_numbers=[13, 23, 34, 68, 87, 90],
+            jolly_number=80, superstar_number=54,
+            jackpot=179000000, prize_pool=4900000,
+        )
+        SuperEnalottoPrediction.objects.create(
+            target_draw_date=date(2026, 6, 15),
+            draw_number=95,
+            combinations=[
+                {"numbers": [13, 23, 1, 2, 3, 4], "jolly": 80, "superstar": 54, "label": "Legacy", "engine_version": "cycle-aware-v2"},
+            ],
+            matched_draw=draw,
+            matched_counts=[{"matches": 2, "jolly_match": True, "superstar_match": True}],
+            is_verified=True,
+        )
+        response = self.client.get(reverse("news:fanta_super_api"))
+        self.assertEqual(response.status_code, 200)
+        history = response.json()["history"]
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0]["matched_draw_number"], 95)
+        self.assertEqual(history[0]["matched_draw_date"], "2026-06-13")
+        self.assertEqual(history[0]["matched_counts"][0]["matches"], 2)
 
     def test_sitemap_includes_new_routes(self):
         response = self.client.get(reverse("news:sitemap"))
